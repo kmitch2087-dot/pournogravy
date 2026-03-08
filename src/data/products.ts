@@ -20,6 +20,7 @@ export const products: Product[] = [
     category: "best-sellers",
     sizes: ["S", "M", "L", "XL", "2XL"],
     images: [],
+    image: "/products/tip-your-bartender.jpg",
     badge: "BEST SELLER",
     humor: "Because apparently 4% is 'generous' to some people.",
   },
