@@ -33,6 +33,7 @@ export const products: Product[] = [
     sizes: ["S", "M", "L", "XL", "2XL"],
     images: [],
     badge: "BEST SELLER",
+
     humor: "Yes, I smiled. No, I didn't mean it.",
   },
   {
