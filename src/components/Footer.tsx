@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
-            <img src="/logo.webp" alt="Pour No Gravy" className="h-12 w-auto mb-4" />
+            <img src="/logo.webp" alt="POURnogravy" className="h-12 w-auto mb-4" />
             <p className="text-sm text-muted-foreground leading-relaxed">
               Saving my bar from the socially stupid, one Karen at a time.
             </p>
