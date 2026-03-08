@@ -39,7 +39,7 @@ const Contact = () => {
               </div>
               <div>
                 <label className="text-xs font-display tracking-widest block mb-2">MESSAGE</label>
-                <Textarea className="min-h-[150px] bg-muted border-border resize-none" placeholder="What's on your mind?" required />
+                <Textarea className="min-h-[150px] bg-muted border-border resize-none" placeholder="What the hell do you want?" required />
               </div>
               <Button type="submit" className="w-full h-12 font-display tracking-widest text-lg bg-primary text-primary-foreground">
                 SEND IT
