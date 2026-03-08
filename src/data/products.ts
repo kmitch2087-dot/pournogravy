@@ -64,6 +64,7 @@ export const products: Product[] = [
     category: "best-sellers",
     sizes: ["S", "M", "L", "XL", "2XL"],
     images: [],
+    image: "/products/86-your-attitude.jpg",
     image: "/products/bartender-therapist.jpg",
     badge: "NEW",
     humor: "That'll be $14 for the drink. The unsolicited therapy is free but unwelcome.",
