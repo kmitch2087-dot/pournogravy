@@ -77,6 +77,7 @@ export const products: Product[] = [
     category: "nightlife",
     sizes: ["S", "M", "L", "XL", "2XL"],
     images: [],
+    image: "/products/server-not-servant.jpg",
     humor: "If we can run out of Tito's, we can run out of patience too.",
   },
   {
