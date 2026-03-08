@@ -19,7 +19,7 @@ const About = () => {
             </p>
 
             <p>
-              Pour No Gravy is for the people who smile through gritted teeth, who master the art of the fake laugh, 
+              POURnogravy is for the people who smile through gritted teeth, who master the art of the fake laugh, 
               and who've memorized every excuse a bad tipper has ever used. We make shirts that say what you're already 
               thinking — because you can't say it to their face (HR, liability, whatever).
             </p>
