@@ -9,7 +9,7 @@ const About = () => {
 
           <div className="space-y-6 text-muted-foreground text-sm leading-relaxed">
             <p className="text-foreground text-lg font-display tracking-wider leading-relaxed">
-              POUR NO GRAVY WAS BORN BEHIND A BAR AT 2AM ON A SATURDAY, SOMEWHERE BETWEEN A KAREN'S COMPLAINT AND A SPILLED COSMO.
+              POURnogravy WAS BORN BEHIND A BAR AT 2AM ON A SATURDAY, SOMEWHERE BETWEEN A KAREN'S COMPLAINT AND A SPILLED COSMO.
             </p>
 
             <p>
@@ -19,7 +19,7 @@ const About = () => {
             </p>
 
             <p>
-              Pour No Gravy is for the people who smile through gritted teeth, who master the art of the fake laugh, 
+              POURnogravy is for the people who smile through gritted teeth, who master the art of the fake laugh, 
               and who've memorized every excuse a bad tipper has ever used. We make shirts that say what you're already 
               thinking — because you can't say it to their face (HR, liability, whatever).
             </p>
