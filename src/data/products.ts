@@ -5,6 +5,7 @@ export interface Product {
   description: string;
   category: string;
   sizes: string[];
+  image?: string;
   images: string[];
   badge?: string;
   humor: string;
