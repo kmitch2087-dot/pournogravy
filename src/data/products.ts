@@ -101,6 +101,18 @@ export const products: Product[] = [
     badge: "PREMIUM",
     humor: "I was free-pouring before you had a fake ID.",
   },
+  {
+    id: "i-love-cheese-wiz",
+    name: "I Love Cheese Wiz",
+    price: 29.99,
+    description: "Some people have standards. You have Cheese Wiz. Own it.",
+    category: "nightlife",
+    sizes: ["S", "M", "L", "XL", "2XL"],
+    images: [],
+    image: "/products/i-love-cheese-wiz.jpg",
+    badge: "NEW",
+    humor: "Fine dining is overrated. Pass the can.",
+  },
 ];
 
 export const collections = [
