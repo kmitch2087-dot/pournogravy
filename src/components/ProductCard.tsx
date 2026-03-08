@@ -12,12 +12,15 @@ const ProductCard = ({ product }: { product: Product }) => {
     >
       <Link to={`/product/${product.id}`} className="group block">
         <div className="relative aspect-square bg-muted overflow-hidden border border-border">
-          {/* Placeholder for product image */}
-          <div className="absolute inset-0 flex items-center justify-center p-6">
-            <span className="font-display text-center text-lg leading-tight tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
-              {product.name}
-            </span>
-          </div>
+          {product.image ? (
+            <img src={product.image} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-6">
+              <span className="font-display text-center text-lg leading-tight tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
+                {product.name}
+              </span>
+            </div>
+          )}
 
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />

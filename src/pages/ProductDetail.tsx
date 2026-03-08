@@ -40,11 +40,15 @@ const ProductDetail = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="aspect-square bg-muted border border-border flex items-center justify-center p-12"
+            className="aspect-square bg-muted border border-border flex items-center justify-center overflow-hidden"
           >
-            <span className="font-display text-2xl md:text-3xl text-center tracking-wider text-muted-foreground leading-tight">
-              {product.name}
-            </span>
+            {product.image ? (
+              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-display text-2xl md:text-3xl text-center tracking-wider text-muted-foreground leading-tight p-12">
+                {product.name}
+              </span>
+            )}
           </motion.div>
 
           {/* Details */}
