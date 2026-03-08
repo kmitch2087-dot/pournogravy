@@ -87,6 +87,7 @@ export const products: Product[] = [
     category: "industry",
     sizes: ["S", "M", "L", "XL", "2XL"],
     images: [],
+    image: "/products/server-not-servant.jpg",
     humor: "I serve food, not your ego.",
   },
   {
