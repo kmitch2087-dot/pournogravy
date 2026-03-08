@@ -9,7 +9,7 @@ const About = () => {
 
           <div className="space-y-6 text-muted-foreground text-sm leading-relaxed">
             <p className="text-foreground text-lg font-display tracking-wider leading-relaxed">
-              POUR NO GRAVY WAS BORN BEHIND A BAR AT 2AM ON A SATURDAY, SOMEWHERE BETWEEN A KAREN'S COMPLAINT AND A SPILLED COSMO.
+              POURnogravy WAS BORN BEHIND A BAR AT 2AM ON A SATURDAY, SOMEWHERE BETWEEN A KAREN'S COMPLAINT AND A SPILLED COSMO.
             </p>
 
             <p>
