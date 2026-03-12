@@ -95,4 +95,22 @@
     pointer-events: none;
     z-index: 1;
   }
+
+  .font-marker {
+    font-family: 'Permanent Marker', cursive;
+  }
+
+  .rough-border {
+    border-image: repeating-linear-gradient(
+      -2deg,
+      hsl(0 0% 25%) 0px,
+      hsl(0 0% 35%) 2px,
+      transparent 2px,
+      transparent 6px
+    ) 1;
+  }
+
+  .stamp-rotate {
+    transform: rotate(-3deg);
+  }
 }
