@@ -11,7 +11,7 @@ const ProductCard = ({ product }: { product: Product }) => {
       transition={{ duration: 0.4 }}
     >
       <Link to={`/product/${product.id}`} className="group block">
-        <div className="relative aspect-square bg-muted overflow-hidden border border-border">
+        <div className="relative aspect-square bg-muted overflow-hidden border-2 border-foreground/10 rough-border">
           {product.image ? (
             <img src={product.image} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           ) : (
