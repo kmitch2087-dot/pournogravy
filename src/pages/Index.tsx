@@ -25,11 +25,12 @@ const Index = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
+            className="inline-block bg-primary/20 backdrop-blur-md rounded-2xl px-8 py-6 md:px-14 md:py-10"
           >
-            <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl leading-[0.9] tracking-wider mb-6 text-grit">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.9] tracking-wider mb-0 text-primary-foreground">
               APPAREL FOR<br />
               BARTENDERS WHO<br />
-              HAVE <span className="font-marker stamp-rotate inline-block text-primary">SEEN</span><br />
+              HAVE <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">SEEN</span><br />
               SOME SHIT.
             </h1>
           </motion.div>
