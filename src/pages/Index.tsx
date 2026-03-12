@@ -29,7 +29,7 @@ const Index = () => {
             <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl leading-[0.9] tracking-wider mb-6 text-grit">
               APPAREL FOR<br />
               BARTENDERS WHO<br />
-              HAVE SEEN<br />
+              HAVE <span className="font-marker stamp-rotate inline-block text-primary">SEEN</span><br />
               SOME SHIT.
             </h1>
           </motion.div>
@@ -58,11 +58,11 @@ const Index = () => {
       </section>
 
       {/* Marquee quote strip */}
-      <section className="border-y border-border bg-muted py-3 overflow-hidden">
+      <section className="border-y-2 border-foreground/20 rough-border bg-muted py-3 overflow-hidden">
         <div className="animate-marquee flex whitespace-nowrap">
           {[...quotes, ...quotes].map((q, i) => (
-            <span key={i} className="mx-8 font-display text-sm tracking-wider text-muted-foreground">
-              ★ {q}
+            <span key={i} className="mx-8 font-marker text-xs tracking-wider text-muted-foreground">
+              ☠ {q}
             </span>
           ))}
         </div>
@@ -96,13 +96,13 @@ const Index = () => {
       </section>
 
       {/* Quote Section */}
-      <section className="border-y border-border">
+      <section className="border-y-2 border-foreground/20 rough-border noise-overlay">
         <div className="container mx-auto px-4 py-20 text-center">
           <motion.blockquote
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="font-display text-3xl md:text-5xl tracking-wider leading-tight max-w-4xl mx-auto"
+            className="font-marker text-2xl md:text-4xl tracking-wider leading-relaxed max-w-4xl mx-auto stamp-rotate"
           >
             "I DON'T HAVE A<br />
             DRINKING PROBLEM.<br />
