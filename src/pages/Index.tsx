@@ -96,13 +96,13 @@ const Index = () => {
       </section>
 
       {/* Quote Section */}
-      <section className="border-y border-border">
+      <section className="border-y-2 border-foreground/20 rough-border noise-overlay">
         <div className="container mx-auto px-4 py-20 text-center">
           <motion.blockquote
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="font-display text-3xl md:text-5xl tracking-wider leading-tight max-w-4xl mx-auto"
+            className="font-marker text-2xl md:text-4xl tracking-wider leading-relaxed max-w-4xl mx-auto stamp-rotate"
           >
             "I DON'T HAVE A<br />
             DRINKING PROBLEM.<br />

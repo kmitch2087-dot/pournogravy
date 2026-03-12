@@ -27,7 +27,7 @@ const ProductCard = ({ product }: { product: Product }) => {
 
           {/* Badge */}
           {product.badge && (
-            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-display tracking-widest">
+            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-marker tracking-wider stamp-rotate">
               {product.badge}
             </div>
           )}
