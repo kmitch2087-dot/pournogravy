@@ -126,48 +126,6 @@ export const products: Product[] = [
     humor: "I hate people. It says so on my bag.",
   },
 
-  // 🍻 Shift Survivor
-  {
-    id: "on-my-last-nerve",
-    name: "I'm On My Last Nerve & You're Tap Dancing On It",
-    price: 29.99,
-    description: "The perfect shirt for that Wednesday double when Karen asks for her 4th remake.",
-    category: "shift-survivor",
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    images: [],
-    humor: "Yes, I smiled. No, I didn't mean it.",
-  },
-  {
-    id: "last-call",
-    name: "Last Call Was 20 Minutes Ago",
-    price: 29.99,
-    description: "For every soul who thinks 'one more' means three more after we already flipped the lights.",
-    category: "shift-survivor",
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    images: [],
-    humor: "The lights are on. You don't look as good as you thought.",
-  },
-  {
-    id: "survived-saturday",
-    name: "I Survived Saturday Night",
-    price: 29.99,
-    description: "And all I got was this shirt and a desire to never speak to another human.",
-    category: "shift-survivor",
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    images: [],
-    humor: "The night was long. The tips were short.",
-  },
-  {
-    id: "another-double",
-    name: "Another Double Shift",
-    price: 29.99,
-    description: "Because apparently we don't need sleep, personal lives, or functioning knees.",
-    category: "shift-survivor",
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    images: [],
-    humor: "My feet have filed a formal complaint.",
-  },
-
   // ☠️ Customer Horror Stories
   {
     id: "no-karen",
@@ -219,7 +177,6 @@ export const products: Product[] = [
 export const collections = [
   { id: "salty-bartender", name: "Salty Bartender", emoji: "🔥", description: "The aggressive, blunt humor shirts. For bartenders who've stopped pretending to be nice." },
   { id: "industry-truths", name: "Industry Truths", emoji: "🍸", description: "Relatable bartender sayings that hit different after a Friday close." },
-  { id: "shift-survivor", name: "Shift Survivor", emoji: "🍻", description: "For people who work long service shifts and live to complain about it." },
   { id: "customer-horror", name: "Customer Horror Stories", emoji: "☠️", description: "Focused on the chaos of dealing with guests. Especially the Karens." },
 ];
 
