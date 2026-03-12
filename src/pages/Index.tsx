@@ -9,7 +9,7 @@ import { useState } from "react";
 
 const Index = () => {
   const [email, setEmail] = useState("");
-  const featured = products.filter((p) => p.badge === "BEST SELLER" || p.badge === "NEW");
+  const featured = products.filter((p) => p.featured).slice(0, 8);
 
   return (
     <div className="min-h-screen">
