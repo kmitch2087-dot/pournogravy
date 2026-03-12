@@ -9,7 +9,7 @@ const Collections = () => {
       <div className="container mx-auto px-4">
         <div className="mb-12">
           <h1 className="font-display text-5xl md:text-7xl tracking-wider">COLLECTIONS</h1>
-          <p className="text-muted-foreground text-sm mt-2">
+          <p className="font-marker text-muted-foreground text-sm mt-2 stamp-rotate inline-block">
             Curated chaos for every type of service industry survivor.
           </p>
         </div>
