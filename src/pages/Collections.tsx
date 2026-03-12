@@ -32,7 +32,7 @@ const Collections = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <h2 className="font-display text-3xl md:text-4xl tracking-wider group-hover:text-primary transition-colors">
-                        {col.name.toUpperCase()}
+                        <span className="mr-3">{col.emoji}</span>{col.name.toUpperCase()}
                       </h2>
                       <p className="text-muted-foreground text-sm mt-2 max-w-sm">{col.description}</p>
                       <p className="text-xs text-muted-foreground mt-4 font-display tracking-widest">
