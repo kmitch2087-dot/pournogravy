@@ -16,7 +16,7 @@ const Index = () => {
       {/* Hero */}
       <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden noise-overlay">
         <div className="absolute inset-0">
-          <img src="/hero-bg.jpg" alt="" className="w-full h-full object-cover opacity-60" />
+          <img src="/hero-bg.jpg" alt="" className="w-full h-full object-cover" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
 
