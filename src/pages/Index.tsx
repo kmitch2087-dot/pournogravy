@@ -9,7 +9,7 @@ import { useState } from "react";
 
 const Index = () => {
   const [email, setEmail] = useState("");
-  const featured = products.filter((p) => p.badge === "BEST SELLER" || p.badge === "NEW");
+  const featured = products.filter((p) => p.featured).slice(0, 8);
 
   return (
     <div className="min-h-screen">
@@ -76,7 +76,7 @@ const Index = () => {
             <p className="text-muted-foreground text-sm mt-2">The shirts that start conversations. And bar fights.</p>
           </div>
           <Link to="/shop" className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-display tracking-wider">
-            VIEW ALL <ArrowRight className="h-4 w-4" />
+           VIEW ALL DESIGNS <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -86,10 +86,10 @@ const Index = () => {
           ))}
         </div>
 
-        <div className="mt-8 text-center md:hidden">
+        <div className="mt-10 text-center">
           <Link to="/shop">
-            <Button variant="outline" className="font-display tracking-widest border-border text-foreground">
-              VIEW ALL PRODUCTS
+            <Button variant="outline" className="h-14 px-10 font-display text-lg tracking-widest border-border text-foreground hover:bg-primary hover:text-primary-foreground transition-colors">
+              VIEW ALL DESIGNS <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
         </div>
