@@ -29,7 +29,7 @@ const Index = () => {
             <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl leading-[0.9] tracking-wider mb-6 text-grit">
               APPAREL FOR<br />
               BARTENDERS WHO<br />
-              HAVE SEEN<br />
+              HAVE <span className="font-marker stamp-rotate inline-block text-primary">SEEN</span><br />
               SOME SHIT.
             </h1>
           </motion.div>
