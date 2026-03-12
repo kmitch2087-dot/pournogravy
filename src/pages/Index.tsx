@@ -58,11 +58,11 @@ const Index = () => {
       </section>
 
       {/* Marquee quote strip */}
-      <section className="border-y border-border bg-muted py-3 overflow-hidden">
+      <section className="border-y-2 border-foreground/20 rough-border bg-muted py-3 overflow-hidden">
         <div className="animate-marquee flex whitespace-nowrap">
           {[...quotes, ...quotes].map((q, i) => (
-            <span key={i} className="mx-8 font-display text-sm tracking-wider text-muted-foreground">
-              ★ {q}
+            <span key={i} className="mx-8 font-marker text-xs tracking-wider text-muted-foreground">
+              ☠ {q}
             </span>
           ))}
         </div>
