@@ -15,7 +15,7 @@ const Proposal = () => {
         {/* ── HEADER ── */}
         <motion.div {...fade} className="mb-20">
           <p className="font-marker text-xs text-muted-foreground stamp-rotate inline-block mb-4">
-            ☠ FOUNDING PARTNER DEVELOPMENT AGREEMENT
+            ☠ FOUNDING CLIENT OFFER
           </p>
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-[0.9] mb-4">
             POURnogravy<br />
@@ -26,7 +26,7 @@ const Proposal = () => {
             <span>•</span>
             <span>DATE: {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
             <span>•</span>
-            <span>STATUS: FOUNDING PARTNER AGREEMENT</span>
+            <span>STATUS: FOUNDING CLIENT OFFER</span>
           </div>
         </motion.div>
 
@@ -287,7 +287,7 @@ const Proposal = () => {
           <SectionHeader num="11" title="DEVELOPMENT INVESTMENT" />
           <div className="border-2 border-foreground p-8 md:p-12">
             <p className="text-sm text-muted-foreground mb-8">
-              The discounted rate reflects a founding-partner collaboration agreement. While the standard development value for a project of this scope is approximately $3,800, the project is offered at a reduced cost in exchange for the ability to reference the website as a portfolio project and marketing case study for Vibe Shift Studios.
+              The discounted rate reflects a founding-client collaboration offer. While the standard development value for a project of this scope is approximately $3,800, the project is offered at a reduced cost in exchange for the ability to reference the website as a portfolio project and marketing case study for Vibe Shift Studios.
             </p>
             <div className="space-y-4">
               <div className="flex justify-between items-baseline border-b border-border pb-3">
@@ -295,7 +295,7 @@ const Proposal = () => {
                 <span className="font-display text-lg">$3,800</span>
               </div>
               <div className="flex justify-between items-baseline border-b border-border pb-3">
-                <span className="font-display tracking-wider text-sm text-muted-foreground">FOUNDING PARTNER DISCOUNT</span>
+                <span className="font-display tracking-wider text-sm text-muted-foreground">FOUNDING CLIENT DISCOUNT</span>
                 <span className="font-display text-lg text-muted-foreground">–$2,900</span>
               </div>
               <div className="flex justify-between items-baseline pt-2">
@@ -395,7 +395,7 @@ const Proposal = () => {
           <SectionHeader num="16" title="NEXT STEPS" />
           <div className="space-y-3">
             {[
-              "Confirm acceptance of proposal and founding partner agreement.",
+              "Confirm acceptance of proposal and founding client offer.",
               "Finalize product catalog, copy, and design assets.",
               "Begin project planning and development kickoff.",
               "Configure Stripe payment processing and order routing.",
