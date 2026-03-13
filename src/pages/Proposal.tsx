@@ -413,6 +413,287 @@ const Proposal = () => {
           </div>
         </motion.section>
 
+        {/* ════════════════════════════════════════════════════════════ */}
+        {/* ──────────────── A D D E N D U M ──────────────── */}
+        {/* ════════════════════════════════════════════════════════════ */}
+        <motion.div {...fade} className="mb-20 mt-8 border-t-2 border-foreground pt-12">
+          <p className="font-marker text-xs text-muted-foreground stamp-rotate inline-block mb-4">☠ ADDENDUM</p>
+          <h2 className="font-display text-4xl md:text-5xl tracking-wider leading-[0.9] mb-2">
+            SUPPLEMENTAL<br />
+            <span className="text-muted-foreground text-2xl md:text-3xl">STRATEGY & OPERATIONAL DETAILS</span>
+          </h2>
+          <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+            The following sections expand on strategic, operational, and technical details not covered in the core proposal. These are designed to give the client a complete picture of the value, infrastructure, and long-term potential of the Pournogravy ecommerce platform.
+          </p>
+        </motion.div>
+
+        {/* ── A1 CUSTOM BUILD vs SHOPIFY ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A1" title="CUSTOM BUILD vs. SHOPIFY COMPARISON" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            One of the most common questions for any new ecommerce brand is whether to use a template-based platform like Shopify or invest in a custom-built website. Below is a direct comparison based on the specific needs of the Pournogravy brand.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-foreground/20">
+                  <th className="text-left py-3 pr-4 font-display tracking-wider text-xs">CRITERIA</th>
+                  <th className="text-left py-3 px-4 font-display tracking-wider text-xs">CUSTOM BUILD</th>
+                  <th className="text-left py-3 pl-4 font-display tracking-wider text-xs">SHOPIFY</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { criteria: "Monthly Fees", custom: "Hosting only (~$0–$20/mo)", shopify: "$39–$399/mo + app fees" },
+                  { criteria: "Transaction Fees", custom: "Stripe only (2.9% + 30¢)", shopify: "Stripe + Shopify fee (0.5–2%)" },
+                  { criteria: "Design Freedom", custom: "Unlimited — fully custom aesthetic", shopify: "Limited to theme constraints" },
+                  { criteria: "Brand Identity", custom: "Sin City noir — unique, ownable", shopify: "Looks like every other Shopify store" },
+                  { criteria: "Performance", custom: "Sub-second loads, optimized bundle", shopify: "Template bloat, slower load times" },
+                  { criteria: "SEO Control", custom: "Full control over meta, schema, URLs", shopify: "Limited by platform structure" },
+                  { criteria: "Ownership", custom: "You own 100% of the code", shopify: "Platform-dependent — you rent it" },
+                  { criteria: "Animations", custom: "Framer Motion — production-grade", shopify: "Basic CSS, limited interactivity" },
+                  { criteria: "Long-Term Cost (2 yr)", custom: "~$900 + minimal hosting", shopify: "~$1,500–$3,000+ in fees alone" },
+                  { criteria: "Scalability", custom: "Add features without plugin costs", shopify: "Every feature = paid app/plugin" },
+                ].map((row, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="py-3 pr-4 font-display tracking-wider text-xs">{row.criteria}</td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">{row.custom}</td>
+                    <td className="py-3 pl-4 text-xs text-muted-foreground">{row.shopify}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-6 p-6 border border-border noise-overlay">
+            <p className="font-marker text-base text-center stamp-rotate relative z-10">
+              "Shopify rents you a storefront. We're building you the whole damn bar."
+            </p>
+          </div>
+        </motion.section>
+
+        {/* ── A2 SEO & DISCOVERABILITY ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A2" title="SEO & DISCOVERABILITY STRATEGY" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Search engine optimization is built into the website from day one — not bolted on as an afterthought. The following strategies ensure Pournogravy ranks for the search terms bartenders and hospitality workers actually use.
+          </p>
+          <div className="space-y-3">
+            {[
+              { title: "SEMANTIC HTML", desc: "Proper heading hierarchy (H1–H6), structured content, and accessible markup that search engines reward." },
+              { title: "META & OPEN GRAPH", desc: "Every page gets a unique title (<60 chars), meta description (<160 chars), and Open Graph tags for social sharing previews." },
+              { title: "JSON-LD SCHEMA", desc: "Product schema markup so Google can display rich results — price, availability, and reviews directly in search." },
+              { title: "KEYWORD STRATEGY", desc: "Target long-tail terms: 'funny bartender shirts,' 'server life apparel,' 'hospitality worker gifts,' 'karen bartender tee.'" },
+              { title: "IMAGE OPTIMIZATION", desc: "Alt text on every product image, WebP format where possible, lazy loading for performance scores." },
+              { title: "PERFORMANCE", desc: "Sub-second load times via Vite code splitting, tree shaking, and optimized asset delivery — Google rewards fast sites." },
+            ].map((item, i) => (
+              <div key={i} className="p-4 border border-border">
+                <p className="font-display tracking-wider text-xs mb-1">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── A3 EMAIL MARKETING ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A3" title="EMAIL MARKETING & AUTOMATION" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Email marketing consistently delivers the highest ROI of any digital marketing channel for ecommerce brands. The website is designed to capture emails from day one and integrate with marketing automation tools.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              { num: "01", title: "SIGNUP INCENTIVE", desc: "Homepage email capture offering a small discount (10–15% off first order) in exchange for joining the list." },
+              { num: "02", title: "WELCOME SEQUENCE", desc: "Automated 3-email welcome series: brand story → bestsellers → exclusive discount to drive first purchase." },
+              { num: "03", title: "DROP ANNOUNCEMENTS", desc: "Pre-launch teasers and drop-day emails to the subscriber list before posting on social media." },
+              { num: "04", title: "ABANDONED CART", desc: "Automated recovery emails when a customer adds to cart but doesn't complete checkout — recovers 5–15% of lost sales." },
+              { num: "05", title: "POST-PURCHASE", desc: "Thank-you email with order details, shipping updates, and a request to share on social media." },
+              { num: "06", title: "RE-ENGAGEMENT", desc: "Win-back campaigns for subscribers who haven't purchased in 60–90 days with exclusive offers." },
+            ].map((item) => (
+              <div key={item.num} className="p-6 border border-border">
+                <span className="font-display text-2xl text-muted-foreground">{item.num}</span>
+                <p className="font-display tracking-wider text-sm mt-2">{item.title}</p>
+                <p className="text-muted-foreground text-xs mt-2">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-4 italic">
+            Recommended platforms: Mailchimp (free tier for first 500 subscribers), Klaviyo (ecommerce-focused), or ConvertKit.
+          </p>
+        </motion.section>
+
+        {/* ── A4 ANALYTICS ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A4" title="ANALYTICS & PERFORMANCE TRACKING" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Data-driven decisions separate successful brands from guesswork. The website will be configured to track the metrics that matter most for an apparel ecommerce business.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-foreground/20">
+                  <th className="text-left py-3 pr-4 font-display tracking-wider text-xs">METRIC</th>
+                  <th className="text-left py-3 px-4 font-display tracking-wider text-xs">WHAT IT TELLS YOU</th>
+                  <th className="text-left py-3 pl-4 font-display tracking-wider text-xs">TOOL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { metric: "Conversion Rate", what: "% of visitors who complete a purchase", tool: "Google Analytics" },
+                  { metric: "Avg. Order Value", what: "How much each customer spends per transaction", tool: "Stripe Dashboard" },
+                  { metric: "Cart Abandonment Rate", what: "% of carts started but not completed", tool: "GA4 + Email Platform" },
+                  { metric: "Traffic Sources", what: "Where your customers are coming from", tool: "Google Analytics" },
+                  { metric: "Top Products", what: "Which designs sell best — double down on winners", tool: "Stripe + GA4" },
+                  { metric: "Email List Growth", what: "Rate of new subscriber signups per week", tool: "Email Platform" },
+                  { metric: "Page Load Speed", what: "Site performance — affects SEO and conversions", tool: "PageSpeed Insights" },
+                ].map((row, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="py-3 pr-4 font-display tracking-wider text-xs">{row.metric}</td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">{row.what}</td>
+                    <td className="py-3 pl-4 text-xs text-muted-foreground">{row.tool}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.section>
+
+        {/* ── A5 TIMELINE ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A5" title="DEVELOPMENT TIMELINE & MILESTONES" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            The following timeline provides a realistic estimate for taking the project from agreement to launch.
+          </p>
+          <div className="space-y-3">
+            {[
+              { week: "WEEK 1", title: "PROJECT KICKOFF", desc: "Finalize product catalog, confirm design assets, set up development environment and Stripe account." },
+              { week: "WEEK 2", title: "CORE DEVELOPMENT", desc: "Build all pages, product grid, cart system, and integrate design system with final branding assets." },
+              { week: "WEEK 3", title: "ECOMMERCE INTEGRATION", desc: "Connect Stripe checkout, configure order routing to print partner, set up email capture and automation." },
+              { week: "WEEK 4", title: "QA & LAUNCH", desc: "Cross-browser testing, mobile responsiveness audit, checkout flow testing, domain configuration, and go-live." },
+            ].map((item) => (
+              <div key={item.week} className="flex gap-6 p-4 border border-border">
+                <div className="flex-shrink-0 w-20">
+                  <p className="font-display tracking-wider text-xs text-muted-foreground">{item.week}</p>
+                </div>
+                <div>
+                  <p className="font-display tracking-wider text-sm">{item.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-4 italic">
+            Timeline assumes timely delivery of product assets and prompt feedback during review cycles.
+          </p>
+        </motion.section>
+
+        {/* ── A6 REVENUE PROJECTIONS ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A6" title="REVENUE PROJECTIONS (CONSERVATIVE)" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            The following projections are based on conservative estimates for a niche apparel brand with organic social media marketing and email campaigns. These are not guarantees — they represent realistic targets based on industry benchmarks.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-foreground/20">
+                  <th className="text-left py-3 pr-4 font-display tracking-wider text-xs">SCENARIO</th>
+                  <th className="text-left py-3 px-4 font-display tracking-wider text-xs">MONTHLY ORDERS</th>
+                  <th className="text-left py-3 px-4 font-display tracking-wider text-xs">AVG. PROFIT/ORDER</th>
+                  <th className="text-left py-3 pl-4 font-display tracking-wider text-xs">MONTHLY PROFIT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { scenario: "Slow Start", orders: "15–25", profit: "$18", monthly: "$270 – $450" },
+                  { scenario: "Moderate Traction", orders: "40–60", profit: "$20", monthly: "$800 – $1,200" },
+                  { scenario: "Strong Growth", orders: "80–120", profit: "$22", monthly: "$1,760 – $2,640" },
+                ].map((row, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="py-3 pr-4 font-display tracking-wider text-xs">{row.scenario}</td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">{row.orders}</td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">{row.profit}</td>
+                    <td className="py-3 pl-4 text-xs text-muted-foreground">{row.monthly}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            At moderate traction, the $900 development investment is recovered within the first 30–60 days of sales. The brand becomes profitable almost immediately due to the low upfront cost and zero monthly platform fees.
+          </p>
+        </motion.section>
+
+        {/* ── A7 HOSTING & SECURITY ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A7" title="HOSTING, DOMAIN & SECURITY" />
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              { num: "01", title: "HOSTING", desc: "Static site hosting via Vercel, Netlify, or similar — free tier covers most traffic levels. Automatic CDN distribution for fast global load times." },
+              { num: "02", title: "DOMAIN", desc: "Custom domain (e.g., pournogravy.com) — typically $12–$15/year. DNS configuration and SSL certificate included in setup." },
+              { num: "03", title: "SSL / HTTPS", desc: "Free SSL certificate ensures all traffic is encrypted. Required for Stripe payment processing and builds customer trust." },
+              { num: "04", title: "PCI COMPLIANCE", desc: "Stripe handles all credit card data — the website never touches or stores payment information. Full PCI-DSS compliance through Stripe." },
+            ].map((item) => (
+              <div key={item.num} className="p-6 border border-border">
+                <span className="font-display text-2xl text-muted-foreground">{item.num}</span>
+                <p className="font-display tracking-wider text-sm mt-2">{item.title}</p>
+                <p className="text-muted-foreground text-xs mt-2">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── A8 SOCIAL MEDIA ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A8" title="SOCIAL MEDIA INTEGRATION & STRATEGY" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Social media is the primary growth engine for niche apparel brands. The website is built to support and amplify social media efforts.
+          </p>
+          <div className="space-y-3">
+            {[
+              { title: "SHAREABLE PRODUCT PAGES", desc: "Every product page includes Open Graph meta tags so shared links display with the product image, name, and price on Instagram, Facebook, and Twitter." },
+              { title: "USER-GENERATED CONTENT", desc: "Encourage bartenders to post photos wearing Pournogravy shirts and tag the brand — repost the best content to build community." },
+              { title: "MEME-DRIVEN MARKETING", desc: "The brand voice naturally lends itself to meme content. Create shareable bartender meme graphics that reference shirt designs." },
+              { title: "PLATFORM FOCUS", desc: "Instagram and TikTok are the primary channels — bartender culture thrives on short-form video content (shift stories, customer encounters, pour videos)." },
+              { title: "HASHTAG STRATEGY", desc: "Branded hashtags (#Pournogravy, #SaltyBartender) combined with community hashtags (#BartenderLife, #ServerLife, #HospitalityHumor)." },
+            ].map((item, i) => (
+              <div key={i} className="p-4 border border-border">
+                <p className="font-display tracking-wider text-xs mb-1">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── A9 CONTENT STRATEGY ── */}
+        <motion.section {...fade} className="mb-20">
+          <SectionHeader num="A9" title="CONTENT STRATEGY & BRAND VOICE GUIDE" />
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Consistency in brand voice across all touchpoints — website copy, product descriptions, social media, and email — is what separates a forgettable store from a memorable brand.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "TONE", value: "Sarcastic, bold, unapologetic — like a bartender who's been on shift for 12 hours." },
+              { label: "HUMOR STYLE", value: "Self-deprecating industry humor. The audience laughs because they've lived it." },
+              { label: "PRODUCT COPY", value: "Every shirt description should tell a micro-story — not just list the design. Make the customer feel seen." },
+              { label: "AVOID", value: "Corporate speak, generic marketing language, anything that sounds like it came from a template." },
+            ].map((item, i) => (
+              <div key={i} className="p-4 border border-border">
+                <p className="text-[10px] font-display tracking-widest text-muted-foreground mb-1">{item.label}</p>
+                <p className="text-sm text-foreground">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 space-y-2">
+            <p className="font-display tracking-wider text-xs text-muted-foreground">EXAMPLE PRODUCT DESCRIPTIONS:</p>
+            <div className="p-4 bg-muted">
+              <p className="text-xs text-muted-foreground italic">"Tip Your Bartender" Tee — Because apparently, this still needs to be said. Wear this to your next shift and let the shirt do the talking so you don't have to fake-smile through another $2 tip on a $47 tab.</p>
+            </div>
+            <div className="p-4 bg-muted">
+              <p className="text-xs text-muted-foreground italic">"Dear Karen, You Stink" Tee — We've all had that customer. The one who snaps their fingers, sends back a drink that was made exactly how they ordered it, and asks to speak to a manager. This shirt is for the bartenders who survived her.</p>
+            </div>
+          </div>
+        </motion.section>
+
         {/* ── FOOTER ── */}
         <motion.div {...fade} className="border-t border-border pt-8 text-center">
           <p className="font-marker text-xl stamp-rotate inline-block mb-4">
