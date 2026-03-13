@@ -9,7 +9,7 @@ const fade = {
 
 const Proposal = () => {
   return (
-    <div className="min-h-screen pt-24 md:pt-28">
+    <div className="min-h-screen pt-24 md:pt-28 theme-inverted bg-background text-foreground">
       <div className="container mx-auto px-4 max-w-4xl pb-20">
 
         {/* ── HEADER ── */}
