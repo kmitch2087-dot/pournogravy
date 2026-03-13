@@ -114,4 +114,16 @@
   .stamp-rotate {
     transform: rotate(-3deg);
   }
+
+  .theme-inverted {
+    --background: 0 0% 95%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 92%;
+    --card-foreground: 0 0% 10%;
+    --muted: 0 0% 88%;
+    --muted-foreground: 0 0% 35%;
+    --border: 0 0% 78%;
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 10%;
+  }
 }
