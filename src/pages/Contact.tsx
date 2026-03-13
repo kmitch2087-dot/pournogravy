@@ -8,7 +8,10 @@ const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
 
   return (
-    <div className="min-h-screen pt-24 md:pt-28">
+    <div className="min-h-screen pt-24 md:pt-28 relative">
+      <div className="absolute inset-0 -z-10">
+        <img src="/src/assets/karen3-bg.jpg" alt="" className="w-full h-full object-cover opacity-50" />
+      </div>
       <div className="container mx-auto px-4 max-w-xl pb-20">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-display text-5xl md:text-7xl tracking-wider mb-4">CONTACT</h1>

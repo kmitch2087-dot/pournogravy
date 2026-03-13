@@ -5,7 +5,10 @@ import { ArrowRight } from "lucide-react";
 
 const Collections = () => {
   return (
-    <div className="min-h-screen pt-24 md:pt-28">
+    <div className="min-h-screen pt-24 md:pt-28 relative">
+      <div className="absolute inset-0 -z-10">
+        <img src="/src/assets/karen3-bg.jpg" alt="" className="w-full h-full object-cover opacity-50" />
+      </div>
       <div className="container mx-auto px-4">
         <div className="mb-12">
           <h1 className="font-display text-5xl md:text-7xl tracking-wider">COLLECTIONS</h1>
