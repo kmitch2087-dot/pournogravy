@@ -295,7 +295,7 @@ const Proposal = () => {
                 <span className="font-display text-lg">$3,800</span>
               </div>
               <div className="flex justify-between items-baseline border-b border-border pb-3">
-                <span className="font-display tracking-wider text-sm text-muted-foreground">FOUNDING PARTNER DISCOUNT</span>
+                <span className="font-display tracking-wider text-sm text-muted-foreground">FOUNDING CLIENT DISCOUNT</span>
                 <span className="font-display text-lg text-muted-foreground">–$2,900</span>
               </div>
               <div className="flex justify-between items-baseline pt-2">
