@@ -395,7 +395,7 @@ const Proposal = () => {
           <SectionHeader num="16" title="NEXT STEPS" />
           <div className="space-y-3">
             {[
-              "Confirm acceptance of proposal and founding partner agreement.",
+              "Confirm acceptance of proposal and founding client offer.",
               "Finalize product catalog, copy, and design assets.",
               "Begin project planning and development kickoff.",
               "Configure Stripe payment processing and order routing.",
