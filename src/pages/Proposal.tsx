@@ -287,7 +287,7 @@ const Proposal = () => {
           <SectionHeader num="11" title="DEVELOPMENT INVESTMENT" />
           <div className="border-2 border-foreground p-8 md:p-12">
             <p className="text-sm text-muted-foreground mb-8">
-              The discounted rate reflects a founding-partner collaboration agreement. While the standard development value for a project of this scope is approximately $3,800, the project is offered at a reduced cost in exchange for the ability to reference the website as a portfolio project and marketing case study for Vibe Shift Studios.
+              The discounted rate reflects a founding-client collaboration offer. While the standard development value for a project of this scope is approximately $3,800, the project is offered at a reduced cost in exchange for the ability to reference the website as a portfolio project and marketing case study for Vibe Shift Studios.
             </p>
             <div className="space-y-4">
               <div className="flex justify-between items-baseline border-b border-border pb-3">
