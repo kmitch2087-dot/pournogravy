@@ -15,7 +15,7 @@ const Proposal = () => {
         {/* ── HEADER ── */}
         <motion.div {...fade} className="mb-20">
           <p className="font-marker text-xs text-muted-foreground stamp-rotate inline-block mb-4">
-            ☠ FOUNDING PARTNER DEVELOPMENT AGREEMENT
+            ☠ FOUNDING CLIENT OFFER
           </p>
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-[0.9] mb-4">
             POURnogravy<br />
