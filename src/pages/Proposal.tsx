@@ -26,7 +26,7 @@ const Proposal = () => {
             <span>•</span>
             <span>DATE: {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
             <span>•</span>
-            <span>STATUS: FOUNDING PARTNER AGREEMENT</span>
+            <span>STATUS: FOUNDING CLIENT OFFER</span>
           </div>
         </motion.div>
 
