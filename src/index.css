@@ -117,13 +117,15 @@
 
   .theme-inverted {
     --background: 0 0% 95%;
-    --foreground: 0 0% 10%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 92%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 0%;
     --muted: 0 0% 88%;
-    --muted-foreground: 0 0% 35%;
+    --muted-foreground: 0 0% 15%;
     --border: 0 0% 78%;
     --accent: 0 0% 85%;
-    --accent-foreground: 0 0% 10%;
+    --accent-foreground: 0 0% 0%;
+    font-size: 1.05em;
+    font-weight: 500;
   }
 }
