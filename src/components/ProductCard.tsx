@@ -3,6 +3,11 @@ import { Product } from "@/data/products";
 import { motion } from "framer-motion";
 
 const ProductCard = ({ product }: { product: Product }) => {
+  // Prefer the first variant's hero image when present, so consolidated
+  // products (Men's/Women's/Unisex) show the right photo on grid views.
+  const cardImage =
+    product.variants?.[0]?.images?.[0] ?? product.image ?? product.images?.[0];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -12,8 +17,8 @@ const ProductCard = ({ product }: { product: Product }) => {
     >
       <Link to={`/product/${product.id}`} className="group block">
         <div className="relative aspect-square bg-muted overflow-hidden border-2 border-foreground/10 rough-border">
-          {product.image ? (
-            <img src={product.image} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          {cardImage ? (
+            <img src={cardImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-6">
               <span className="font-display text-center text-lg leading-tight tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">

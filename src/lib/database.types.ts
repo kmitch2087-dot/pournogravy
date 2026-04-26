@@ -93,6 +93,27 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["order_items"]["Row"]>;
       };
+      custom_requests: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          phone: string | null;
+          garment: string;
+          design_id: string | null;
+          design_name: string | null;
+          notes: string | null;
+          status: "new" | "contacted" | "quoted" | "closed";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["custom_requests"]["Row"]> & {
+          name: string;
+          email: string;
+          garment: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_requests"]["Row"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

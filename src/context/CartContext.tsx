@@ -12,14 +12,18 @@ export interface CartItem {
   product: Product;
   size: string;
   quantity: number;
+  /** Optional fit variant id ("mens" / "womens") when the product has variants */
+  variantId?: string;
+  /** Optional color id ("black" / "cream") when the product has colors */
+  colorId?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (product: Product, size: string) => void;
-  removeItem: (productId: string, size: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number) => void;
+  addItem: (product: Product, size: string, variantId?: string, colorId?: string) => void;
+  removeItem: (productId: string, size: string, variantId?: string, colorId?: string) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, variantId?: string, colorId?: string) => void;
   clearCart: () => void;
   toggleCart: () => void;
   closeCart: () => void;
@@ -31,14 +35,37 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // ---------- localStorage helpers ----------
-// Storage format is intentionally SLIM — only productId + size + quantity.
+// Storage format is intentionally SLIM — only productId + size + (optional) variantId/colorId + quantity.
 // We re-look up the full Product on hydrate so price/description/image updates
 // flow through to existing carts automatically.
-// Version the key so future schema changes can migrate cleanly.
-const CART_STORAGE_KEY = "pournogravy:cart:v1";
+// Version history:
+//   v1 — productId + size only
+//   v2 — added variantId (Men's / Women's / Unisex)
+//   v3 — added colorId (Black / Cream)
+const CART_STORAGE_KEY = "pournogravy:cart:v3";
+const LEGACY_CART_KEYS = ["pournogravy:cart:v1", "pournogravy:cart:v2"];
 const SESSION_ID_KEY = "pournogravy:session_id";
 
-type StoredCartItem = { productId: string; size: string; quantity: number };
+type StoredCartItem = {
+  productId: string;
+  size: string;
+  quantity: number;
+  variantId?: string;
+  colorId?: string;
+};
+
+/** Two line items are "the same" when product, fit variant, color, and size all match. */
+const sameLine = (
+  a: { product: Product; size: string; variantId?: string; colorId?: string },
+  productId: string,
+  size: string,
+  variantId?: string,
+  colorId?: string,
+) =>
+  a.product.id === productId &&
+  a.size === size &&
+  (a.variantId ?? null) === (variantId ?? null) &&
+  (a.colorId ?? null) === (colorId ?? null);
 
 const isBrowser = typeof window !== "undefined";
 
@@ -59,6 +86,10 @@ const loadSessionId = (): string => {
 const loadCart = (): CartItem[] => {
   if (!isBrowser) return [];
   try {
+    // Best-effort cleanup of any older versions of the cart key.
+    for (const k of LEGACY_CART_KEYS) {
+      try { window.localStorage.removeItem(k); } catch { /* noop */ }
+    }
     const raw = window.localStorage.getItem(CART_STORAGE_KEY);
     if (!raw) return [];
     const stored = JSON.parse(raw) as StoredCartItem[];
@@ -76,9 +107,29 @@ const loadCart = (): CartItem[] => {
       .map((s) => {
         const product = productMap.get(s.productId);
         if (!product) return null;
-        // Also drop if the saved size is no longer available for this product.
+        // Drop if the saved size is no longer available for this product.
         if (!product.sizes.includes(s.size)) return null;
-        return { product, size: s.size, quantity: s.quantity } satisfies CartItem;
+        // If product has variants, the saved variantId must still exist.
+        let variantId: string | undefined;
+        if (product.variants && product.variants.length > 0) {
+          const match = product.variants.find((v) => v.id === s.variantId);
+          if (!match) return null;
+          variantId = match.id;
+        }
+        // If product has colors, the saved colorId must still exist.
+        let colorId: string | undefined;
+        if (product.colors && product.colors.length > 0) {
+          const match = product.colors.find((c) => c.id === s.colorId);
+          if (!match) return null;
+          colorId = match.id;
+        }
+        return {
+          product,
+          size: s.size,
+          quantity: s.quantity,
+          ...(variantId ? { variantId } : {}),
+          ...(colorId ? { colorId } : {}),
+        } satisfies CartItem;
       })
       .filter((i): i is CartItem => i !== null);
   } catch {
@@ -94,6 +145,8 @@ const saveCart = (items: CartItem[]) => {
       productId: i.product.id,
       size: i.size,
       quantity: i.quantity,
+      ...(i.variantId ? { variantId: i.variantId } : {}),
+      ...(i.colorId ? { colorId: i.colorId } : {}),
     }));
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(slim));
   } catch {
@@ -122,34 +175,49 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveCart(items);
   }, [items]);
 
-  const addItem = useCallback((product: Product, size: string) => {
-    setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id && i.size === size);
-      if (existing) {
-        return prev.map((i) =>
-          i.product.id === product.id && i.size === size
-            ? { ...i, quantity: i.quantity + 1 }
-            : i,
-        );
-      }
-      return [...prev, { product, size, quantity: 1 }];
-    });
-    setIsOpen(true);
-  }, []);
+  const addItem = useCallback(
+    (product: Product, size: string, variantId?: string, colorId?: string) => {
+      setItems((prev) => {
+        const existing = prev.find((i) => sameLine(i, product.id, size, variantId, colorId));
+        if (existing) {
+          return prev.map((i) =>
+            sameLine(i, product.id, size, variantId, colorId)
+              ? { ...i, quantity: i.quantity + 1 }
+              : i,
+          );
+        }
+        return [
+          ...prev,
+          {
+            product,
+            size,
+            quantity: 1,
+            ...(variantId ? { variantId } : {}),
+            ...(colorId ? { colorId } : {}),
+          },
+        ];
+      });
+      setIsOpen(true);
+    },
+    [],
+  );
 
-  const removeItem = useCallback((productId: string, size: string) => {
-    setItems((prev) => prev.filter((i) => !(i.product.id === productId && i.size === size)));
-  }, []);
+  const removeItem = useCallback(
+    (productId: string, size: string, variantId?: string, colorId?: string) => {
+      setItems((prev) => prev.filter((i) => !sameLine(i, productId, size, variantId, colorId)));
+    },
+    [],
+  );
 
   const updateQuantity = useCallback(
-    (productId: string, size: string, quantity: number) => {
+    (productId: string, size: string, quantity: number, variantId?: string, colorId?: string) => {
       if (quantity <= 0) {
-        removeItem(productId, size);
+        removeItem(productId, size, variantId, colorId);
         return;
       }
       setItems((prev) =>
         prev.map((i) =>
-          i.product.id === productId && i.size === size ? { ...i, quantity } : i,
+          sameLine(i, productId, size, variantId, colorId) ? { ...i, quantity } : i,
         ),
       );
     },
