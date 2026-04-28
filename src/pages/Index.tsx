@@ -25,14 +25,19 @@ const HERO_DURATIONS_MS = {
   intro: 3500,
   product: 5000,
 };
-const slideDurationMs = (index: number) =>
-  index === 0 ? HERO_DURATIONS_MS.intro : HERO_DURATIONS_MS.product;
+// (slide duration is computed inline below using the heroSlides array)
 
 const Index = () => {
   const [email, setEmail] = useState("");
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
   const [heroPaused, setHeroPaused] = useState(false);
+  // First-load only: show the bare logo background for 3s before the glass
+  // headline stamps in, and freeze the auto-rotation timer until then. After
+  // the carousel cycles back to the intro slide later, the glass appears
+  // immediately like it does on every other slide.
+  const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
+  const INTRO_HOLD_MS = 3000;
   // Featured row only shows published products. During pre-launch this is the
   // 5–6 launch lineup; new drafts the owner adds later won't appear until he
   // toggles them on from the dashboard.
@@ -40,11 +45,22 @@ const Index = () => {
     .filter((p) => p.published === true && p.featured)
     .slice(0, 6);
 
-  // Build hero slides: headline first, then product slides (only published & resolved)
+  // Build hero slides: headline first, then product slides (only published & resolved).
+  // The intro headline is re-inserted between every product slide so it acts as a
+  // recurring "anchor" between drops.
   const heroProducts = HERO_PRODUCT_IDS
     .map((id) => products.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
-  const totalSlides = 1 + heroProducts.length;
+
+  // slides: 'intro' | { type: 'product', product }
+  type HeroSlide = { type: "intro" } | { type: "product"; product: typeof heroProducts[number] };
+  const heroSlides: HeroSlide[] = [];
+  heroProducts.forEach((p) => {
+    heroSlides.push({ type: "intro" });
+    heroSlides.push({ type: "product", product: p });
+  });
+  if (heroSlides.length === 0) heroSlides.push({ type: "intro" });
+  const totalSlides = heroSlides.length;
 
   // Rotate quote every 6s, respect prefers-reduced-motion
   useEffect(() => {
@@ -56,17 +72,30 @@ const Index = () => {
     return () => clearInterval(id);
   }, []);
 
+  // First-load intro hold: keep the glass hidden for 3s after mount.
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setIntroHoldElapsed(true);
+      return;
+    }
+    const id = setTimeout(() => setIntroHoldElapsed(true), INTRO_HOLD_MS);
+    return () => clearTimeout(id);
+  }, []);
+
   // Hero auto-rotation — reset whenever index changes (so manual clicks
   // restart the timer) or pause state flips. Per-slide duration so the
-  // intro slide moves faster than the product slides.
+  // intro slide moves faster than the product slides. The very first intro
+  // slide also waits for the bare-background hold to elapse before counting.
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce || heroPaused || totalSlides <= 1) return;
+    if (!introHoldElapsed && heroIndex === 0) return;
     const id = setTimeout(() => {
       setHeroIndex((i) => (i + 1) % totalSlides);
-    }, slideDurationMs(heroIndex));
+    }, heroSlides[heroIndex]?.type === "intro" ? HERO_DURATIONS_MS.intro : HERO_DURATIONS_MS.product);
     return () => clearTimeout(id);
-  }, [heroIndex, heroPaused, totalSlides]);
+  }, [heroIndex, heroPaused, totalSlides, introHoldElapsed]);
 
   return (
     <div className="min-h-screen">
@@ -79,72 +108,86 @@ const Index = () => {
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
-        {/* ---- Slide 0: Glass headline (always loads first on mount) ---- */}
-        <div
-          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${
-            heroIndex === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-          role="group"
-          aria-roledescription="slide"
-          aria-label="1 of totalSlides"
-          aria-hidden={heroIndex !== 0}
-        >
-          <div className="absolute inset-0">
-            <img
-              src="/hero-bg.jpg"
-              alt=""
-              className="w-full h-full object-cover"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-
-          <div className="relative z-10 container mx-auto px-4 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={heroIndex === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="inline-block bg-primary/20 backdrop-blur-md rounded-2xl px-8 py-6 md:px-14 md:py-10"
-            >
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.9] tracking-wider mb-0 text-primary-foreground">
-                APPAREL FOR<br />
-                BARTENDERS WHO<br />
-                HAVE <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">SEEN</span><br />
-                SOME SHIT.
-              </h1>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={heroIndex === 0 ? { opacity: 1 } : { opacity: 0 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              className="text-muted-foreground text-sm md:text-base tracking-widest uppercase mb-8 font-display"
-            >
-              Saving My Bar From the Socially Stupid, One Karen at a Time.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={heroIndex === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-            >
-              <Link to="/shop">
-                <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                  SHOP NOW <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* ---- Slides 1..n: Featured t-shirts ---- */}
-        {heroProducts.map((product, i) => {
-          const slideIdx = i + 1;
+        {/* ---- Slides: intro headline interleaved between product slides ---- */}
+        {heroSlides.map((slide, slideIdx) => {
           const active = heroIndex === slideIdx;
+
+          if (slide.type === "intro") {
+            return (
+              <div
+                key={`intro-${slideIdx}`}
+                className={`absolute inset-0 flex items-center justify-center pt-16 md:pt-20 transition-opacity duration-700 ${
+                  active ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
+                aria-hidden={!active}
+              >
+                <div className="absolute inset-0">
+                  <img
+                    src="/hero-bg.jpg"
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </div>
+
+                <div className="relative z-10 container mx-auto px-4 text-center">
+                  {/* On the very first visit, hold the bare logo background for
+                      INTRO_HOLD_MS, then stamp the glass container in. After
+                      the carousel cycles back here, the content shows
+                      immediately like every other slide. */}
+                  {(introHoldElapsed || slideIdx > 0) && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
+                        animate={active ? { opacity: 1, scale: 1, rotate: -2 } : { opacity: 0, scale: 0.4, rotate: -18 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9 }}
+                        className="inline-block bg-primary/20 backdrop-blur-md rounded-2xl px-8 py-6 md:px-14 md:py-10"
+                      >
+                        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.9] tracking-wider mb-0 text-primary-foreground">
+                          APPAREL FOR<br />
+                          BARTENDERS WHO<br />
+                          HAVE <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">SEEN</span><br />
+                          SOME SHIT.
+                        </h1>
+                      </motion.div>
+
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={active ? { opacity: 1 } : { opacity: 0 }}
+                        transition={{ delay: 0.6, duration: 0.6 }}
+                        className="text-sm md:text-base tracking-widest uppercase mb-8 mt-4 font-display text-[#fde047]"
+                        style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
+                      >
+                        Saving My Bar From the Socially Stupid, One Karen at a Time.
+                      </motion.p>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                        transition={{ delay: 0.9, duration: 0.5 }}
+                      >
+                        <Link to="/shop">
+                          <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
+                            POUR ME ONE <ArrowRight className="ml-2 h-5 w-5" />
+                          </Button>
+                        </Link>
+                      </motion.div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          const { product } = slide;
           return (
             <div
-              key={product.id}
-              className={`absolute inset-0 flex items-center transition-opacity duration-700 ${
+              key={`product-${slideIdx}-${product.id}`}
+              className={`absolute inset-0 flex items-center pt-16 md:pt-20 transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
@@ -188,7 +231,7 @@ const Index = () => {
                           src={product.image}
                           alt={product.name}
                           className="w-full h-full object-cover"
-                          loading={slideIdx <= 2 ? "eager" : "lazy"}
+                          loading={slideIdx <= 3 ? "eager" : "lazy"}
                           decoding="async"
                         />
                       )}
@@ -234,7 +277,7 @@ const Index = () => {
                           className="h-12 px-8 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
                           style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
                         >
-                          SHOP THIS <ArrowRight className="ml-2 h-4 w-4" />
+                          THROW IT BACK <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
                       <Link to="/shop">
@@ -351,7 +394,7 @@ const Index = () => {
               <div className="flex flex-wrap gap-3">
                 <Link to="/shop">
                   <Button className="h-12 px-8 font-display tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                    SHOP THE DROP <ArrowRight className="ml-2 h-4 w-4" />
+                    ORDER A ROUND <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <Link to="/about">
@@ -390,7 +433,7 @@ const Index = () => {
               to="/shop"
               className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-display tracking-widest uppercase"
             >
-              View all <ArrowRight className="h-4 w-4" />
+              See the full menu <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
@@ -427,7 +470,7 @@ const Index = () => {
                 variant="outline"
                 className="h-14 px-12 font-display text-lg tracking-widest border-2 border-foreground/20 hover:bg-[#fde047] hover:text-black hover:border-[#fde047] transition-colors"
               >
-                VIEW ALL DESIGNS <ArrowRight className="ml-2 h-5 w-5" />
+                THE FULL MENU <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>

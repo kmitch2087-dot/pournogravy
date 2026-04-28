@@ -72,7 +72,7 @@ const NotFound = () => {
               variant="outline"
               className="h-12 px-8 font-display tracking-widest border-white/20 text-white hover:bg-white/5 hover:text-[#fde047] hover:border-[#fde047]/50"
             >
-              <ShoppingBag className="mr-2 h-4 w-4" /> SHOP THE LINE
+              <ShoppingBag className="mr-2 h-4 w-4" /> BACK TO THE BAR
             </Button>
           </Link>
         </div>

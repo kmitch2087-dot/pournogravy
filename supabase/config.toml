@@ -1,0 +1,13 @@
+project_id = "emtjkawcmsfgjyimnncf"
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.verify-email]
+verify_jwt = false

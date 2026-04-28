@@ -101,7 +101,7 @@ const Collections = () => {
                     </div>
 
                     <div className="flex items-center gap-2 mt-6 font-display text-xs tracking-widest uppercase text-muted-foreground group-hover:text-[#fde047] transition-colors">
-                      Shop the set
+                      Make it a double
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>

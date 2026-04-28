@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface CustomGarmentRequestModalProps {
@@ -37,8 +37,41 @@ const EMPTY_FORM: FormState = {
   notes: "",
 };
 
-// Lightweight client-side email check. The DB has a stricter regex as backup.
-const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+// Lightweight client-side email syntax check. Server re-validates and also
+// checks for disposable domains, typos, and MX records.
+const isEmailShape = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
+// Phone counts as "valid" if it has at least 10 digits (US-friendly default).
+const digitCount = (v: string) => v.replace(/\D/g, "").length;
+const isPhoneShape = (v: string) => {
+  const d = digitCount(v);
+  return d >= 10 && d <= 15;
+};
+
+// Format US-style as the user types: (555) 123-4567. Internationals (starting
+// with + or with >10 digits) are passed through with light cleanup so we
+// don't mangle them.
+const formatPhone = (v: string): string => {
+  const trimmed = v.trim();
+  if (trimmed.startsWith("+")) {
+    return "+" + trimmed.slice(1).replace(/[^\d\s\-()]/g, "");
+  }
+  const d = trimmed.replace(/\D/g, "").slice(0, 10);
+  if (d.length === 0) return "";
+  if (d.length < 4) return `(${d}`;
+  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+};
+
+type EmailStatus =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "ok" }
+  | { kind: "syntax" }
+  | { kind: "disposable" }
+  | { kind: "no_mx" }
+  | { kind: "typo"; suggestion: string }
+  | { kind: "rate_limited" };
 
 const CustomGarmentRequestModal = ({
   open,
@@ -51,15 +84,25 @@ const CustomGarmentRequestModal = ({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>({ kind: "idle" });
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  // Tracks the last email value we verified, so we don't keep re-hitting the
+  // edge function while the user re-focuses the field without changes.
+  const lastVerifiedRef = useRef<string>("");
+
   // Reset whenever the dialog closes so reopening starts fresh.
   useEffect(() => {
     if (!open) {
-      // Slight delay so the closing animation doesn't flash empty state.
       const t = setTimeout(() => {
         setForm(EMPTY_FORM);
         setSubmitted(false);
         setError(null);
         setSubmitting(false);
+        setEmailStatus({ kind: "idle" });
+        setEmailTouched(false);
+        setPhoneTouched(false);
+        lastVerifiedRef.current = "";
       }, 250);
       return () => clearTimeout(t);
     }
@@ -67,12 +110,83 @@ const CustomGarmentRequestModal = ({
 
   const update = (field: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  ) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, [field]: value }));
+    if (field === "email") {
+      // Any edit invalidates the previous deliverability result.
+      setEmailStatus({ kind: "idle" });
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((f) => ({ ...f, phone: formatPhone(e.target.value) }));
+  };
+
+  const verifyEmail = async (value: string): Promise<EmailStatus> => {
+    const trimmed = value.trim().toLowerCase();
+    if (!isEmailShape(trimmed)) return { kind: "syntax" };
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "verify-email",
+        { body: { email: trimmed } },
+      );
+      if (fnError) {
+        // Network/server hiccup — fail open so we don't block real users.
+        console.warn("[verify-email] invoke failed", fnError);
+        return { kind: "ok" };
+      }
+      if (data?.ok) return { kind: "ok" };
+      const reason = data?.reason as string | undefined;
+      if (reason === "typo" && data?.suggestion) {
+        return { kind: "typo", suggestion: data.suggestion as string };
+      }
+      if (reason === "disposable") return { kind: "disposable" };
+      if (reason === "no_mx") return { kind: "no_mx" };
+      if (reason === "rate_limited") return { kind: "rate_limited" };
+      return { kind: "syntax" };
+    } catch (err) {
+      console.warn("[verify-email] threw", err);
+      return { kind: "ok" };
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    setEmailTouched(true);
+    const value = form.email.trim().toLowerCase();
+    if (!value) return;
+    if (!isEmailShape(value)) {
+      setEmailStatus({ kind: "syntax" });
+      return;
+    }
+    if (value === lastVerifiedRef.current && emailStatus.kind === "ok") return;
+    setEmailStatus({ kind: "checking" });
+    const result = await verifyEmail(value);
+    lastVerifiedRef.current = value;
+    setEmailStatus(result);
+  };
+
+  const acceptSuggestion = (suggestion: string) => {
+    setForm((f) => ({ ...f, email: suggestion }));
+    setEmailStatus({ kind: "idle" });
+    lastVerifiedRef.current = "";
+  };
+
+  const emailLooksOk =
+    isEmailShape(form.email) &&
+    emailStatus.kind !== "syntax" &&
+    emailStatus.kind !== "disposable" &&
+    emailStatus.kind !== "no_mx" &&
+    emailStatus.kind !== "typo";
+
+  const phoneLooksOk = isPhoneShape(form.phone);
 
   const canSubmit =
     form.name.trim().length > 0 &&
-    isEmail(form.email) &&
+    emailLooksOk &&
+    phoneLooksOk &&
     form.garment.trim().length > 0 &&
+    emailStatus.kind !== "checking" &&
     !submitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,12 +195,27 @@ const CustomGarmentRequestModal = ({
     setSubmitting(true);
     setError(null);
 
+    // Final pre-flight verification — catches the case where the user never
+    // blurred the email field before hitting submit.
+    const trimmedEmail = form.email.trim().toLowerCase();
+    if (trimmedEmail !== lastVerifiedRef.current) {
+      setEmailStatus({ kind: "checking" });
+      const result = await verifyEmail(trimmedEmail);
+      lastVerifiedRef.current = trimmedEmail;
+      setEmailStatus(result);
+      if (result.kind !== "ok") {
+        setSubmitting(false);
+        setEmailTouched(true);
+        return;
+      }
+    }
+
     const { error: insertError } = await supabase
       .from("custom_requests")
       .insert({
         name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim() || null,
+        email: trimmedEmail,
+        phone: form.phone.trim(),
         garment: form.garment.trim(),
         notes: form.notes.trim() || null,
         design_id: designId ?? null,
@@ -96,14 +225,93 @@ const CustomGarmentRequestModal = ({
     setSubmitting(false);
 
     if (insertError) {
-      // Log the real reason for dev — user-facing copy stays friendly.
       console.error("[custom_requests insert failed]", insertError);
-      // Keep the user's input in place so they don't have to retype.
       setError(insertError.message ?? "unknown error");
       return;
     }
 
     setSubmitted(true);
+  };
+
+  const renderEmailFeedback = () => {
+    if (!emailTouched) return null;
+    if (emailStatus.kind === "checking") {
+      return (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Checking that this address actually receives mail…
+        </p>
+      );
+    }
+    if (emailStatus.kind === "ok") {
+      return (
+        <p className="text-[11px] text-[#fde047] flex items-center gap-1.5">
+          <Check className="h-3 w-3" />
+          Looks good.
+        </p>
+      );
+    }
+    if (emailStatus.kind === "syntax" && form.email.length > 0) {
+      return (
+        <p className="text-[11px] text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" />
+          That doesn't look like a valid email address.
+        </p>
+      );
+    }
+    if (emailStatus.kind === "disposable") {
+      return (
+        <p className="text-[11px] text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" />
+          Please use a real email — temporary inboxes won't work.
+        </p>
+      );
+    }
+    if (emailStatus.kind === "no_mx") {
+      return (
+        <p className="text-[11px] text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" />
+          We can't reach that domain. Please add a real working email.
+        </p>
+      );
+    }
+    if (emailStatus.kind === "typo") {
+      return (
+        <p className="text-[11px] text-destructive flex items-center gap-1.5 flex-wrap">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          Did you mean{" "}
+          <button
+            type="button"
+            onClick={() => acceptSuggestion(emailStatus.suggestion)}
+            className="underline underline-offset-2 font-medium text-foreground hover:text-[#fde047]"
+          >
+            {emailStatus.suggestion}
+          </button>
+          ?
+        </p>
+      );
+    }
+    if (emailStatus.kind === "rate_limited") {
+      return (
+        <p className="text-[11px] text-destructive">
+          Too many checks — wait a few seconds and try again.
+        </p>
+      );
+    }
+    return null;
+  };
+
+  const renderPhoneFeedback = () => {
+    if (!phoneTouched || form.phone.length === 0) return null;
+    if (!phoneLooksOk) {
+      return (
+        <p className="text-[11px] text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" />
+          Please enter a real phone number (at least 10 digits).
+        </p>
+      );
+    }
+    return null;
   };
 
   return (
@@ -194,10 +402,18 @@ const CustomGarmentRequestModal = ({
                     inputMode="email"
                     value={form.email}
                     onChange={update("email")}
+                    onBlur={handleEmailBlur}
                     autoComplete="email"
                     required
                     disabled={submitting}
+                    aria-invalid={
+                      emailTouched &&
+                      emailStatus.kind !== "ok" &&
+                      emailStatus.kind !== "checking" &&
+                      emailStatus.kind !== "idle"
+                    }
                   />
+                  {renderEmailFeedback()}
                 </div>
 
                 <div className="space-y-1.5">
@@ -205,17 +421,22 @@ const CustomGarmentRequestModal = ({
                     htmlFor="cgr-phone"
                     className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground"
                   >
-                    Phone
+                    Phone *
                   </Label>
                   <Input
                     id="cgr-phone"
                     type="tel"
                     inputMode="tel"
                     value={form.phone}
-                    onChange={update("phone")}
+                    onChange={handlePhoneChange}
+                    onBlur={() => setPhoneTouched(true)}
+                    placeholder="(555) 123-4567"
                     autoComplete="tel"
+                    required
                     disabled={submitting}
+                    aria-invalid={phoneTouched && !phoneLooksOk && form.phone.length > 0}
                   />
+                  {renderPhoneFeedback()}
                 </div>
 
                 <div className="space-y-1.5">

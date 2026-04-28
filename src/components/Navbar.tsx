@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Menu, X } from "lucide-react";
+import { ShoppingBag, Menu, X, User, LayoutDashboard } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,6 +16,7 @@ const navLinks = [
 
 const Navbar = () => {
   const { toggleCart, totalItems } = useCart();
+  const { user, isAdmin } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -80,6 +82,34 @@ const Navbar = () => {
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
+          {user ? (
+            <>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="hidden sm:inline-flex items-center gap-1.5 font-display text-xs tracking-widest uppercase text-muted-foreground hover:text-[#fde047] transition-colors"
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              )}
+              <Link
+                to="/account"
+                className="inline-flex items-center gap-1.5 font-display text-xs tracking-widest uppercase text-muted-foreground hover:text-[#fde047] transition-colors"
+              >
+                <User className="h-3.5 w-3.5" />
+                Account
+              </Link>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 font-display text-xs tracking-widest uppercase text-muted-foreground hover:text-[#fde047] transition-colors"
+            >
+              <User className="h-3.5 w-3.5" />
+              Log in
+            </Link>
+          )}
           <button
             onClick={toggleCart}
             aria-label={`Open cart, ${totalItems} item${totalItems === 1 ? "" : "s"}`}
@@ -132,6 +162,34 @@ const Navbar = () => {
                   </Link>
                 );
               })}
+              {user ? (
+                <>
+                  <Link
+                    to="/account"
+                    className="py-3 font-display text-lg tracking-widest uppercase text-muted-foreground border-l-2 border-transparent pl-4 hover:text-[#fde047] hover:border-[#fde047]/40 transition-colors flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4" />
+                    Account
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="py-3 font-display text-lg tracking-widest uppercase text-muted-foreground border-l-2 border-transparent pl-4 hover:text-[#fde047] hover:border-[#fde047]/40 transition-colors flex items-center gap-2"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Admin
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="py-3 font-display text-lg tracking-widest uppercase text-muted-foreground border-l-2 border-transparent pl-4 hover:text-[#fde047] hover:border-[#fde047]/40 transition-colors flex items-center gap-2"
+                >
+                  <User className="h-4 w-4" />
+                  Log in
+                </Link>
+              )}
             </div>
           </motion.div>
         )}
