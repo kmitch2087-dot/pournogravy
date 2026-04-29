@@ -35,21 +35,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      // Defer profile fetch to avoid deadlocks
       if (newSession?.user) {
-        setTimeout(() => fetchProfile(newSession.user.id), 0);
+        // Keep loading=true until profile resolves so ProtectedRoute never
+        // flashes "NOT ON THE LIST" before is_admin is known.
+        setLoading(true);
+        setTimeout(() => {
+          fetchProfile(newSession.user.id).finally(() => setLoading(false));
+        }, 0);
       } else {
         setProfile(null);
+        setLoading(false);
       }
     });
 
-    // Then check existing session
+    // Then check existing session — onAuthStateChange fires for this too,
+    // so we only need to handle the no-user case to clear the loading flag.
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
-      if (existing?.user) {
-        fetchProfile(existing.user.id).finally(() => setLoading(false));
-      } else {
+      if (!existing?.user) {
         setLoading(false);
       }
     });
