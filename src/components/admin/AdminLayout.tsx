@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingBag,
   MessageSquare,
+  Star,
   Settings,
   LogOut,
   Menu,
@@ -24,6 +25,7 @@ const navItems = [
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, end: false },
   { to: "/admin/products", label: "Products", icon: Package, end: false },
   { to: "/admin/custom-requests", label: "Custom Requests", icon: MessageSquare, end: false },
+  { to: "/admin/reviews", label: "Reviews", icon: Star, end: false },
   { to: "/admin/settings", label: "Settings", icon: Settings, end: false },
 ];
 

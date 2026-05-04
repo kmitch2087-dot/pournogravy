@@ -28,6 +28,7 @@ import Orders from "./pages/admin/Orders";
 import Products from "./pages/admin/Products";
 import ProductEdit from "./pages/admin/ProductEdit";
 import CustomRequests from "./pages/admin/CustomRequests";
+import Reviews from "./pages/admin/Reviews";
 import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ const App = () => (
                   <Route path="products/new" element={<ProductEdit />} />
                   <Route path="products/:id" element={<ProductEdit />} />
                   <Route path="custom-requests" element={<CustomRequests />} />
+                  <Route path="reviews" element={<Reviews />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />

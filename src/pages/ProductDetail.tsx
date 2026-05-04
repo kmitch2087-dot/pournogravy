@@ -4,10 +4,13 @@ import { products, type ProductVariant, type ProductColor } from "@/data/product
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Truck, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, Truck, RotateCcw, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
 import CustomGarmentRequestModal from "@/components/CustomGarmentRequestModal";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -28,6 +31,51 @@ const ProductDetail = () => {
   );
   // "Want this on a hoodie/speedo/whatever?" request modal.
   const [customOpen, setCustomOpen] = useState(false);
+
+  // Reviews
+  const qc = useQueryClient();
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewBody, setReviewBody] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  const { data: reviews } = useQuery({
+    queryKey: ["reviews", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_reviews")
+        .select("id, reviewer_name, rating, body, created_at")
+        .eq("product_slug", id ?? "")
+        .eq("is_approved", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+
+  const submitReview = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("product_reviews").insert({
+        product_slug: id,
+        reviewer_name: reviewName.trim(),
+        rating: reviewRating,
+        body: reviewBody.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setReviewSubmitted(true);
+      setReviewName("");
+      setReviewRating(0);
+      setReviewBody("");
+      qc.invalidateQueries({ queryKey: ["reviews", id] });
+    },
+  });
+
+  const avgRating = reviews?.length
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : null;
 
   // Reset state when switching between products
   useEffect(() => {
@@ -207,6 +255,14 @@ const ProductDetail = () => {
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
               </h1>
+              {avgRating !== null && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <StarRow rating={avgRating} />
+                  <span className="text-xs text-muted-foreground">
+                    {avgRating.toFixed(1)} ({reviews!.length} review{reviews!.length !== 1 ? "s" : ""})
+                  </span>
+                </div>
+              )}
               <p className="text-2xl md:text-3xl font-display tracking-wider mt-4">
                 ${product.price.toFixed(2)}
               </p>
@@ -448,6 +504,97 @@ const ProductDetail = () => {
           designName={product.name}
         />
 
+        {/* Reviews */}
+        <section className="pt-12 pb-8 border-t border-border">
+          <h2 className="font-display text-2xl md:text-3xl tracking-wider mb-8">REVIEWS</h2>
+
+          {reviews && reviews.length === 0 && (
+            <p className="text-muted-foreground text-sm mb-8">
+              Be the first to review this product.
+            </p>
+          )}
+
+          {reviews && reviews.length > 0 && (
+            <div className="space-y-6 mb-10">
+              {reviews.map((r) => (
+                <div key={r.id} className="border-b border-border pb-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <StarRow rating={r.rating} />
+                      <span className="font-medium text-sm">{r.reviewer_name}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(r.created_at), "MMM d, yyyy")}
+                    </span>
+                  </div>
+                  {r.body && <p className="text-sm text-muted-foreground mt-1">{r.body}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {reviewSubmitted ? (
+            <p className="text-sm text-[#fde047] font-marker tracking-wider">
+              Thanks — your review is pending approval.
+            </p>
+          ) : (
+            <div className="max-w-lg space-y-4">
+              <h3 className="font-display tracking-widest text-sm uppercase">Leave a Review</h3>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Rating</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setReviewRating(n)}
+                      className="p-0.5 transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className="h-6 w-6"
+                        fill={n <= reviewRating ? "#fde047" : "none"}
+                        stroke={n <= reviewRating ? "#fde047" : "currentColor"}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={reviewName}
+                  onChange={(e) => setReviewName(e.target.value)}
+                  className="w-full bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60"
+                />
+              </div>
+
+              <div>
+                <textarea
+                  placeholder="Your review (optional)"
+                  value={reviewBody}
+                  onChange={(e) => setReviewBody(e.target.value)}
+                  rows={3}
+                  className="w-full bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60 resize-none"
+                />
+              </div>
+
+              <Button
+                onClick={() => submitReview.mutate()}
+                disabled={!reviewName.trim() || reviewRating === 0 || submitReview.isPending}
+                className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+              >
+                {submitReview.isPending ? "Submitting…" : "SUBMIT REVIEW"}
+              </Button>
+              {submitReview.isError && (
+                <p className="text-xs text-destructive">Something went wrong. Try again.</p>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* Related */}
         {related.length > 0 && (
           <section className="pt-12 pb-20 border-t border-border">
@@ -492,5 +639,18 @@ const ProductDetail = () => {
     </div>
   );
 };
+
+const StarRow = ({ rating }: { rating: number }) => (
+  <div className="flex gap-0.5">
+    {[1, 2, 3, 4, 5].map((n) => (
+      <Star
+        key={n}
+        className="h-3.5 w-3.5"
+        fill={n <= Math.round(rating) ? "#fde047" : "none"}
+        stroke={n <= Math.round(rating) ? "#fde047" : "currentColor"}
+      />
+    ))}
+  </div>
+);
 
 export default ProductDetail;
