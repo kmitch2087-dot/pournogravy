@@ -45,26 +45,38 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.order_id;
-    if (!orderId) {
-      console.warn("[webhook] checkout.session.completed without order_id");
-      return new Response("ok", { status: 200 });
-    }
+  // Support both payment_intent.succeeded (custom checkout) and
+  // checkout.session.completed (legacy hosted checkout)
+  let orderId: string | undefined;
+  let shippingAddress: unknown = null;
+  let amountTotal: number | undefined;
+  let paymentIntentId: string | undefined;
 
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    orderId = pi.metadata?.order_id;
+    shippingAddress = pi.shipping ?? null;
+    amountTotal = pi.amount_received;
+    paymentIntentId = pi.id;
+  } else if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    orderId = session.metadata?.order_id;
+    shippingAddress = session.shipping_details ?? null;
+    amountTotal = session.amount_total ?? undefined;
+    paymentIntentId = typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+  }
+
+  if (orderId) {
     // Mark order paid
     await supabase
       .from("orders")
       .update({
         status: "paid",
-        stripe_payment_intent_id: typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id ?? null,
-        shipping_address: session.shipping_details
-          ? JSON.parse(JSON.stringify(session.shipping_details))
-          : null,
-        total_cents: session.amount_total ?? undefined,
+        ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
+        shipping_address: shippingAddress ? JSON.parse(JSON.stringify(shippingAddress)) : null,
+        ...(amountTotal != null ? { total_cents: amountTotal } : {}),
       })
       .eq("id", orderId);
 
@@ -76,6 +88,7 @@ Deno.serve(async (req) => {
     ]);
 
     if (!order) return new Response("ok", { status: 200 });
+
 
     const itemsList = (items ?? [])
       .map((it) => {
@@ -143,7 +156,7 @@ Deno.serve(async (req) => {
         },
       });
     }
-  }
+  } // end if (orderId)
 
   return new Response(JSON.stringify({ received: true }), {
     headers: { "Content-Type": "application/json" },

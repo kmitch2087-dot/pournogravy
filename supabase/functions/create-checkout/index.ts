@@ -1,20 +1,7 @@
-// Stripe Checkout session creator.
-// Public endpoint — accepts a cart payload, creates an `orders` row in
-// `pending` state, then creates a Stripe Checkout Session and returns the
-// hosted-checkout URL. The `stripe-webhook` function flips the order to
-// `paid` and triggers fulfillment when the payment lands.
+// Creates a Stripe PaymentIntent for the embedded custom checkout flow.
+// Returns clientSecret so the frontend can render its own branded payment form.
 //
-// SECRET REQUIRED: STRIPE_SECRET_KEY  (set via Lovable secrets)
-//
-// Request body shape:
-// {
-//   items: [{ slug: string, name: string, quantity: number, unit_price_cents: number,
-//             size?: string, variant?: string, color?: string, image?: string }],
-//   email: string,
-//   discount_code?: string,
-//   successUrl?: string,
-//   cancelUrl?: string,
-// }
+// SECRETS REQUIRED: STRIPE_SECRET_KEY
 
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -48,12 +35,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const body = await req.json();
-    const { items, email, discount_code, successUrl, cancelUrl } = body as {
+    const { items, email, discount_code } = body as {
       items: CartItem[];
       email: string;
       discount_code?: string;
-      successUrl?: string;
-      cancelUrl?: string;
     };
 
     if (!email || !items?.length) {
@@ -63,9 +48,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // SECURITY: never trust client-supplied prices. Look up authoritative
-    // prices from the products table by slug, and reject any item whose
-    // product is missing, unpublished, or inactive.
+    // Server-side price validation — never trust client prices
     const slugs = Array.from(new Set(items.map((i) => i.slug).filter(Boolean)));
     if (slugs.length === 0) {
       return new Response(JSON.stringify({ error: "Items missing slug" }), {
@@ -90,7 +73,6 @@ Deno.serve(async (req) => {
       if (isLive) productMap.set(p.slug, { id: p.id, price_cents: p.price_cents });
     }
 
-    // Validate every item resolves to a live product
     for (const i of items) {
       if (!productMap.has(i.slug)) {
         return new Response(
@@ -106,19 +88,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build trusted items using server-side prices
     const safeItems = items.map((i) => ({
       ...i,
       unit_price_cents: productMap.get(i.slug)!.price_cents,
       product_id: productMap.get(i.slug)!.id,
     }));
 
-    const subtotal = safeItems.reduce(
-      (s, i) => s + i.unit_price_cents * i.quantity,
-      0,
-    );
+    const subtotal = safeItems.reduce((s, i) => s + i.unit_price_cents * i.quantity, 0);
 
-    // Server-side discount validation — never trust client-calculated discount
+    // Server-side discount validation
     let discountCents = 0;
     let discountCodeId: string | null = null;
 
@@ -134,7 +112,6 @@ Deno.serve(async (req) => {
         const notExpired = !dc.expires_at || new Date(dc.expires_at) > new Date();
         const hasUses = dc.max_uses === null || dc.use_count < dc.max_uses;
         const meetsMin = subtotal >= dc.min_order_cents;
-
         if (notExpired && hasUses && meetsMin) {
           discountCents = dc.discount_type === "percent"
             ? Math.round(subtotal * dc.discount_value / 100)
@@ -146,7 +123,7 @@ Deno.serve(async (req) => {
 
     const total = Math.max(0, subtotal - discountCents);
 
-    // Create the pending order first so the webhook can find it
+    // Create the pending order
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert([{
@@ -162,7 +139,7 @@ Deno.serve(async (req) => {
       .single();
     if (orderError || !order) throw orderError ?? new Error("Order create failed");
 
-    // Create order items with the real product_id and trusted price
+    // Save order items
     const itemRows = safeItems.map((i) => ({
       order_id: order.id,
       product_id: i.product_id,
@@ -172,58 +149,30 @@ Deno.serve(async (req) => {
     }));
     await supabase.from("order_items").insert(itemRows);
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
-
-    const origin = req.headers.get("origin") ?? "https://pournogravy.com";
-
-    // Increment use_count now that a checkout session is being created
     if (discountCodeId) {
       await supabase.rpc("increment_discount_use", { code_id: discountCodeId });
     }
 
-    // If a discount applies, create a one-time Stripe coupon to reflect it in checkout
-    let stripeCouponId: string | undefined;
-    if (discountCents > 0) {
-      const coupon = await stripe.coupons.create({
-        amount_off: discountCents,
-        currency: "usd",
-        duration: "once",
-        name: discount_code?.toUpperCase(),
-      });
-      stripeCouponId = coupon.id;
-    }
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      customer_email: email,
-      line_items: safeItems.map((i) => ({
-        quantity: i.quantity,
-        price_data: {
-          currency: "usd",
-          unit_amount: i.unit_price_cents,
-          product_data: {
-            name: i.name,
-            description: [i.variant, i.color, i.size].filter(Boolean).join(" / ") || undefined,
-            images: i.image && /^https?:\/\//.test(i.image) ? [i.image] : undefined,
-          },
-        },
-      })),
-      shipping_address_collection: { allowed_countries: ["US", "CA"] },
-      ui_mode: "embedded",
-      return_url: `${origin}/checkout/return?order=${order.id}&session_id={CHECKOUT_SESSION_ID}`,
+    // Create a PaymentIntent — the frontend renders its own branded form using this secret
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: total,
+      currency: "usd",
+      automatic_payment_methods: { enabled: true },
+      receipt_email: email,
       metadata: { order_id: order.id },
-      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
     });
 
     await supabase
       .from("orders")
-      .update({ stripe_session_id: session.id })
+      .update({ stripe_payment_intent_id: paymentIntent.id })
       .eq("id", order.id);
 
-    return new Response(JSON.stringify({ clientSecret: session.client_secret, orderId: order.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ clientSecret: paymentIntent.client_secret, orderId: order.id }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
     console.error("[create-checkout]", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
