@@ -110,7 +110,7 @@ const Index = () => {
           dot indicators below pauses the rotation, so a customer reading a
           shirt blurb still moves on without having to look away. */}
       <section
-        className="relative min-h-[90vh] overflow-hidden noise-overlay"
+        className="relative min-h-[55vh] sm:min-h-[90vh] overflow-hidden noise-overlay"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -130,7 +130,7 @@ const Index = () => {
                 aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
                 aria-hidden={!active}
               >
-                <div className="absolute inset-0">
+                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20">
                   <img
                     src="/hero-bg.jpg"
                     alt=""
