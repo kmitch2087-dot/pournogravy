@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { collections, products } from "@/data/products";
 import { motion } from "framer-motion";
@@ -6,6 +7,11 @@ import { ArrowRight } from "lucide-react";
 const Collections = () => {
   return (
     <div className="min-h-screen pt-24 md:pt-28">
+      <SEO
+        title="Collections"
+        description="Shop Pournogravy by collection — Industry Truths, Customer Horror Stories, Salty Bartender, and more. Find your flavor of suffering."
+        url="https://pournogravy.com/collections"
+      />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
         <div

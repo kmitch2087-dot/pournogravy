@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -36,6 +37,11 @@ const faqs = [
 const FAQ = () => {
   return (
     <div className="min-h-screen pt-24 md:pt-28">
+      <SEO
+        title="FAQ"
+        description="Got questions about Pournogravy? Shipping, sizing, returns, custom orders — we've got answers. Probably funnier than you expected."
+        url="https://pournogravy.com/faq"
+      />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
         <div

@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -99,6 +100,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
+      <SEO
+        title="Home"
+        description="Bartender-themed apparel for the people who pour for a living. Because someone has to deal with the public, and it might as well be stylish."
+        url="https://pournogravy.com"
+      />
       {/* Hero carousel — slide 0 is the glass headline, rest are shirts.
           Section-wide hover pause was removed by request — only hovering the
           dot indicators below pauses the rotation, so a customer reading a

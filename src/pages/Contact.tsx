@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,11 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
+      <SEO
+        title="Contact"
+        description="Reach out to Pournogravy — questions, custom orders, wholesale inquiries, or just need to vent about a bad tipper. We're listening."
+        url="https://pournogravy.com/contact"
+      />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
         <div

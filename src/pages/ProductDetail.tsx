@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { useParams, Link } from "react-router-dom";
 import { products, type ProductVariant, type ProductColor } from "@/data/products";
 import { useCart } from "@/context/CartContext";
@@ -108,6 +109,13 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
+      <SEO
+        title={product.name}
+        description={`${product.humor} — ${product.name} available in Men's and Women's fits. Shop Pournogravy.`}
+        image={product.images[0]}
+        url={`https://pournogravy.com/product/${product.id}`}
+        type="product"
+      />
       <div className="container mx-auto px-4">
         {/* Back link */}
         <Link

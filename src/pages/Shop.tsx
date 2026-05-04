@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import ProductCard from "@/components/ProductCard";
 import { products, collections } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
@@ -38,6 +39,11 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
+      <SEO
+        title="Shop"
+        description="Browse the full Pournogravy collection — tees for bartenders, by bartenders. Wear your war stories. Free shipping on orders over $50."
+        url="https://pournogravy.com/shop"
+      />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
         <div

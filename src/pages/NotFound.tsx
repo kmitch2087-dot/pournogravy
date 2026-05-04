@@ -1,3 +1,4 @@
+import SEO from "@/components/SEO";
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,11 @@ const NotFound = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black text-white">
+      <SEO
+        title="404 — Page Not Found"
+        description="You've wandered somewhere we don't serve. Head back to the bar."
+        url="https://pournogravy.com/404"
+      />
       {/* ambient glow */}
       <div
         aria-hidden="true"
