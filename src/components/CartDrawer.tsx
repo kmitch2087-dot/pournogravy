@@ -72,7 +72,16 @@ const CartDrawer = () => {
       });
 
       if (error || !data?.url) {
-        setCheckoutError(data?.error ?? error?.message ?? "Checkout failed. Please try again.");
+        let msg = data?.error ?? "Checkout failed. Please try again.";
+        if (error) {
+          try {
+            const body = await (error as any).context?.json?.();
+            msg = body?.error ?? error.message ?? msg;
+          } catch {
+            msg = error.message ?? msg;
+          }
+        }
+        setCheckoutError(msg);
         return;
       }
 
