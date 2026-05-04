@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { ArrowUpDown, Loader2 } from "lucide-react";
 import { statusClass, REQUEST_STATUSES } from "@/lib/admin";
 import { toast } from "sonner";
 
@@ -38,6 +38,8 @@ const CustomRequests = () => {
   const selectedId = params.get("id");
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [sortAsc, setSortAsc] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ["admin-requests"],
@@ -50,6 +52,28 @@ const CustomRequests = () => {
       return data ?? [];
     },
   });
+
+  const markContacted = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("custom_requests")
+        .update({ status: "contacted" })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Marked as contacted");
+      qc.invalidateQueries({ queryKey: ["admin-requests"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const filtered = (requests ?? [])
+    .filter((r) => statusFilter === "all" || r.status === statusFilter)
+    .sort((a, b) => {
+      const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return sortAsc ? diff : -diff;
+    });
 
   const detail = requests?.find((r) => r.id === selectedId);
 
@@ -94,14 +118,40 @@ const CustomRequests = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {REQUEST_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortAsc((v) => !v)}
+          className="gap-1.5"
+        >
+          <ArrowUpDown className="h-3.5 w-3.5" />
+          {sortAsc ? "Oldest first" : "Newest first"}
+        </Button>
+        <span className="text-xs text-muted-foreground ml-auto">
+          {filtered.length} request{filtered.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : !requests || requests.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-20 text-center text-sm text-muted-foreground">
-            No custom requests yet.
+            {statusFilter === "all" ? "No custom requests yet." : `No requests with status "${statusFilter}".`}
           </div>
         ) : (
           <Table>
@@ -111,10 +161,11 @@ const CustomRequests = () => {
                 <TableHead>Garment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {requests.map((r) => (
+              {filtered.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => setParams({ id: r.id })}>
                   <TableCell>
                     <div className="font-medium">{r.name}</div>
@@ -124,6 +175,19 @@ const CustomRequests = () => {
                   <TableCell><span className={statusClass(r.status)}>{r.status}</span></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(r.created_at), "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {r.status === "new" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                        disabled={markContacted.isPending}
+                        onClick={() => markContacted.mutate(r.id)}
+                      >
+                        Mark contacted
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { ShoppingBag, DollarSign, MessageSquare, AlertTriangle, Loader2 } from "lucide-react";
+import { ShoppingBag, DollarSign, MessageSquare, AlertTriangle, Loader2, TrendingUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 const fmtMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -16,7 +16,7 @@ const Dashboard = () => {
       todayStart.setHours(0, 0, 0, 0);
       const todayIso = todayStart.toISOString();
 
-      const [ordersToday, pendingRequests, lowStock] = await Promise.all([
+      const [ordersToday, pendingRequests, lowStock, allPaidOrders, pendingFulfillment] = await Promise.all([
         supabase
           .from("orders")
           .select("id, total_cents")
@@ -30,6 +30,14 @@ const Dashboard = () => {
           .select("id", { count: "exact", head: true })
           .lt("inventory_count", 5)
           .eq("is_active", true),
+        supabase
+          .from("orders")
+          .select("total_cents")
+          .in("status", ["paid", "fulfilled", "shipped", "delivered"]),
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "paid"),
       ]);
 
       return {
@@ -37,6 +45,8 @@ const Dashboard = () => {
         revenueToday: (ordersToday.data ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0),
         pendingRequests: pendingRequests.count ?? 0,
         lowStock: lowStock.count ?? 0,
+        totalRevenue: (allPaidOrders.data ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0),
+        pendingFulfillment: pendingFulfillment.count ?? 0,
       };
     },
   });
@@ -69,7 +79,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          label="Total revenue"
+          value={isLoading ? "—" : fmtMoney(stats?.totalRevenue ?? 0)}
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="Pending fulfillment"
+          value={isLoading ? "—" : String(stats?.pendingFulfillment ?? 0)}
+          icon={Clock}
+          warning={(stats?.pendingFulfillment ?? 0) > 0}
+        />
+        <StatCard
+          label="Pending requests"
+          value={isLoading ? "—" : String(stats?.pendingRequests ?? 0)}
+          icon={MessageSquare}
+        />
+      </div>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-2">
         <StatCard
           label="Orders today"
           value={isLoading ? "—" : String(stats?.ordersToday ?? 0)}
@@ -79,17 +107,6 @@ const Dashboard = () => {
           label="Revenue today"
           value={isLoading ? "—" : fmtMoney(stats?.revenueToday ?? 0)}
           icon={DollarSign}
-        />
-        <StatCard
-          label="Pending requests"
-          value={isLoading ? "—" : String(stats?.pendingRequests ?? 0)}
-          icon={MessageSquare}
-        />
-        <StatCard
-          label="Low stock"
-          value={isLoading ? "—" : String(stats?.lowStock ?? 0)}
-          icon={AlertTriangle}
-          warning={(stats?.lowStock ?? 0) > 0}
         />
       </div>
 

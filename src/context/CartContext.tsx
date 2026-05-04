@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { Product, products } from "@/data/products";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
   product: Product;
@@ -161,6 +162,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Track whether we've loaded from storage yet, so we don't overwrite it
   // with the empty initial state before hydration finishes.
   const hydrated = useRef(false);
+  const mergedForUser = useRef<string | null>(null);
 
   // Hydrate once on mount
   useEffect(() => {
@@ -174,6 +176,57 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!hydrated.current) return;
     saveCart(items);
   }, [items]);
+
+  // On login: merge any Supabase-saved auth cart into the current guest cart.
+  // Runs once per unique user ID per session. No-op if Supabase cart is empty.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event !== "SIGNED_IN" || !session?.user) return;
+        const userId = session.user.id;
+        if (mergedForUser.current === userId) return;
+        mergedForUser.current = userId;
+
+        const { data: saved } = await supabase
+          .from("cart_items")
+          .select("product_id, quantity")
+          .eq("user_id", userId);
+
+        if (saved?.length) {
+          const productMap = new Map(products.map((p) => [p.id, p]));
+          setItems((prev) => {
+            const merged = [...prev];
+            for (const row of saved) {
+              const product = productMap.get(row.product_id);
+              if (!product) continue;
+              const idx = merged.findIndex((i) => i.product.id === row.product_id);
+              if (idx >= 0) {
+                merged[idx] = {
+                  ...merged[idx],
+                  quantity: Math.min(99, merged[idx].quantity + row.quantity),
+                };
+              } else {
+                merged.push({
+                  product,
+                  size: product.sizes[0] ?? "",
+                  quantity: row.quantity,
+                  ...(product.variants?.[0] ? { variantId: product.variants[0].id } : {}),
+                  ...(product.colors?.[0] ? { colorId: product.colors[0].id } : {}),
+                });
+              }
+            }
+            return merged;
+          });
+        }
+
+        // Clean up any session-based rows
+        if (sessionId) {
+          await supabase.from("cart_items").delete().eq("session_id", sessionId);
+        }
+      },
+    );
+    return () => subscription.unsubscribe();
+  }, [sessionId]);
 
   const addItem = useCallback(
     (product: Product, size: string, variantId?: string, colorId?: string) => {
