@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
           product_data: {
             name: i.name,
             description: [i.variant, i.color, i.size].filter(Boolean).join(" / ") || undefined,
-            images: i.image ? [i.image] : undefined,
+            images: i.image && /^https?:\/\//.test(i.image) ? [i.image] : undefined,
           },
         },
       })),
