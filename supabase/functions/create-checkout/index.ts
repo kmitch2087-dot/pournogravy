@@ -11,6 +11,7 @@
 //   items: [{ slug: string, name: string, quantity: number, unit_price_cents: number,
 //             size?: string, variant?: string, color?: string, image?: string }],
 //   email: string,
+//   discount_code?: string,
 //   successUrl?: string,
 //   cancelUrl?: string,
 // }
@@ -47,9 +48,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const body = await req.json();
-    const { items, email, successUrl, cancelUrl } = body as {
+    const { items, email, discount_code, successUrl, cancelUrl } = body as {
       items: CartItem[];
       email: string;
+      discount_code?: string;
       successUrl?: string;
       cancelUrl?: string;
     };
@@ -116,6 +118,34 @@ Deno.serve(async (req) => {
       0,
     );
 
+    // Server-side discount validation — never trust client-calculated discount
+    let discountCents = 0;
+    let discountCodeId: string | null = null;
+
+    if (discount_code?.trim()) {
+      const { data: dc } = await supabase
+        .from("discount_codes")
+        .select("*")
+        .eq("is_active", true)
+        .ilike("code", discount_code.trim())
+        .maybeSingle();
+
+      if (dc) {
+        const notExpired = !dc.expires_at || new Date(dc.expires_at) > new Date();
+        const hasUses = dc.max_uses === null || dc.use_count < dc.max_uses;
+        const meetsMin = subtotal >= dc.min_order_cents;
+
+        if (notExpired && hasUses && meetsMin) {
+          discountCents = dc.discount_type === "percent"
+            ? Math.round(subtotal * dc.discount_value / 100)
+            : Math.min(dc.discount_value, subtotal);
+          discountCodeId = dc.id;
+        }
+      }
+    }
+
+    const total = Math.max(0, subtotal - discountCents);
+
     // Create the pending order first so the webhook can find it
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -123,8 +153,10 @@ Deno.serve(async (req) => {
         email,
         status: "pending",
         subtotal_cents: subtotal,
-        total_cents: subtotal,
+        discount_cents: discountCents,
+        total_cents: total,
         currency: "USD",
+        ...(discountCodeId ? { discount_code_id: discountCodeId } : {}),
       }])
       .select("id")
       .single();
@@ -143,6 +175,23 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
     const origin = req.headers.get("origin") ?? "https://pournogravy.com";
+
+    // Increment use_count now that a checkout session is being created
+    if (discountCodeId) {
+      await supabase.rpc("increment_discount_use", { code_id: discountCodeId });
+    }
+
+    // If a discount applies, create a one-time Stripe coupon to reflect it in checkout
+    let stripeCouponId: string | undefined;
+    if (discountCents > 0) {
+      const coupon = await stripe.coupons.create({
+        amount_off: discountCents,
+        currency: "usd",
+        duration: "once",
+        name: discount_code?.toUpperCase(),
+      });
+      stripeCouponId = coupon.id;
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -164,6 +213,7 @@ Deno.serve(async (req) => {
       success_url: `${successUrl ?? `${origin}/shop?success=1`}&order=${order.id}`,
       cancel_url: cancelUrl ?? `${origin}/shop?canceled=1`,
       metadata: { order_id: order.id },
+      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
     });
 
     await supabase

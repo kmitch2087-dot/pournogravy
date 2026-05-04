@@ -1,11 +1,28 @@
+import { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Tag, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const CartDrawer = () => {
-  const { items, isOpen, closeCart, removeItem, updateQuantity, totalPrice, totalItems } = useCart();
+  const {
+    items, isOpen, closeCart, removeItem, updateQuantity,
+    totalPrice, totalItems, appliedDiscount, applyDiscount, clearDiscount, discountedTotal,
+  } = useCart();
+  const [promoInput, setPromoInput] = useState("");
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoError("");
+    setPromoLoading(true);
+    const result = await applyDiscount(promoInput.trim());
+    setPromoLoading(false);
+    if (!result.valid) setPromoError(result.message);
+    else setPromoInput("");
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
@@ -154,10 +171,61 @@ const CartDrawer = () => {
 
             {/* Footer / checkout */}
             <div className="border-t border-border px-6 py-5 space-y-4 bg-muted/30">
+              {/* Promo code */}
+              {appliedDiscount ? (
+                <div className="flex items-center justify-between bg-[#fde047]/10 border border-[#fde047]/30 rounded-sm px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Tag className="h-3.5 w-3.5 text-[#fde047]" />
+                    <span className="font-display tracking-wider text-[#fde047]">{appliedDiscount.code}</span>
+                    <span className="text-muted-foreground text-xs">{appliedDiscount.message}</span>
+                  </div>
+                  <button onClick={clearDiscount} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Promo code"
+                      value={promoInput}
+                      onChange={(e) => { setPromoInput(e.target.value); setPromoError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
+                      className="flex-1 bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60 font-display tracking-wider uppercase placeholder:normal-case placeholder:tracking-normal"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                      className="shrink-0"
+                    >
+                      {promoLoading ? "…" : "Apply"}
+                    </Button>
+                  </div>
+                  {promoError && <p className="text-xs text-destructive">{promoError}</p>}
+                </div>
+              )}
+
               <div className="flex justify-between items-baseline font-display text-base tracking-widest">
                 <span className="text-muted-foreground">SUBTOTAL</span>
-                <span className="text-xl">${totalPrice.toFixed(2)}</span>
+                <span className={appliedDiscount ? "line-through text-muted-foreground text-base" : "text-xl"}>
+                  ${totalPrice.toFixed(2)}
+                </span>
               </div>
+              {appliedDiscount && (
+                <>
+                  <div className="flex justify-between items-baseline text-sm font-display tracking-widest text-[#fde047]">
+                    <span>DISCOUNT</span>
+                    <span>−${(appliedDiscount.discountCents / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline font-display text-base tracking-widest border-t border-border pt-3">
+                    <span className="text-muted-foreground">TOTAL</span>
+                    <span className="text-xl">${discountedTotal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Shipping and taxes calculated at checkout.
               </p>

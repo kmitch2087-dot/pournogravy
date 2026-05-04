@@ -19,6 +19,12 @@ export interface CartItem {
   colorId?: string;
 }
 
+export interface AppliedDiscount {
+  code: string;
+  discountCents: number;
+  message: string;
+}
+
 interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
@@ -31,6 +37,10 @@ interface CartContextType {
   totalItems: number;
   totalPrice: number;
   sessionId: string;
+  appliedDiscount: AppliedDiscount | null;
+  applyDiscount: (code: string) => Promise<{ valid: boolean; message: string }>;
+  clearDiscount: () => void;
+  discountedTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -159,6 +169,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   // Track whether we've loaded from storage yet, so we don't overwrite it
   // with the empty initial state before hydration finishes.
   const hydrated = useRef(false);
@@ -279,10 +290,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = useCallback(() => {
     setItems([]);
+    setAppliedDiscount(null);
   }, []);
+
+  const clearDiscount = useCallback(() => setAppliedDiscount(null), []);
+
+  const applyDiscount = useCallback(async (code: string): Promise<{ valid: boolean; message: string }> => {
+    const cartTotalCents = Math.round(
+      items.reduce((s, i) => s + i.product.price * i.quantity, 0) * 100,
+    );
+    const { data, error } = await supabase.functions.invoke("validate-discount", {
+      body: { code, cart_total_cents: cartTotalCents },
+    });
+    if (error || !data) return { valid: false, message: "Could not validate code." };
+    if (data.valid) {
+      setAppliedDiscount({ code: code.toUpperCase(), discountCents: data.discount_cents, message: data.message });
+    }
+    return { valid: data.valid, message: data.message };
+  }, [items]);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const discountedTotal = Math.max(0, totalPrice - (appliedDiscount?.discountCents ?? 0) / 100);
 
   return (
     <CartContext.Provider
@@ -298,6 +327,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalItems,
         totalPrice,
         sessionId,
+        appliedDiscount,
+        applyDiscount,
+        clearDiscount,
+        discountedTotal,
       }}
     >
       {children}
