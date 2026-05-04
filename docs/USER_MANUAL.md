@@ -1,7 +1,7 @@
 # Pournogravy — Owner's User Manual
 **Your quick-reference guide for running the site**
 **Prepared by:** Kristin Mitchell — Aethyx
-**Last Updated:** April 28, 2026
+**Last Updated:** April 29, 2026
 
 ---
 
@@ -12,12 +12,13 @@
 ## Table of Contents
 1. [The Big Picture — How Your Site Works](#1-the-big-picture)
 2. [Viewing Your Live Site](#2-viewing-your-live-site)
-3. [Managing Products](#3-managing-products)
-4. [Viewing Custom Garment Requests](#4-viewing-custom-garment-requests)
-5. [Viewing Orders (When Payment is Live)](#5-viewing-orders)
-6. [What You Can Change vs. What Needs a Developer](#6-what-you-can-vs-cannot-change)
-7. [Who to Call When Things Break](#7-who-to-call)
-8. [Glossary — Terms You'll See](#8-glossary)
+3. [Logging Into Your Admin Dashboard](#3-admin-dashboard)
+4. [Managing Products](#4-managing-products)
+5. [Viewing Custom Garment Requests](#5-viewing-custom-garment-requests)
+6. [Viewing Orders](#6-viewing-orders)
+7. [What You Can Change vs. What Needs a Developer](#7-what-you-can-vs-cannot-change)
+8. [Who to Call When Things Break](#8-who-to-call)
+9. [Glossary — Terms You'll See](#9-glossary)
 
 ---
 
@@ -28,10 +29,11 @@ Your website has three main parts:
 | Part | What It Is | Where You Access It |
 |------|-----------|-------------------|
 | **The storefront** | What customers see at pournogravy.com | Any web browser |
-| **The database** | Where orders, carts, and custom requests are stored | Supabase dashboard (supabase.com) |
-| **The code** | The actual files that make the site work | GitHub (you don't touch this directly) |
+| **The admin dashboard** | Where you manage orders and requests | pournogravy.com/admin |
+| **The database** | Behind-the-scenes storage (backup access) | Supabase dashboard (supabase.com) |
+| **The code** | The files that make the site work | GitHub (you don't touch this directly) |
 
-**The most important thing to know:** The storefront is your public-facing website. The Supabase dashboard is your back-office. You'll mostly be spending time in Supabase to see what's happening with orders and requests.
+**The most important thing to know:** Your admin dashboard at `/admin` is your main management tool. Supabase is the backup option if you ever need to look at raw data.
 
 ---
 
@@ -48,25 +50,40 @@ To check if everything looks right:
 
 ---
 
-## 3. Managing Products
+## 3. Logging Into Your Admin Dashboard
 
-### How Products Work
-Products live in the code (a file called `products.ts`). To add, remove, or update a product, a developer needs to edit that file. **You cannot add products yourself through a dashboard yet** — this is on the roadmap.
+Your admin dashboard is at **pournogravy.com/admin**.
 
-However, here's what controls whether a product appears on the site:
+To log in:
+1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
+2. Click "Login" if you're not already at the login screen
+3. Enter your admin email (aopie91@gmail.com) and your password
+4. You'll be redirected to the dashboard
+
+> **Can't log in?** Contact Kristin. Admin access is controlled by an allowlist — only your email and Kristin's emails are permitted. Nobody else can ever get in, even with the right password.
+
+### What You'll See in the Dashboard
+- **Orders** — all orders and their status (pending, paid, fulfilled, cancelled)
+- **Custom Requests** — all custom garment form submissions
+- **Products** — product management (edit, upload images)
+- **Settings** — site-wide configuration
+
+> **Note as of April 2026:** The dashboard is fully built. Payment processing (Stripe) is still being activated, so "paid" orders won't appear until that's complete.
+
+---
+
+## 4. Managing Products
+
+### How Products Currently Work
+Products live in the code (a file called `products.ts`). The admin product editor is built and available at `/admin` — you can edit product info and upload images there. A developer needs to be involved for adding brand new products to the catalog until the full DB-backed product system is activated.
+
+Here's what controls whether a product appears on the site:
 
 | Setting | What It Does |
 |---------|-------------|
 | `published: true` | Product shows up in the shop and can be purchased |
 | `featured: true` | Product also shows up in the homepage hero and featured row |
-| Neither flag | Product exists in the code but is hidden from customers — a "draft" |
-
-### Current Published Products (as of April 2026)
-- I Would Totally Tap That - Keg
-- Pournogravy Logo Tee
-- Last Call for Karen *(featured)*
-- Service Bartender, Do Not Approach *(featured)*
-- And others — check the shop page for the full live list
+| Neither flag | Product exists but is hidden from customers — a "draft" |
 
 ### To Add or Change a Product
 Contact Kristin. Provide:
@@ -80,43 +97,48 @@ Contact Kristin. Provide:
 
 ---
 
-## 4. Viewing Custom Garment Requests
+## 5. Viewing Custom Garment Requests
 
-When a customer fills out the "Request a Custom Garment" form on a product page, their info is saved in your Supabase database.
+When a customer fills out the "Request a Custom Garment" form on any product page, their info appears in your admin dashboard.
 
-### How to See Requests
+### Via Admin Dashboard (Preferred)
+1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
+2. Look for the "Custom Requests" section
+3. Click any request to see the full details
 
+### Via Supabase (Backup)
 1. Go to [supabase.com](https://supabase.com) and log in
 2. Select the **Pournogravy** project
-3. In the left sidebar, click **Table Editor**
-4. Click on the **custom_requests** table
+3. Click **Table Editor** → **custom_requests**
 
-You'll see a list of all submitted requests with:
+You'll see:
 - Customer name, email, phone
 - What garment they want
 - Which design they referenced
-- Any notes they added
-- Status (new, contacted, quoted, closed)
+- Any notes
+- Status (new / contacted / quoted / closed)
 
 ### Updating Request Status
-
-When you've followed up with a customer:
-1. Click on the row in the table
-2. Find the `status` column
-3. Change it from `new` to `contacted` (or `quoted` once you've sent a price, `closed` when done)
-4. Click **Save**
+When you've followed up with a customer, change the `status` field:
+- `new` → they just submitted
+- `contacted` → you've reached out
+- `quoted` → you've sent a price
+- `closed` → done
 
 > **Tip:** Respond to new requests within 24–48 hours while interest is hot. Custom orders are a premium revenue opportunity.
 
 ---
 
-## 5. Viewing Orders
+## 6. Viewing Orders
 
-> **Note:** Payment processing (Stripe) is not yet connected as of April 2026. Once it's live, orders will appear here automatically.
+> **Note:** Payment processing (Stripe) is built but not yet fully activated as of April 2026. Once it's live, paid orders will appear here automatically.
 
-### How to See Orders (Once Payment is Live)
+### Via Admin Dashboard
+1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
+2. Click **Orders** in the navigation
 
-1. Go to [supabase.com](https://supabase.com) and log in
+### Via Supabase (Backup)
+1. Go to [supabase.com](https://supabase.com)
 2. Select the **Pournogravy** project
 3. Click **Table Editor** → **orders**
 
@@ -131,66 +153,73 @@ Order statuses:
 
 ---
 
-## 6. What You Can vs. Cannot Change
+## 7. What You Can vs. Cannot Change
 
-### ✅ You Can Do These Yourself (via Supabase)
-- View and respond to custom garment requests (update status)
-- View orders (once payment is live)
-- See how many items are in customers' carts (cart_items table)
+### ✅ You Can Do These Yourself (via Admin Dashboard)
+- View and manage custom garment requests (update status)
+- View orders (once payment is active)
+- Edit product details and upload product images
 
 ### 🛑 These Need a Developer (Contact Kristin)
-- Adding, removing, or editing products
-- Changing prices
-- Updating product photos
+- Adding brand new products to the catalog
+- Changing prices (until DB-backed products are live)
 - Changing the site design or layout
 - Adding new pages
-- Setting up payment processing
+- Activating Stripe payment processing (technical configuration)
 - Connecting to a fulfillment partner (Printful/Printify)
 - Changing the domain or hosting
 - Anything where something stopped working
 
 ### 📝 These Are Coming Soon (Roadmap)
-- An admin dashboard so you can manage products without touching Supabase
-- Discount codes
+- Fully DB-backed product management (add products without a code deploy)
+- Discount codes / promo codes
 - Email marketing integration
-- Order fulfillment automation
+- Automatic order fulfillment via Printful/Printify
 
 ---
 
-## 7. Who to Call When Things Break
+## 8. Who to Call When Things Break
 
 **Kristin Mitchell — Aethyx**
 - For: anything related to the code, the site going down, a feature not working, adding products
-- How to reach her: [your preferred contact method here]
+- How to reach her: [your preferred contact method]
 
 **Supabase Support**
-- For: if you can't log into the Supabase dashboard
+- For: if you can't log into the Supabase dashboard itself
 - support.supabase.com
 
 **Cloudflare Support**
 - For: if the domain (pournogravy.com) stops resolving or shows a security error
 - cloudflare.com/support
 
+**Stripe Support**
+- For: questions about payments once Stripe is active
+- support.stripe.com
+
 > **Golden Rule:** If you're not 100% sure what you're doing, don't do it. One wrong click in the database can affect real customers. Always ask first.
 
 ---
 
-## 8. Glossary — Terms You'll See
+## 9. Glossary — Terms You'll See
 
 | Term | Plain English |
 |------|--------------|
 | **Frontend** | The part of the website customers see and interact with |
-| **Backend / Database** | The behind-the-scenes storage for orders, customers, requests |
-| **Supabase** | The service that hosts your database (like a cloud spreadsheet with security) |
+| **Backend / Database** | Behind-the-scenes storage for orders, customers, requests |
+| **Supabase** | The service that hosts your database (like a secure cloud spreadsheet) |
 | **GitHub** | Where your website's code lives — like Google Drive but for code |
 | **Cloudflare Pages** | The service that hosts and delivers your website to visitors worldwide |
+| **Edge Functions** | Small programs that run in the cloud to handle payments, emails, etc. |
 | **RLS (Row-Level Security)** | Security rules that ensure customers can only see their own data |
 | **Deploy** | Publishing a new version of the site so changes go live |
-| **TypeScript / React** | Programming languages used to build your site |
-| **CDN** | Content Delivery Network — servers worldwide that make your site load fast everywhere |
+| **Stripe** | The payment processor (like Square or PayPal, but better for online stores) |
+| **Resend** | The email service that sends order confirmation emails |
+| **Printful / Printify** | Print-on-demand partners that print and ship your orders automatically |
+| **CDN** | Content Delivery Network — servers worldwide that make your site load fast |
 | **published** | Product flag that makes it visible in the shop |
 | **featured** | Product flag that puts it on the homepage |
-| **custom_requests table** | Where custom garment form submissions are stored |
+| **custom_requests** | Where custom garment form submissions are stored |
+| **Admin Dashboard** | Your private management area at pournogravy.com/admin |
 
 ---
 

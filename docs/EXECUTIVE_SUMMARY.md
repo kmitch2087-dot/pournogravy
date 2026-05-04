@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** April 28, 2026
+**Last Updated:** April 29, 2026
 
 ---
 
@@ -29,8 +29,16 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Technology | What It Does |
 |-----------|-------------|
 | **Supabase** | Managed PostgreSQL database with built-in authentication, real-time support, and row-level security |
+| **Supabase Edge Functions** | Serverless backend code for payment processing, email, and order fulfillment |
 | **Row-Level Security (RLS)** | Every database table has security policies — customers can only see their own orders and cart |
 | **Guest + Auth Cart** | Shoppers can add to cart without creating an account; cart persists across sessions |
+| **Admin Role System** | Allowlist-based admin access with JWT auth; protected admin dashboard |
+
+### Payments & Email
+| Technology | What It Does |
+|-----------|-------------|
+| **Stripe** | Payment processing via Checkout Sessions and Webhooks (built and ready for activation) |
+| **Resend** | Transactional email — order confirmations and custom request notifications (built, pending API key) |
 
 ### Deployment & Hosting
 | Technology | What It Does |
@@ -38,12 +46,6 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | **Cloudflare Pages** | Global CDN hosting — site is served from data centers worldwide for near-instant load times |
 | **GitHub** | Version-controlled source code — every change is tracked, reversible, and auditable |
 | **pournogravy.com** | Custom domain with SSL (HTTPS) included |
-
-### Development Tooling
-| Technology | What It Does |
-|-----------|-------------|
-| **Lovable** | AI-assisted development platform used for rapid feature iteration |
-| **Vitest** | Automated test suite — catches regressions before they reach the live site |
 
 ---
 
@@ -61,13 +63,22 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - **Guest cart support** — no account required to shop; cart saved to browser session
 - **Quantity management** — add, update, remove items
 - **Order pipeline** — database-backed order records with status tracking (pending → paid → fulfilled)
+- **Stripe Checkout** — server-validated pricing, pending order creation, redirect to Stripe hosted checkout
 
 ### Customer Features
-- **Custom garment request form** — customers can request any design on a different garment (hoodie, tank, speedo, etc.); submissions go directly to the owner dashboard in Supabase
+- **Custom garment request form** — customers can request any design on a different garment; submissions go directly to the admin dashboard
 - **FAQ page** — addresses common questions about sizing, shipping, customs, and brand values
 - **About page** — brand story and mission
 - **Contact page** — direct customer communication channel
 - **Email newsletter capture** — homepage email collection for future marketing campaigns
+- **Order confirmation emails** — templated transactional email via Resend (pending activation)
+
+### Admin / Owner Dashboard
+- **Protected admin section** — login-gated, allowlist-based admin access (no customer can access)
+- **Orders view** — see all orders and their status in the admin UI
+- **Custom requests view** — see and manage custom garment submissions
+- **Product management** — product editing UI with image upload to Supabase Storage
+- **Site settings** — configurable site-wide settings
 
 ### Brand & Content
 - Humor-forward brand voice baked into every product page
@@ -75,14 +86,25 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - Smooth animations and transitions throughout
 - Consistent design system using the brand's color palette
 
-### Admin / Owner
-- Custom garment requests viewable in Supabase dashboard (no code required)
-- Product visibility controlled by `published` flag — add new products without them going live until ready
-- Featured products controlled independently of published status
+---
+
+## 4. Current Status (April 29, 2026)
+
+**Site is live at pournogravy.com.** The storefront, cart, and admin dashboard are fully functional. The following items are built and require final configuration before the site can accept real payments:
+
+| Item | Status | Action Needed |
+|------|--------|--------------|
+| Storefront | ✅ Live | None |
+| Admin Dashboard | ✅ Live | None |
+| Cart & order pipeline | ✅ Built | None |
+| Stripe payment processing | ⚠️ Built, needs secrets | Add Stripe API keys to Supabase |
+| Order confirmation emails | ⚠️ Built, needs API key | Add Resend API key to Supabase |
+| Fulfillment partner | ❌ Not selected | Choose Printful or Printify |
+| Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp |
 
 ---
 
-## 4. Business Model & Revenue Plan
+## 5. Business Model & Revenue Plan
 
 ### Current Revenue Model
 - **Direct-to-consumer e-commerce** — standard product sales at $27.99 per T-shirt
@@ -93,12 +115,10 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Item | Estimate |
 |------|---------|
 | Retail price | $27.99 |
-| Print-on-demand/manufacturing cost | ~$10–14 (depends on fulfillment partner) |
+| Print-on-demand cost | ~$10–14 (depends on fulfillment partner) |
 | Gross margin per unit | ~$14–18 (~50–64%) |
 | Payment processing (Stripe ~2.9% + $0.30) | ~$1.11 |
 | Net margin per unit | ~$13–17 |
-
-> *Note: Actual margins depend on the fulfillment partner selected. Print-on-demand (Printful, Printify) has lower margins but no inventory risk. Bulk inventory ordering improves margins significantly at volume.*
 
 ### Revenue Scenarios
 | Monthly Units Sold | Monthly Revenue | Monthly Net (est.) |
@@ -109,44 +129,44 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | 1,000 units | $27,990 | ~$14,000 |
 
 ### Growth Levers
-1. **Email list activation** — the homepage captures emails; a launch sequence (welcome, product spotlight, first-purchase discount) is a high-ROI first campaign
+1. **Email list activation** — homepage captures emails; a welcome sequence is a high-ROI first campaign
 2. **Social media / TikTok** — bartender content is highly shareable; the humor-forward brand voice is built for viral moments
-3. **Industry events** — bar industry tradeshows, cocktail competitions, restaurant expo; direct B2B sales to bar programs for staff uniforms
-4. **Custom orders** — the custom garment request system is already live; promoting this enables bulk and B2B revenue
-5. **Expanded catalog** — hoodie, hat, apron, and accessory lines using the same designs
+3. **Industry events** — bar tradeshows, cocktail competitions, restaurant expo; direct B2B sales
+4. **Custom orders** — the custom garment request system is live; promoting this enables bulk and B2B revenue
+5. **Expanded catalog** — hoodie, hat, apron, accessory lines using existing designs
 6. **Wholesale** — bar supply companies, cocktail bars, restaurant groups
 
 ---
 
-## 5. Future Suggested Roadmap
+## 6. Future Suggested Roadmap
 
-These features are not currently built but are recommended as natural next steps, prioritized by impact:
+### Phase 1 — Payment Activation (Next 1–2 weeks)
+- **Activate Stripe** — add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to Supabase edge function secrets
+- **Activate Resend** — add `RESEND_API_KEY`; verify sender domain (opie@pournogravy.com)
+- **Select fulfillment partner** — Printful or Printify; wire API key into stripe-webhook function
+- **Seed admin settings** — one SQL statement to enable admin settings page
+- **Email marketing** — connect captured emails to Klaviyo or Mailchimp
 
-### Phase 1 — Foundation (Next 30–60 days)
-- **Stripe payment integration** — currently the cart and order pipeline exist but payment processing is not wired up; this is the #1 priority before any advertising spend
-- **Fix Cloudflare build command** — set to `npm run build` (currently incorrect, preventing reliable deploys)
-- **Email marketing integration** — connect captured emails to Mailchimp/Klaviyo; set up a welcome sequence
-- **Fulfillment partner integration** — connect Printful or Printify to automate order fulfillment
-
-### Phase 2 — Growth (60–120 days)
-- **Admin dashboard** — a simple internal page for Opie to manage products, view orders, and respond to custom requests without touching Supabase directly
-- **SEO optimization** — meta tags, Open Graph images, sitemap, structured product data for Google Shopping
-- **Discount codes & promotions** — promo code support for launch campaigns and influencer partnerships
+### Phase 2 — Growth (30–60 days)
+- **SEO optimization** — meta tags, Open Graph images, sitemap, structured product data
+- **Discount codes** — promo code support for launch campaigns and influencer partnerships
 - **Product reviews** — social proof on product pages
+- **Cart merge** — guest → auth cart merging on login
 
-### Phase 3 — Scale (120+ days)
+### Phase 3 — Scale (60–120 days)
+- **Cloudflare Workers** — proxy Supabase API calls server-side for enhanced security
+- **Analytics** — privacy-friendly analytics (Cloudflare Web Analytics or Plausible)
 - **Subscription / loyalty program** — repeat-customer rewards
-- **Wholesale portal** — B2B ordering with tiered pricing for bar programs and restaurants
-- **International shipping** — expanded market via shipping zone configuration
-- **Mobile app** (optional) — if social commerce becomes a primary channel
+- **Wholesale portal** — B2B ordering with tiered pricing
+- **International shipping** — expanded shipping zone configuration
 
 ---
 
-## 6. Cost Analysis — Market Value vs. Actual Investment
+## 7. Cost Analysis — Market Value vs. Actual Investment
 
 *See `docs/COST_ANALYSIS.md` for the full breakdown.*
 
-**Summary:** The work delivered on this project would cost **$38,500–$92,000** at standard market rates for a freelancer or boutique agency. Aethyx delivered it for **$1,400 total** ($900 development fee + $500 software costs) as a portfolio-rate engagement.
+**Summary:** The work delivered on this project — including the full custom storefront, payment pipeline, serverless edge functions, admin dashboard, email system, and deployment infrastructure — would cost **$55,000–$140,000+** at standard market rates. Aethyx delivered it for **$1,400 total** as a portfolio-rate engagement.
 
 ---
 
