@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Trash2, ShoppingBag, Tag, X } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Tag, X, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const CartDrawer = () => {
@@ -10,9 +12,15 @@ const CartDrawer = () => {
     items, isOpen, closeCart, removeItem, updateQuantity,
     totalPrice, totalItems, appliedDiscount, applyDiscount, clearDiscount, discountedTotal,
   } = useCart();
+  const { user } = useAuth();
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
+
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;
@@ -22,6 +30,75 @@ const CartDrawer = () => {
     setPromoLoading(false);
     if (!result.valid) setPromoError(result.message);
     else setPromoInput("");
+  };
+
+  const startCheckout = async (email: string) => {
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    try {
+      const lineItems = items.map((item) => {
+        const variant = item.variantId
+          ? item.product.variants?.find((v) => v.id === item.variantId)
+          : undefined;
+        const color = item.colorId
+          ? item.product.colors?.find((c) => c.id === item.colorId)
+          : undefined;
+        const thumbnail =
+          (color?.imagesByFit?.[item.variantId ?? ""]?.[0]) ??
+          color?.images?.[0] ??
+          variant?.images?.[0] ??
+          item.product.image ??
+          item.product.images?.[0];
+        return {
+          slug: item.product.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          unit_price_cents: Math.round(item.product.price * 100),
+          size: item.size,
+          ...(variant ? { variant: variant.label } : {}),
+          ...(color ? { color: color.label } : {}),
+          ...(thumbnail ? { image: thumbnail } : {}),
+        };
+      });
+
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          items: lineItems,
+          email,
+          ...(appliedDiscount ? { discount_code: appliedDiscount.code } : {}),
+          successUrl: `${window.location.origin}/shop?success=1`,
+          cancelUrl: `${window.location.origin}/shop?canceled=1`,
+        },
+      });
+
+      if (error || !data?.url) {
+        setCheckoutError(data?.error ?? error?.message ?? "Checkout failed. Please try again.");
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (err) {
+      setCheckoutError("Something went wrong. Please try again.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleCheckout = () => {
+    setCheckoutError("");
+    if (user?.email) {
+      startCheckout(user.email);
+    } else {
+      setShowEmailPrompt(true);
+    }
+  };
+
+  const handleGuestCheckout = () => {
+    if (!guestEmail.trim() || !guestEmail.includes("@")) {
+      setCheckoutError("Please enter a valid email address.");
+      return;
+    }
+    startCheckout(guestEmail.trim());
   };
 
   return (
@@ -229,15 +306,50 @@ const CartDrawer = () => {
               <p className="text-[11px] text-muted-foreground">
                 Shipping and taxes calculated at checkout.
               </p>
-              <Button
-                className="w-full h-12 font-display tracking-widest text-base bg-[#fde047] text-black hover:bg-[#fde047]/90"
-                style={{ boxShadow: "0 0 20px rgba(253,224,71,0.3)" }}
-              >
-                CHECKOUT
-              </Button>
-              <p className="text-[10px] text-center text-muted-foreground">
-                Checkout is a demo — no real charges will be made.
-              </p>
+
+              {/* Guest email prompt */}
+              {showEmailPrompt && !user && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Enter your email to continue:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={guestEmail}
+                      onChange={(e) => { setGuestEmail(e.target.value); setCheckoutError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleGuestCheckout()}
+                      autoFocus
+                      className="flex-1 bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleGuestCheckout}
+                      disabled={checkoutLoading}
+                      className="shrink-0 bg-[#fde047] text-black hover:bg-[#fde047]/90"
+                    >
+                      {checkoutLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Go"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {checkoutError && (
+                <p className="text-xs text-destructive">{checkoutError}</p>
+              )}
+
+              {(!showEmailPrompt || user) && (
+                <Button
+                  className="w-full h-12 font-display tracking-widest text-base bg-[#fde047] text-black hover:bg-[#fde047]/90 disabled:opacity-60"
+                  style={{ boxShadow: "0 0 20px rgba(253,224,71,0.3)" }}
+                  onClick={handleCheckout}
+                  disabled={checkoutLoading}
+                >
+                  {checkoutLoading
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />REDIRECTING…</>
+                    : "CHECKOUT"
+                  }
+                </Button>
+              )}
             </div>
           </>
         )}
