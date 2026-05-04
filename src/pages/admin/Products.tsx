@@ -37,7 +37,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, inventory_count, status, is_active, image_url, category, featured")
+        .select("id, slug, name, price_cents, currency, status, is_active, image_url, category, featured")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -104,7 +104,6 @@ const Products = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
@@ -135,11 +134,6 @@ const Products = () => {
                   <TableCell className="text-muted-foreground text-sm">{p.category ?? "—"}</TableCell>
                   <TableCell className="text-right font-display tracking-wider">
                     {fmtMoney(p.price_cents, p.currency)}
-                  </TableCell>
-                  <TableCell className="text-right text-sm">
-                    <span className={p.inventory_count < 5 ? "text-destructive" : ""}>
-                      {p.inventory_count}
-                    </span>
                   </TableCell>
                   <TableCell>
                     <span className={statusClass(p.status)}>{p.status}</span>

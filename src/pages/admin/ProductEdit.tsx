@@ -36,7 +36,6 @@ const ProductEdit = () => {
     humor: "",
     category: "",
     price_dollars: "",
-    inventory_count: "0",
     status: "draft" as (typeof PRODUCT_STATUSES)[number],
     is_active: true,
     featured: false,
@@ -70,7 +69,6 @@ const ProductEdit = () => {
       humor: product.humor ?? "",
       category: product.category ?? "",
       price_dollars: (product.price_cents / 100).toFixed(2),
-      inventory_count: String(product.inventory_count),
       status: product.status as (typeof PRODUCT_STATUSES)[number],
       is_active: product.is_active,
       featured: product.featured,
@@ -116,7 +114,6 @@ const ProductEdit = () => {
       humor: form.humor || null,
       category: form.category || null,
       price_cents: Math.round(Number(form.price_dollars) * 100),
-      inventory_count: Number(form.inventory_count) || 0,
       status: form.status,
       is_active: form.is_active,
       featured: form.featured,
@@ -275,14 +272,6 @@ const ProductEdit = () => {
                   step="0.01"
                   value={form.price_dollars}
                   onChange={(e) => setForm({ ...form, price_dollars: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Inventory</Label>
-                <Input
-                  type="number"
-                  value={form.inventory_count}
-                  onChange={(e) => setForm({ ...form, inventory_count: e.target.value })}
                 />
               </div>
             </CardContent>

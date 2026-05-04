@@ -1,3 +1,1 @@
-# Cloudflare Pages SPA fallback — sends all non-asset paths to index.html
-# so React Router can handle client-side routing (product pages, cart, etc.)
-# SPA routing handled by wrangler.toml [assets] not_found_handling = "single-page-application"
+/* /index.html 200

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { ShoppingBag, DollarSign, MessageSquare, AlertTriangle, Loader2, TrendingUp, Clock } from "lucide-react";
+import { ShoppingBag, DollarSign, MessageSquare, Loader2, TrendingUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 const fmtMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -16,7 +16,7 @@ const Dashboard = () => {
       todayStart.setHours(0, 0, 0, 0);
       const todayIso = todayStart.toISOString();
 
-      const [ordersToday, pendingRequests, lowStock, allPaidOrders, pendingFulfillment] = await Promise.all([
+      const [ordersToday, pendingRequests, allPaidOrders, pendingFulfillment] = await Promise.all([
         supabase
           .from("orders")
           .select("id, total_cents")
@@ -25,11 +25,6 @@ const Dashboard = () => {
           .from("custom_requests")
           .select("id", { count: "exact", head: true })
           .in("status", ["new", "contacted", "quoted"]),
-        supabase
-          .from("products")
-          .select("id", { count: "exact", head: true })
-          .lt("inventory_count", 5)
-          .eq("is_active", true),
         supabase
           .from("orders")
           .select("total_cents")
@@ -44,7 +39,6 @@ const Dashboard = () => {
         ordersToday: ordersToday.data?.length ?? 0,
         revenueToday: (ordersToday.data ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0),
         pendingRequests: pendingRequests.count ?? 0,
-        lowStock: lowStock.count ?? 0,
         totalRevenue: (allPaidOrders.data ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0),
         pendingFulfillment: pendingFulfillment.count ?? 0,
       };
