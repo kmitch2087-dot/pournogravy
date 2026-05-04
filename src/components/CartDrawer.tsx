@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ShoppingBag, Tag, X, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const CartDrawer = () => {
   const {
@@ -13,6 +13,7 @@ const CartDrawer = () => {
     totalPrice, totalItems, appliedDiscount, applyDiscount, clearDiscount, discountedTotal,
   } = useCart();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -49,6 +50,9 @@ const CartDrawer = () => {
           variant?.images?.[0] ??
           item.product.image ??
           item.product.images?.[0];
+        const absoluteImage = thumbnail
+          ? thumbnail.startsWith("http") ? thumbnail : `${window.location.origin}${thumbnail}`
+          : undefined;
         return {
           slug: item.product.id,
           name: item.product.name,
@@ -57,7 +61,7 @@ const CartDrawer = () => {
           size: item.size,
           ...(variant ? { variant: variant.label } : {}),
           ...(color ? { color: color.label } : {}),
-          ...(thumbnail ? { image: thumbnail } : {}),
+          ...(absoluteImage ? { image: absoluteImage } : {}),
         };
       });
 
@@ -66,12 +70,10 @@ const CartDrawer = () => {
           items: lineItems,
           email,
           ...(appliedDiscount ? { discount_code: appliedDiscount.code } : {}),
-          successUrl: `${window.location.origin}/shop?success=1`,
-          cancelUrl: `${window.location.origin}/shop?canceled=1`,
         },
       });
 
-      if (error || !data?.url) {
+      if (error || !data?.clientSecret) {
         let msg = data?.error ?? "Checkout failed. Please try again.";
         if (error) {
           try {
@@ -85,7 +87,8 @@ const CartDrawer = () => {
         return;
       }
 
-      window.location.href = data.url;
+      closeCart();
+      navigate("/checkout", { state: { clientSecret: data.clientSecret, orderId: data.orderId } });
     } catch (err) {
       setCheckoutError("Something went wrong. Please try again.");
     } finally {

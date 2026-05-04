@@ -210,8 +210,8 @@ Deno.serve(async (req) => {
         },
       })),
       shipping_address_collection: { allowed_countries: ["US", "CA"] },
-      success_url: `${successUrl ?? `${origin}/shop?success=1`}&order=${order.id}`,
-      cancel_url: cancelUrl ?? `${origin}/shop?canceled=1`,
+      ui_mode: "embedded",
+      return_url: `${origin}/checkout/return?order=${order.id}&session_id={CHECKOUT_SESSION_ID}`,
       metadata: { order_id: order.id },
       ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
     });
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
       .update({ stripe_session_id: session.id })
       .eq("id", order.id);
 
-    return new Response(JSON.stringify({ url: session.url, orderId: order.id }), {
+    return new Response(JSON.stringify({ clientSecret: session.client_secret, orderId: order.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
