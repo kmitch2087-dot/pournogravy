@@ -1,6 +1,6 @@
 -- Seed products table from static product catalog.
 -- Safe to re-run: ON CONFLICT updates price/status/name.
--- status='published' → visible to checkout; status='draft' → checkout rejects.
+-- status='published' → visible to checkout; status='published' → checkout rejects.
 
 insert into public.products (slug, name, description, price_cents, image_url, category, is_active, featured, status, sizes)
 values
@@ -13,7 +13,7 @@ values
     'industry-truths',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -37,7 +37,7 @@ values
     'customer-horror',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -85,7 +85,7 @@ values
     'salty-bartender',
     true,
     true,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -97,7 +97,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -121,7 +121,7 @@ values
     'salty-bartender',
     true,
     true,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -133,7 +133,7 @@ values
     'industry-truths',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -145,7 +145,7 @@ values
     'industry-truths',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -157,7 +157,7 @@ values
     'industry-truths',
     true,
     false,
-    'draft',
+    'published',
     array['S','M','L','XL','2XL','3XL']
   ),
   (
@@ -169,7 +169,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -181,7 +181,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -205,7 +205,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -217,7 +217,7 @@ values
     'customer-horror',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -229,7 +229,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -241,7 +241,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -253,7 +253,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -265,7 +265,7 @@ values
     'salty-bartender',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -277,7 +277,7 @@ values
     'customer-horror',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   ),
   (
@@ -289,7 +289,7 @@ values
     'customer-horror',
     true,
     false,
-    'draft',
+    'published',
     array['XS','S','M','L','XL','2XL','3XL']
   )
 on conflict (slug) do update set
