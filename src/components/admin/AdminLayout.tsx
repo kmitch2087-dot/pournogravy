@@ -16,9 +16,12 @@ import {
   Moon,
   Sun,
   ExternalLink,
+  BookOpen,
+  HelpCircle,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { HelpPanel } from "./HelpPanel";
 
 const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -27,6 +30,7 @@ const navItems = [
   { to: "/admin/custom-requests", label: "Custom Requests", icon: MessageSquare, end: false },
   { to: "/admin/reviews", label: "Reviews", icon: Star, end: false },
   { to: "/admin/settings", label: "Settings", icon: Settings, end: false },
+  { to: "/admin/manual", label: "Admin User Manual", icon: BookOpen, end: false },
 ];
 
 const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
@@ -74,6 +78,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -127,6 +132,14 @@ const AdminLayout = () => {
                 <Moon className="h-4 w-4" />
               )}
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHelpOpen(true)}
+              title="Quick reference manual"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">
               {user?.email}
             </span>
@@ -140,6 +153,8 @@ const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

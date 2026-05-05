@@ -110,7 +110,7 @@ const Index = () => {
           dot indicators below pauses the rotation, so a customer reading a
           shirt blurb still moves on without having to look away. */}
       <section
-        className="relative min-h-[55vh] sm:min-h-[90vh] overflow-hidden noise-overlay"
+        className="relative min-h-[90vh] overflow-hidden noise-overlay"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -134,7 +134,7 @@ const Index = () => {
                   <img
                     src="/hero-bg.jpg"
                     alt=""
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain sm:object-cover"
                     loading="eager"
                     decoding="async"
                   />

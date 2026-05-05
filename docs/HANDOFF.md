@@ -498,3 +498,31 @@ Hero carousel only shows products that are both in `HERO_PRODUCT_IDS` (in `Index
 ---
 
 *Maintained by Aethyx. Update Change Log and Known Issues at end of each session.*
+
+## Session 3 Updates — May 4, 2026
+
+### Checkout Architecture — CHANGED
+Stripe Checkout Sessions (hosted redirect) replaced with Stripe Payment Element (embedded, stay on site).
+
+**New flow:** CartDrawer → `create-checkout` edge function → returns `clientSecret` (PaymentIntent) → `/checkout` page renders branded Payment Element → on success → `/checkout/return` clears cart and shows confirmation.
+
+**New files:**
+- `src/pages/Checkout.tsx` — branded checkout page with shipping form + Stripe Payment Element
+- `src/pages/CheckoutReturn.tsx` — post-payment success screen
+
+**Updated files:**
+- `supabase/functions/create-checkout/index.ts` — now creates PaymentIntent instead of Checkout Session
+- `supabase/functions/stripe-webhook/index.ts` — handles both `payment_intent.succeeded` and `checkout.session.completed`
+- `src/components/CartDrawer.tsx` — navigates to /checkout with clientSecret in route state
+
+**New env var:** `VITE_STRIPE_PUBLISHABLE_KEY` (live key, committed to `.env.production`)
+
+**Stripe webhook:** Custom endpoint at `https://emtjkawcmsfgjyimnncf.supabase.co/functions/v1/stripe-webhook` listening for `payment_intent.succeeded`. Separate from Supabase's own Stripe Sync Engine webhook (leave that one alone).
+
+**Webhook secret name in Supabase:** `STRIPE_WEBHOOK_SIGNING_SECRET` (NOT `STRIPE_WEBHOOK_SECRET`)
+
+### Products Table Seeded
+Migration `20260504000003_seed_products.sql` applied to live Supabase. All 24 products seeded with `status='published'` and `is_active=true`.
+
+### Phase 2 — All Features Confirmed Built
+Discount codes, product reviews, cart merge on login, admin dashboard stats, SEO — all built and live.

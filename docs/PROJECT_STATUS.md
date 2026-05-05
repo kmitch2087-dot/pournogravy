@@ -202,3 +202,5 @@ Build settings for `pournogravydev`:
 ---
 
 *Update the Session Log and Backlog at the end of every session.*
+| May 4, 2026 (Session 3) | Phase 2 audit — all 4 prompts already built in code. Stripe checkout debugged and working. Switched from Stripe hosted checkout to embedded Payment Element (stay on site). Seeded products table. Deployed edge functions via Supabase CLI. Webhook configured for payment_intent.succeeded. Live Stripe key added to .env.production. | **Checkout live — real payments processing on pournogravy.com** | Verify orders flip to paid in DB. Confirm Resend emails sending. Add fulfillment partner. Phase 3. |
+| May 5, 2026 (Session 4) | Hero bg image fix: object-contain on mobile (no more zoomed crop), navbar clearance fix (top-16). Claude Code integrated User Manual into admin dashboard — new /admin/manual page + HelpPanel (? button in header). All changes uncommitted pending push. | Hero fix committed, User Manual in admin | Push changes, verify mobile hero deploy, decide test vs live Stripe keys |
