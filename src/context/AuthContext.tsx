@@ -14,9 +14,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
-  loading: boolean;       // true until we know whether a session exists
-  profileLoading: boolean;  // true while fetching profile row
-  profileFetched: boolean;  // true after first fetch attempt completes (success or fail)
+  loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -25,21 +23,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession]           = useState<Session | null>(null);
-  const [user, setUser]                 = useState<User | null>(null);
-  const [profile, setProfile]           = useState<Profile | null>(null);
-  const [loading, setLoading]           = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileFetched, setProfileFetched] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Guard against calling fetchProfile twice for the same user
+  // Prevents duplicate in-flight fetches for the same user
   const fetchingForRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    if (fetchingForRef.current === userId) return; // already in-flight for this user
+    if (fetchingForRef.current === userId) return;
     fetchingForRef.current = userId;
-    setProfileLoading(true);
-
     try {
       const timeoutPromise = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error("profile fetch timeout")), 6000),
@@ -62,8 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       console.error("[fetchProfile] failed or timed out:", err);
     } finally {
-      setProfileLoading(false);
-      setProfileFetched(true);
+      // loading clears here — after the profile is settled (or timed out).
+      // ProtectedRoute only needs this single gate; no profileFetched needed.
+      setLoading(false);
       fetchingForRef.current = null;
     }
   };
@@ -71,8 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange handles FUTURE auth events (login, logout, token refresh).
-    // We do NOT rely on it for the initial session — getSession handles that below.
+    // onAuthStateChange handles future events (login, logout, token refresh).
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -80,17 +74,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        setLoading(false);
+        setLoading(true); // hold the gate until fetchProfile clears it
         fetchProfile(newSession.user.id);
       } else {
         setProfile(null);
-        setProfileFetched(false);
         fetchingForRef.current = null;
         setLoading(false);
       }
     });
 
-    // Resolve the initial session directly — never wait on INITIAL_SESSION event,
+    // Resolve the initial session directly — don't rely on INITIAL_SESSION event,
     // which is unreliable across Supabase JS versions.
     supabase.auth
       .getSession()
@@ -99,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (existing?.user) {
           setSession(existing);
           setUser(existing.user);
-          setLoading(false);
+          // loading stays true; fetchProfile will clear it in finally
           fetchProfile(existing.user.id);
         } else {
           setLoading(false);
@@ -131,7 +124,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
-    setProfileFetched(false);
   };
 
   return (
@@ -142,8 +134,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         isAdmin: !!profile?.is_admin,
         loading,
-        profileLoading,
-        profileFetched,
         signIn,
         signUp,
         signOut,

@@ -7,34 +7,21 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
 }
 
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="h-8 w-8 animate-spin text-[#fde047]" />
+  </div>
+);
+
 const ProtectedRoute = ({ children, requireAdmin = true }: ProtectedRouteProps) => {
-  const { user, isAdmin, loading, profileLoading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
 
-  // Phase 1 — auth state genuinely unknown (cold load, no user yet)
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-[#fde047]" />
-      </div>
-    );
-  }
+  // loading stays true until both session AND profile are resolved (or timed out)
+  if (loading) return <Spinner />;
 
-  // Auth resolved, no user → send to login
-  if (!user) {
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
-  }
+  if (!user) return <Navigate to="/admin/login" state={{ from: location }} replace />;
 
-  // Phase 2 — user confirmed, waiting for profile/isAdmin to resolve
-  if (requireAdmin && profileLoading && !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-[#fde047]" />
-      </div>
-    );
-  }
-
-  // Profile resolved, user is not admin
   if (requireAdmin && !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">

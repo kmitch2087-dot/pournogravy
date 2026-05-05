@@ -130,11 +130,11 @@ const Index = () => {
                 aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
                 aria-hidden={!active}
               >
-                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20">
+                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20 flex items-start justify-center pt-3 sm:pt-0 sm:block">
                   <img
                     src="/hero-bg.jpg"
                     alt=""
-                    className="w-full h-full object-contain sm:object-cover"
+                    className="max-h-full max-w-full object-contain sm:w-full sm:h-full sm:object-cover sm:object-[center_15%] scale-[0.96] sm:scale-100"
                     loading="eager"
                     decoding="async"
                   />
