@@ -110,7 +110,7 @@ const Index = () => {
           dot indicators below pauses the rotation, so a customer reading a
           shirt blurb still moves on without having to look away. */}
       <section
-        className="relative min-h-[90vh] overflow-hidden noise-overlay"
+        className="relative min-h-[90vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
