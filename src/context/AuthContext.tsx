@@ -15,6 +15,7 @@ interface AuthContextType {
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
+  profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -26,7 +27,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);       // true until we know if a user exists
+  const [profileLoading, setProfileLoading] = useState(false); // true while fetching profile
+
+  const fetchProfile = async (userId: string) => {
+    setProfileLoading(true);
+    try {
+      // Race the Supabase query against a 6-second timeout so a slow/hanging
+      // network call never leaves the admin dashboard in an infinite spinner.
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("profile fetch timeout")), 6000),
+      );
+
+      const queryPromise = supabase
+        .from("profiles")
+        .select("id, email, display_name, is_admin")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+
+      if (result && "data" in result) {
+        if (result.error) {
+          console.error("[fetchProfile] query error:", result.error);
+        } else {
+          setProfile(result.data);
+        }
+      }
+    } catch (err) {
+      console.error("[fetchProfile] failed or timed out:", err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST (per Supabase guidance)
@@ -36,11 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        // Keep loading=true until profile resolves so ProtectedRoute never
-        // flashes "NOT ON THE LIST" before is_admin is known.
-        setLoading(true);
+        setLoading(false); // we know a user exists — unblock ProtectedRoute immediately
         setTimeout(() => {
-          fetchProfile(newSession.user.id).finally(() => setLoading(false));
+          fetchProfile(newSession.user.id);
         }, 0);
       } else {
         setProfile(null);
@@ -49,28 +80,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     // Then check existing session — onAuthStateChange fires for this too,
-    // so we only need to handle the no-user case to clear the loading flag.
-    supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      if (!existing?.user) {
-        setLoading(false);
-      }
-    }).catch(() => setLoading(false));
+    // so we only clear loading here if there's no user.
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: existing } }) => {
+        if (!existing?.user) {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, email, display_name, is_admin")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error) {
-      console.error("[fetchProfile]", error);
-      return;
-    }
-    setProfile(data);
-  };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -100,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         isAdmin: !!profile?.is_admin,
         loading,
+        profileLoading,
         signIn,
         signUp,
         signOut,

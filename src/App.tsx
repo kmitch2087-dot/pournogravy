@@ -34,6 +34,7 @@ import Reviews from "./pages/admin/Reviews";
 import Settings from "./pages/admin/Settings";
 import UserManual from "./pages/admin/UserManual";
 import ProjectStatus from "./pages/admin/ProjectStatus";
+import Inbox from "./pages/admin/Inbox";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ const App = () => (
                   <Route path="settings" element={<Settings />} />
                   <Route path="manual" element={<UserManual />} />
                   <Route path="project-status" element={<ProjectStatus />} />
+                  <Route path="inbox" element={<Inbox />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
