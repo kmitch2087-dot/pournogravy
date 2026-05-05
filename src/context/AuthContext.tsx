@@ -69,13 +69,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // onAuthStateChange handles future events (login, logout, token refresh).
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        setLoading(true); // hold the gate until fetchProfile clears it
-        fetchProfile(newSession.user.id);
+        // Only block the UI and re-fetch the profile on actual sign-in or
+        // first load. TOKEN_REFRESHED just swaps the session tokens — the
+        // profile (is_admin) hasn't changed, so no spinner needed.
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          setLoading(true);
+          fetchProfile(newSession.user.id);
+        }
       } else {
         setProfile(null);
         fetchingForRef.current = null;
