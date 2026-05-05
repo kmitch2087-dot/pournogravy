@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!existing?.user) {
         setLoading(false);
       }
-    });
+    }).catch(() => setLoading(false));
 
     return () => subscription.unsubscribe();
   }, []);

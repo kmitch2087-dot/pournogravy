@@ -51,13 +51,19 @@ const Account = () => {
     };
   }, [user]);
 
-  if (loading || !user) {
+  // Spinner only while auth state is genuinely unknown (both loading AND no user).
+  // If we already have a user, render the page even if the profile is still fetching —
+  // display_name falls back to email prefix gracefully.
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-[#fde047]" />
       </div>
     );
   }
+
+  // Auth resolved, no user — redirect effect will fire. Render nothing in the meantime.
+  if (!user) return null;
 
   const fmt = (cents: number, currency: string) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
