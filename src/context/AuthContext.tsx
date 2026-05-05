@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,8 +14,9 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
-  loading: boolean;
-  profileLoading: boolean;
+  loading: boolean;       // true until we know whether a session exists
+  profileLoading: boolean;  // true while fetching profile row
+  profileFetched: boolean;  // true after first fetch attempt completes (success or fail)
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -24,21 +25,25 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);       // true until we know if a user exists
-  const [profileLoading, setProfileLoading] = useState(false); // true while fetching profile
+  const [session, setSession]           = useState<Session | null>(null);
+  const [user, setUser]                 = useState<User | null>(null);
+  const [profile, setProfile]           = useState<Profile | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileFetched, setProfileFetched] = useState(false);
+
+  // Guard against calling fetchProfile twice for the same user
+  const fetchingForRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
+    if (fetchingForRef.current === userId) return; // already in-flight for this user
+    fetchingForRef.current = userId;
     setProfileLoading(true);
+
     try {
-      // Race the Supabase query against a 6-second timeout so a slow/hanging
-      // network call never leaves the admin dashboard in an infinite spinner.
       const timeoutPromise = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error("profile fetch timeout")), 6000),
       );
-
       const queryPromise = supabase
         .from("profiles")
         .select("id, email, display_name, is_admin")
@@ -58,39 +63,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("[fetchProfile] failed or timed out:", err);
     } finally {
       setProfileLoading(false);
+      setProfileFetched(true);
+      fetchingForRef.current = null;
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST (per Supabase guidance)
+    let mounted = true;
+
+    // onAuthStateChange handles FUTURE auth events (login, logout, token refresh).
+    // We do NOT rely on it for the initial session — getSession handles that below.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        setLoading(false); // we know a user exists — unblock ProtectedRoute immediately
-        setTimeout(() => {
-          fetchProfile(newSession.user.id);
-        }, 0);
+        setLoading(false);
+        fetchProfile(newSession.user.id);
       } else {
         setProfile(null);
+        setProfileFetched(false);
+        fetchingForRef.current = null;
         setLoading(false);
       }
     });
 
-    // Then check existing session — onAuthStateChange fires for this too,
-    // so we only clear loading here if there's no user.
+    // Resolve the initial session directly — never wait on INITIAL_SESSION event,
+    // which is unreliable across Supabase JS versions.
     supabase.auth
       .getSession()
       .then(({ data: { session: existing } }) => {
-        if (!existing?.user) {
+        if (!mounted) return;
+        if (existing?.user) {
+          setSession(existing);
+          setUser(existing.user);
+          setLoading(false);
+          fetchProfile(existing.user.id);
+        } else {
           setLoading(false);
         }
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (mounted) setLoading(false); });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -111,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileFetched(false);
   };
 
   return (
@@ -122,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin: !!profile?.is_admin,
         loading,
         profileLoading,
+        profileFetched,
         signIn,
         signUp,
         signOut,
