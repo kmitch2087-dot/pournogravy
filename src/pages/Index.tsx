@@ -130,11 +130,11 @@ const Index = () => {
                 aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
                 aria-hidden={!active}
               >
-                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20 flex items-start justify-center pt-3 sm:pt-0 sm:block">
+                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20">
                   <img
                     src="/hero-bg.jpg"
                     alt=""
-                    className="max-h-full max-w-full object-contain sm:w-full sm:h-full sm:object-cover sm:object-[center_15%] scale-[0.96] sm:scale-100"
+                    className="w-full h-full object-cover object-top sm:object-contain sm:object-top"
                     loading="eager"
                     decoding="async"
                   />
@@ -160,16 +160,6 @@ const Index = () => {
                           SOME SHIT.
                         </h1>
                       </motion.div>
-
-                      <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={active ? { opacity: 1 } : { opacity: 0 }}
-                        transition={{ delay: 0.6, duration: 0.6 }}
-                        className="text-sm md:text-base tracking-widest uppercase mb-8 mt-4 font-display text-[#fde047]"
-                        style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
-                      >
-                        Saving My Bar From the Socially Stupid, One Karen at a Time.
-                      </motion.p>
 
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
