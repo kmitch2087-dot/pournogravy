@@ -1,206 +1,193 @@
-# Pournogravy — Project Status (Kristin's Internal Tracker)
-**Last Updated:** April 29, 2026
-**Updated by:** Kristin Mitchell — Aethyx
+# Pournogravy — Project Status
+**Maintained by:** Kristin Mitchell — Aethyx  
+**Live Site:** [pournogravy.com](https://pournogravy.com)  
+**Repository:** [kmitch2087-dot/pournogravy](https://github.com/kmitch2087-dot/pournogravy)
 
-> This doc is for Kristin only. Update it at the end of every session. It is the source of truth for what's done, what's in progress, and what's next.
+> **Note on dates:** This project is built using multiple AI-assisted development tools (Lovable, Claude Code, Claude Cowork, and others). Entries in this log reflect updates recognized and logged by those systems — not necessarily the literal date the work was performed. Development often happens across tools simultaneously; the log captures progress milestones, not calendar hours.
 
 ---
 
 ## Current Phase
-**Phase:** Post-launch (soft) / Active Build — Session 2 Complete
-**Status:** Site is live at pournogravy.com. Black screen bug FIXED. Auth race condition FIXED. Admin login root cause IDENTIFIED (needs one SQL fix tomorrow). Stripe still not wired up.
+**Phase:** Post-launch (soft) — Active Build  
+**Status:** Site is live. Real payment processing active. Admin dashboard fully operational with user manual, orders, reviews, discount codes, and direct contact to Kristin. Fulfillment partner selection pending.
 
 ---
 
-## ✅ Completed Milestones
+## Session Log (Latest First)
 
-### Infrastructure
-- [x] GitHub repo created (`kmitch2087-dot/pournogravy`, master branch)
+| Date | Summary | Completed | Next Up |
+|------|---------|-----------|---------|
+| May 5, 2026 | Hero mobile fix — `object-contain` so background image shows full on mobile; navbar clearance (`top-16`). Claude Code integrated User Manual into admin dashboard (`/admin/manual`), added HelpPanel (? button in header), ContactKristinModal, and `admin-contact` edge function so Opie can message Kristin directly from the dashboard. Project Status page added as admin tab with Notify Opie button. | Hero fix, User Manual in admin, Contact Kristin modal, Project Status admin tab | Push pending changes, verify mobile hero on live site, select fulfillment partner |
+| May 4, 2026 | Phase 2 audit — all prompts already built in code. Stripe checkout debugged and live. Migrated from Stripe hosted redirect to embedded Payment Element (stays on site). Seeded products table (was empty, causing all checkout attempts to fail). Deployed all edge functions via Supabase CLI. Configured `payment_intent.succeeded` webhook. Added live Stripe publishable key to `.env.production`. Verified all secrets set in Supabase. | **Real payments processing on pournogravy.com.** Checkout end-to-end working. Secrets confirmed. | Verify orders flip to 'paid' in DB. Confirm Resend confirmation emails. Select fulfillment partner. |
+| April 29, 2026 | Fixed black screen bug (missing `.env.production`). Fixed auth race condition (ProtectedRoute seeing `isAdmin=false` before profile loaded). Identified and fixed admin REVOKE bug. Full code audit — documented all bugs, dead code, missing infra. Updated all docs. Created Phase 2/3 Lovable prompts. Created 3-day developer curriculum (saved to Desktop). | Black screen fixed, auth fixed, GRANT EXECUTE applied, full docs suite created, curriculum created | Stripe secrets, Resend key, seed tables, Storage bucket |
+| April 28, 2026 | Initial setup session. Diagnosed CF Pages build command issue. Connected GitHub → Cloudflare Pages (`pournogravydev`). Created full documentation suite. | CF deployment pipeline connected, docs created | Fix CF build command, start Stripe wiring |
+
+---
+
+## ✅ Completed — Full Feature Inventory
+
+### Infrastructure & Deployment
+- [x] GitHub repo (`kmitch2087-dot/pournogravy`, master branch)
 - [x] Cloudflare Pages connected to GitHub (project: `pournogravydev`)
-- [x] pournogravy.com domain configured
-- [x] SSL/HTTPS active
-- [x] Supabase project created and connected
-- [x] `.env.production` committed — guarantees Vite reads Supabase vars at CF Pages build time
-- [x] `wrangler.toml` SPA routing config (`not_found_handling = "single-page-application"`)
+- [x] `pournogravy.com` domain + SSL active
+- [x] SPA routing via `wrangler.toml` (`not_found_handling = "single-page-application"`)
+- [x] `.env.production` committed — Vite bakes Supabase vars into CF Pages build at compile time
+- [x] All Supabase Edge Function secrets set (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`, `RESEND_API_KEY`)
+- [x] `VITE_STRIPE_PUBLISHABLE_KEY` added to `.env.production`
 
-### Database
-- [x] Migration 001 — products, cart_items, orders, order_items tables + RLS
-- [x] Migration 002 — custom_requests table + RLS
-- [x] Migration 003 — `is_admin()` SECURITY DEFINER function + profiles table + RLS
-- [x] Migration 004 — admin_allowlist table seeded (kmitch2087@gmail.com, kristinmitchell@aethyx.space, aopie91@gmail.com)
-- [x] `handle_new_user` trigger updated to consult allowlist instead of hardcoded emails
-- [x] Row-Level Security policies on all tables
-- [x] `set_updated_at` trigger function
-
-### Frontend — Pages
-- [x] Homepage (hero carousel, featured products, email capture, rotating quotes)
-- [x] Shop page (full catalog, published filter)
-- [x] Product detail page (variants, colors, gallery, cart add, custom request modal)
-- [x] Collections page
-- [x] About page
-- [x] Contact page
-- [x] FAQ page
-- [x] 404 page
-- [x] Admin Dashboard
-- [x] Admin Settings page
-- [x] Admin Product Edit page
-- [x] Admin Login page
-
-### Frontend — Components
-- [x] Navbar with cart icon and count
-- [x] Cart drawer (right slide-out)
-- [x] Product card (image, name, price, humor)
-- [x] Custom garment request modal
-- [x] Footer
-- [x] ProtectedRoute (admin gate)
-- [x] AdminLayout
-
-### Product Data
-- [x] Product data structure (variants, colors, images, humor, badAdvice)
-- [x] Men's / Women's fit variants on all products
-- [x] Black / Cream color options on all products
-- [x] Humor-forward copy on all products
-- [x] Published + featured flags
-- [x] `useMergedProducts()` hook (merges static + DB products, DB takes precedence by slug)
-
-### Cart
-- [x] Guest cart (session_id based)
-- [x] Auth cart (user_id based)
-- [x] Cart context with add/remove/update
-- [x] Cart persists across sessions
+### Database (Supabase)
+- [x] `products` table + RLS
+- [x] `cart_items` table + RLS (guest session_id + auth user_id)
+- [x] `orders` + `order_items` tables + RLS
+- [x] `custom_requests` table + RLS
+- [x] `profiles` table + `is_admin` flag
+- [x] `admin_allowlist` — seeded with kmitch2087@gmail.com, kristinmitchell@aethyx.space, aopie91@gmail.com
+- [x] `settings` table — seeded with `id=1` row
+- [x] `email_templates` table
+- [x] `printer_queue` table (written by stripe-webhook on payment)
+- [x] `product_reviews` table + RLS (migration 20260504000001)
+- [x] `discount_codes` table + RLS (migration 20260504000002)
+- [x] Products seeded into DB (all 24 products, migration 20260504000003)
+- [x] `is_admin()` SECURITY DEFINER function + GRANT EXECUTE fix applied
+- [x] `handle_new_user` trigger — auto-creates profile, checks allowlist for is_admin
+- [x] `set_updated_at` trigger on all relevant tables
+- [x] Row-Level Security on every table
 
 ### Edge Functions (Supabase)
-- [x] `create-checkout` — Stripe Checkout session creator (server-side price validation)
-- [x] `stripe-webhook` — handles checkout.session.completed, marks order paid, queues notification
+- [x] `create-checkout` — creates Stripe PaymentIntent, server-side price + discount validation, returns `clientSecret`
+- [x] `stripe-webhook` — handles `payment_intent.succeeded` + `checkout.session.completed`, marks order paid, queues printer_queue entry
 - [x] `send-notification` — Resend-backed email dispatch with template system
-- [x] `verify-email` — public endpoint, disposable domain blocklist, MX lookup via Cloudflare DNS
+- [x] `verify-email` — syntax check, disposable domain blocklist, MX lookup via Cloudflare DNS
+- [x] `validate-discount` — validates promo codes against cart total (does NOT increment use_count until checkout)
+- [x] `admin-contact` — admin-only; Opie sends a message to Kristin directly from the dashboard; branded email with reply-to
+- [x] `notify-project-status` — sends project update email to Opie (aopie91@gmail.com); once-a-day rate limit
 
-### Auth & Session
-- [x] AuthContext with onAuthStateChange listener
-- [x] Race condition FIX — `setLoading(true)` before fetchProfile, cleared in `.finally()`
-- [x] ProtectedRoute correctly waits on `loading` before evaluating `isAdmin`
+### Frontend — Public Pages
+- [x] Homepage (hero carousel, INTRO_HOLD_MS intro image, glass card overlay, featured products, email capture, rotating quotes)
+- [x] Shop (full catalog, published filter, sort)
+- [x] Product detail (variants, colors, gallery, cart add, custom request modal, reviews display)
+- [x] Collections
+- [x] About
+- [x] Contact
+- [x] FAQ
+- [x] 404
+- [x] `/proposal` — Founding Client Offer page (wholesale/partnership pitch)
+
+### Frontend — Admin Dashboard (`/admin`)
+- [x] Admin Login
+- [x] Dashboard (overview)
+- [x] Products (list + edit)
+- [x] Orders (real DB data, status management)
+- [x] Custom Requests
+- [x] Reviews (approval queue)
+- [x] Settings
+- [x] User Manual (`/admin/manual` — full operational guide for Opie)
+- [x] **Project Status (`/admin/project-status` — this page; Notify Opie button)**
+- [x] HelpPanel (? button in header — quick-reference slide-out)
+- [x] ContactKristinModal — Opie can message Kristin directly; sends branded email
+
+### Frontend — Components
+- [x] Navbar (cart icon + count, responsive)
+- [x] Cart drawer (right slide-out, guest + auth, discount code field)
+- [x] Product card
+- [x] Custom garment request modal
+- [x] Footer
+- [x] ProtectedRoute (admin gate with loading wait)
+- [x] AdminLayout with mobile sidebar
+- [x] SEO component (`react-helmet-async`) — applied to all 8 public pages
+- [x] `og-default.jpg` Open Graph image
+- [x] `sitemap.xml` + `robots.txt` in `public/`
+
+### Auth & Cart
+- [x] AuthContext — onAuthStateChange listener + race condition fix
+- [x] Guest cart (session_id) + Auth cart (user_id)
+- [x] Cart context (add / remove / update quantity / apply discount)
+- [x] `useMergedProducts()` — merges static + DB products; DB takes precedence by slug
+
+### Payments
+- [x] Stripe embedded Payment Element (stays on site, no redirect)
+- [x] `Checkout.tsx` — branded dark/yellow page with Stripe Payment Element
+- [x] `CheckoutReturn.tsx` — order confirmed screen, clears cart
+- [x] Guest email capture at checkout
+- [x] Discount code validation at checkout (server-side via `validate-discount`)
+
+### SEO & Discoverability
+- [x] Page titles, meta descriptions, Open Graph tags on all public pages
+- [x] `sitemap.xml` (all public routes)
+- [x] `robots.txt` with sitemap reference
 
 ### Documentation
-- [x] CLAUDE.md — session instructions and reminders
-- [x] docs/EXECUTIVE_SUMMARY.md
-- [x] docs/USER_MANUAL.md
-- [x] docs/HANDOFF.md
-- [x] docs/PROJECT_STATUS.md
-- [x] docs/COST_ANALYSIS.md
+- [x] `CLAUDE.md` — session instructions (project + global)
+- [x] `docs/EXECUTIVE_SUMMARY.md` — client/investor-facing overview
+- [x] `docs/USER_MANUAL.md` — Opie's operational guide
+- [x] `docs/HANDOFF.md` — full technical dev handoff
+- [x] `docs/PROJECT_STATUS.md` — this file
+- [x] `docs/COST_ANALYSIS.md` — market rate vs. actual cost
+- [x] `docs/LOVABLE_PHASE2_PHASE3.md` — Phase 2/3 Lovable prompt scripts
+- [x] 3-day developer curriculum (`~/Desktop/PG_Dev_Curriculum/`) — Day 1 (Web/DNS/Vite), Day 2 (Auth/DB/Security), Day 3 (Payments/Email/Deploy) + Quiz
 
 ---
 
-## 🔴 FIRST THING TOMORROW — CRITICAL SQL FIX
+## 📋 Remaining Backlog
 
-Before touching ANYTHING else, run this in the Supabase SQL Editor:
+### 🔴 Before Real Customer Orders
 
-```sql
-GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated;
-```
+- [ ] Select fulfillment partner (Printful or Printify) and wire API key into `stripe-webhook`
+- [ ] Verify `opie@pournogravy.com` confirmed as sender domain in Resend (Resend → Domains)
+- [ ] Seed `email_templates` — insert `order_confirmation` + `custom_request` rows
+- [ ] Create Supabase Storage `products` bucket with public read (ProductEdit image upload needs it)
+- [ ] Switch Stripe to test mode for QA, then back to live before launch
 
-**Why:** Migration `20260428153423` ran `REVOKE ALL ON FUNCTION public.is_admin(uuid)`. The profiles SELECT RLS policy calls `is_admin()` — when that call fails, `fetchProfile` returns nothing, `isAdmin` stays false, and admin login appears broken even though `is_admin = true` in the DB.
+### 🟡 Code Hygiene (Won't Break Anything, But Should Be Done)
 
-**How to get there:** supabase.com → Project: Pournogravy → SQL Editor → paste + run.
-
----
-
-## 🔄 In Progress / This Session
-
-| Task | Priority | Status | Notes |
-|------|---------|--------|-------|
-| Black screen bug (missing env vars) | 🔴 Critical | ✅ FIXED | Committed `.env.production`; push `7891e59` deployed |
-| Auth race condition ("NOT ON THE LIST") | 🔴 Critical | ✅ FIXED | `setLoading(true)` in onAuthStateChange before fetchProfile |
-| Admin REVOKE bug | 🔴 Critical | ⚠️ IDENTIFIED | Needs SQL fix above — NOT yet applied |
-| Update all project docs | 🟡 Medium | ✅ DONE | This session |
-| Phase 2 & 3 Lovable prompts | 🟡 Medium | ✅ DONE | See `docs/LOVABLE_PHASE2_PHASE3.md` |
-| 3-day developer curriculum | 🟡 Medium | ✅ DONE | See `~/Desktop/PG_Dev_Curriculum/` |
-
----
-
-## 📋 Backlog (Prioritized)
-
-### 🔴 Must-Do Before ANY Marketing
-
-1. **Run GRANT EXECUTE SQL fix** (admin login broken until this is done)
-2. **Stripe secrets** — add `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` to Supabase Edge Function secrets (Dashboard → Edge Functions → Secrets)
-3. **Resend API key** — add `RESEND_API_KEY` to Supabase Edge Function secrets; verify `opie@pournogravy.com` as a sender domain in Resend
-4. **Stripe integration** — endpoint wiring is built; secrets just need to be set
-5. **Fulfillment partner** — select Printful or Printify; wire API key into stripe-webhook edge function
-6. **Seed settings table** — run: `INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING;` (Admin Settings page breaks without row id=1)
-7. **Seed email_templates table** — insert order confirmation + custom request templates (send-notification function needs these)
-8. **Supabase Storage bucket** — create `products` bucket with public read in Supabase Storage (ProductEdit upload breaks without it)
-
-### 🟡 High Priority (Before Soft Launch Promo)
-
-- [ ] Delete `wrangler.jsonc` — `wrangler.toml` already handles SPA routing; having both can cause CF confusion
-- [ ] Fix `.env.local` — change `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY` so local dev matches prod
-- [ ] Delete `src/utils/supabase/` folder — dead code (second Supabase client, never used)
-- [ ] Delete `src/lib/fulfillment.ts` — dead code (misleadingly labeled; edge function has its own inline logic)
-- [ ] SEO — meta tags, Open Graph images, sitemap.xml, robots.txt
-- [ ] Admin dashboard — finish wiring real data (orders, products from DB)
-- [ ] Email marketing — captured emails → Klaviyo or Mailchimp
-- [ ] Cart merge on login (guest → auth cart merging)
-- [ ] Fix CartContext — hydrate from DB products (currently static-only; DB-only products dropped on refresh)
-
-### 🟢 Medium Priority
-
-- [ ] Run `npm audit fix` — 19 vulnerabilities flagged
-- [ ] Bundle size optimization — currently 972KB (target <500KB); lazy-load routes
-- [ ] Discount / promo code system
-- [ ] Product reviews
+- [ ] Delete `src/utils/supabase/` — dead second Supabase client, never used
+- [ ] Delete `src/lib/fulfillment.ts` — dead code, misleadingly named
+- [ ] Delete `wrangler.jsonc` — duplicate of `wrangler.toml`
+- [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY` for local dev
 - [ ] Delete deprecated `main` branch from GitHub
-- [ ] Delete 4 duplicate Lovable repos from GitHub
-- [ ] Order confirmation email to customer (wired but needs Resend key + templates)
+- [ ] Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)
+- [ ] `npm audit fix` — 19 vulnerabilities (none critical)
 
-### ⚪ Nice to Have
+### 🟢 Phase 3 Features
 
 - [ ] Cloudflare Workers — proxy Supabase calls server-side (security hardening)
-- [ ] Analytics (Cloudflare Web Analytics or Plausible)
+- [ ] Analytics — Cloudflare Web Analytics or Plausible
+- [ ] Cart merge on login (guest → auth cart merge)
+- [ ] Bundle size optimization (currently ~972KB; lazy-load routes for <500KB target)
+- [ ] Email marketing integration (Klaviyo or Mailchimp) for captured emails
+- [ ] Pour Points loyalty program
 - [ ] Wishlist / Save for later
-- [ ] Product search / filter by category
-- [ ] International shipping configuration
-- [ ] Wholesale portal
+- [ ] Product search + filter by category
+- [ ] International shipping config
+- [ ] Wholesale portal (foundation exists at `/proposal`)
 
 ---
 
-## 🚫 Known Bugs & Blockers
+## 🚫 Known Issues
 
-| Bug | Severity | Root Cause | Fix |
-|-----|---------|-----------|-----|
-| Admin login not recognized | 🔴 Critical | Migration REVOKE'd `is_admin()` execute permission | `GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated;` |
-| Local dev Supabase client broken | 🔴 High | `.env.local` uses `VITE_SUPABASE_PUBLISHABLE_KEY`, client reads `VITE_SUPABASE_ANON_KEY` | Rename key in `.env.local` |
-| Admin Settings page crashes | 🔴 High | `settings` table needs row with id=1 | `INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING;` |
-| Admin product image upload broken | 🔴 High | Supabase Storage `products` bucket doesn't exist | Create bucket in Supabase Storage |
-| Cart drops DB-only products on refresh | 🟡 Medium | CartContext hydrates from static `products.ts` only | Update CartContext to use `useMergedProducts()` |
-| Checkout doesn't process payments | 🔴 Critical | Stripe secrets not set in edge function env | Set secrets in Supabase Dashboard |
-| Order emails not sending | 🟡 Medium | Resend API key not configured | Set `RESEND_API_KEY` secret |
-| Two Supabase clients in codebase | 🟡 Medium | `src/utils/supabase/` is a dead second instance | Delete `src/utils/supabase/` |
-| Two wrangler config files | 🟡 Medium | `wrangler.toml` + `wrangler.jsonc` both exist | Delete `wrangler.jsonc` |
-| 19 npm vulnerabilities | 🟡 Medium | Outdated deps | `npm audit fix` |
-| Bundle 972KB (uncompressed) | 🟡 Medium | No code splitting | Lazy-load routes in App.tsx |
+| Issue | Severity | Status | Fix |
+|-------|---------|--------|-----|
+| Fulfillment not wired | 🔴 Critical | Open | Select Printful/Printify, add API key to stripe-webhook |
+| Email templates not seeded | 🔴 High | Open | INSERT rows for order_confirmation + custom_request |
+| Storage bucket missing | 🔴 High | Open | Create `products` bucket in Supabase Storage |
+| `src/utils/supabase/` dead code | 🟡 Medium | Open | Delete folder |
+| `src/lib/fulfillment.ts` dead code | 🟡 Medium | Open | Delete file |
+| `wrangler.jsonc` duplicate | 🟡 Medium | Open | Delete file |
+| Local dev env var mismatch | 🟡 Medium | Open | Rename key in `.env.local` |
+| 19 npm vulnerabilities | 🟡 Low | Open | `npm audit fix` |
+| Bundle 972KB | 🟡 Low | Open | Lazy-load routes in App.tsx |
 
 ---
 
-## Session Log
+## Cloudflare Notes
 
-| Date | Session Summary | Completed | Next Steps |
-|------|----------------|-----------|-----------|
-| April 28, 2026 | Diagnosed CF build command issue. Created full docs suite. | Doc suite created, CF issue diagnosed | Fix CF build command, start Stripe |
-| April 29, 2026 (Session 2) | Fixed black screen (`.env.production`). Fixed auth race condition (AuthContext). Identified admin REVOKE bug. Full code audit (bugs, dead code, missing infra). Updated all docs. Created Phase 2/3 Lovable prompts. Created 3-day dev curriculum. | Black screen fixed, auth fixed, docs updated, curriculum created | **First: run GRANT EXECUTE SQL**. Then: Stripe secrets, Resend key, seed tables, Storage bucket |
+⚠️ Active CF Pages project is **`pournogravydev`** — NOT `pournogravy` (that project has no git connection and is abandoned).
 
----
-
-## Cloudflare Project Notes
-
-⚠️ **Active CF Pages project is `pournogravydev`** — this is the one with the GitHub connection and is what deploys to pournogravy.com. NOT the project named `pournogravy` (that one has no git connection and is abandoned).
-
-Build settings for `pournogravydev`:
 - Build command: `npm run build`
-- Output directory: `dist`
-- GitHub repo: `kmitch2087-dot/pournogravy` (master branch)
+- Output dir: `dist`
+- Repo: `kmitch2087-dot/pournogravy` → master branch
+- Deploy time: ~2 min after push
 
 ---
 
-*Update the Session Log and Backlog at the end of every session.*
-| May 4, 2026 (Session 3) | Phase 2 audit — all 4 prompts already built in code. Stripe checkout debugged and working. Switched from Stripe hosted checkout to embedded Payment Element (stay on site). Seeded products table. Deployed edge functions via Supabase CLI. Webhook configured for payment_intent.succeeded. Live Stripe key added to .env.production. | **Checkout live — real payments processing on pournogravy.com** | Verify orders flip to paid in DB. Confirm Resend emails sending. Add fulfillment partner. Phase 3. |
-| May 5, 2026 (Session 4) | Hero bg image fix: object-contain on mobile (no more zoomed crop), navbar clearance fix (top-16). Claude Code integrated User Manual into admin dashboard — new /admin/manual page + HelpPanel (? button in header). All changes uncommitted pending push. | Hero fix committed, User Manual in admin | Push changes, verify mobile hero deploy, decide test vs live Stripe keys |
+*This document is updated at the end of each development session. Dates reflect system-recognized milestones across multiple AI development tools, not calendar hours worked.*

@@ -33,6 +33,7 @@ import CustomRequests from "./pages/admin/CustomRequests";
 import Reviews from "./pages/admin/Reviews";
 import Settings from "./pages/admin/Settings";
 import UserManual from "./pages/admin/UserManual";
+import ProjectStatus from "./pages/admin/ProjectStatus";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => (
                   <Route path="reviews" element={<Reviews />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="manual" element={<UserManual />} />
+                  <Route path="project-status" element={<ProjectStatus />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
