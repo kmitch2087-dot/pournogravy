@@ -140,26 +140,51 @@ Topics covered:
 ---
 
 ## Auth Architecture (Do Not Break)
-The AuthContext race condition fix is critical. Here is the correct flow:
+
+### Why the spinner kept coming back (fixed permanently in bcb371f, 2026-05-06)
+
+`onAuthStateChange(INITIAL_SESSION)` and `getSession()` raced against each other.
+If `getSession()` resolved first (cleared `loading`), then `INITIAL_SESSION` fired late —
+it re-set `loading=true` and could also call `setUser(null)` with a stale null session,
+blocking admin access. This recurred after every deploy because timing shifted slightly.
+
+### Correct pattern — DO NOT REGRESS
+
+**Rule: `INITIAL_SESSION` is NEVER handled in `onAuthStateChange`. `getSession()` is the only init path.**
 
 ```typescript
-// onAuthStateChange fires when user logs in
-if (newSession?.user) {
-  setLoading(true);   // ← CRITICAL: keep ProtectedRoute waiting
-  setTimeout(() => {
-    fetchProfile(newSession.user.id).finally(() => setLoading(false));
-  }, 0);
-} else {
-  setProfile(null);
-  setLoading(false);
-}
+// onAuthStateChange: post-init events ONLY
+supabase.auth.onAuthStateChange((event, newSession) => {
+  if (event === 'INITIAL_SESSION') return;  // ← CRITICAL — never handle this here
 
-// getSession only clears loading if no user (onAuthStateChange handles the user case)
+  setSession(newSession);
+  setUser(newSession?.user ?? null);
+
+  if (event === 'SIGNED_IN' && newSession?.user) {
+    setLoading(true);
+    fetchProfile(newSession.user.id);
+  } else if (event === 'SIGNED_OUT') {
+    setProfile(null);
+    setLoading(false);
+  }
+  // TOKEN_REFRESHED: update session/user, no spinner
+});
+
+// getSession(): single authoritative init path
 supabase.auth.getSession().then(({ data: { session: existing } }) => {
-  if (!existing?.user) {
+  setSession(existing);
+  setUser(existing?.user ?? null);
+  if (existing?.user) {
+    fetchProfile(existing.user.id); // loading stays true; fetchProfile clears it in finally
+  } else {
     setLoading(false);
   }
 });
+
+// Hard failsafe: loading can NEVER stay true longer than 8 seconds
+const failsafe = setTimeout(() => setLoading(false), 8000);
 ```
+
+`fetchProfile` also has its own 6-second timeout and always calls `setLoading(false)` in `finally`.
 
 ProtectedRoute must check: `if (loading) return <spinner>` BEFORE checking `isAdmin`.
