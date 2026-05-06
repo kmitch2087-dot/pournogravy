@@ -32,7 +32,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchingForRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    if (fetchingForRef.current === userId) return;
+    if (fetchingForRef.current === userId) {
+      console.log('[Auth] fetchProfile deduplicated for', userId);
+      return;
+    }
+    console.log('[Auth] fetchProfile start', userId);
     fetchingForRef.current = userId;
     try {
       const timeoutPromise = new Promise<null>((_, reject) =>
@@ -48,16 +52,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (result && "data" in result) {
         if (result.error) {
-          console.error("[fetchProfile] query error:", result.error);
+          console.error("[Auth] fetchProfile query error:", result.error);
         } else {
+          console.log('[Auth] fetchProfile success', { is_admin: result.data?.is_admin });
           setProfile(result.data);
         }
       }
     } catch (err) {
-      console.error("[fetchProfile] failed or timed out:", err);
+      console.error("[Auth] fetchProfile failed or timed out:", err);
     } finally {
-      // loading clears here — after the profile is settled (or timed out).
-      // ProtectedRoute only needs this single gate; no profileFetched needed.
+      console.log('[Auth] fetchProfile finally → setLoading(false)');
       setLoading(false);
       fetchingForRef.current = null;
     }
@@ -75,7 +79,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
-      if (event === 'INITIAL_SESSION') return;
+      console.log(`[Auth] onAuthStateChange: ${event}`, { user: newSession?.user?.email ?? null });
+      if (event === 'INITIAL_SESSION') {
+        console.log('[Auth] INITIAL_SESSION skipped — getSession() is authoritative');
+        return;
+      }
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -96,20 +104,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .getSession()
       .then(({ data: { session: existing } }) => {
         if (!mounted) return;
+        console.log('[Auth] getSession resolved', { user: existing?.user?.email ?? null });
         setSession(existing);
         setUser(existing?.user ?? null);
         if (existing?.user) {
           // loading stays true; fetchProfile clears it in finally
           fetchProfile(existing.user.id);
         } else {
+          console.log('[Auth] no session → loading cleared');
           setLoading(false);
         }
       })
-      .catch(() => { if (mounted) setLoading(false); });
+      .catch((err) => {
+        console.error('[Auth] getSession error', err);
+        if (mounted) setLoading(false);
+      });
 
     // Hard failsafe: spinner can never stay up more than 8 s no matter what.
     const failsafe = setTimeout(() => {
-      if (mounted) setLoading(false);
+      if (mounted) {
+        console.warn('[Auth] 8-second failsafe fired — loading forced to false');
+        setLoading(false);
+      }
     }, 8000);
 
     return () => {
