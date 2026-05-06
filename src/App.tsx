@@ -35,6 +35,8 @@ import Settings from "./pages/admin/Settings";
 import UserManual from "./pages/admin/UserManual";
 import ProjectStatus from "./pages/admin/ProjectStatus";
 import Inbox from "./pages/admin/Inbox";
+import EditRequests from "./pages/admin/EditRequests";
+import EditBubble from "./components/EditBubble";
 
 const queryClient = new QueryClient();
 
@@ -94,10 +96,12 @@ const App = () => (
                   <Route path="manual" element={<UserManual />} />
                   <Route path="project-status" element={<ProjectStatus />} />
                   <Route path="inbox" element={<Inbox />} />
+                  <Route path="edit-requests" element={<EditRequests />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </PublicChrome>
+            <EditBubble />
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
