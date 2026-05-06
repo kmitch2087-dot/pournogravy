@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     fetchingForRef.current = userId;
     try {
       const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("profile fetch timeout")), 6000),
+        setTimeout(() => reject(new Error("profile fetch timeout")), 12000),
       );
       const queryPromise = supabase
         .from("profiles")
