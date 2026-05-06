@@ -18,6 +18,16 @@
 ## ⚠️ CLOUDFLARE PROJECT NAME
 The active CF Pages project is **`pournogravydev`** — NOT `pournogravy`. The project named `pournogravy` has no git connection and is abandoned.
 
+## ⚠️ SPA ROUTING — DO NOT USE `_redirects`
+CF Pages has "Pretty URLs" enabled by default, which rewrites `/index.html` → `/`.
+This makes `/* /index.html 200` in `_redirects` an infinite loop — CF Pages explicitly
+rejects it. We have confirmed this multiple times. **Do not add a `_redirects` file.**
+
+SPA routing is handled by `404.html` (a copy of `index.html` produced by the build script:
+`cp dist/index.html dist/404.html`). CF Pages serves `404.html` for any path that doesn't
+match a static file, preserving the URL so React Router handles routing client-side.
+The HTTP 404 status on SPA routes is expected and correct for this pattern.
+
 ## ✅ ENV VARS — RESOLVED
 `.env.production` is committed to the repo (not gitignored). It contains `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. This guarantees Vite bakes these into the CF Pages build. Do not move these to CF Pages "Secrets" — Secrets are runtime-only and not available at Vite build time.
 
