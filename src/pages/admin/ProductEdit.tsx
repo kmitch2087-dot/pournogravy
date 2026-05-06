@@ -43,6 +43,7 @@ const ProductEdit = () => {
     sizes: DEFAULT_SIZES,
     images: [] as string[],
     badge: "",
+    fulfillment_route: "local_printer",
   });
 
   const { data: product, isLoading } = useQuery({
@@ -76,6 +77,7 @@ const ProductEdit = () => {
       sizes: product.sizes && product.sizes.length > 0 ? product.sizes : DEFAULT_SIZES,
       images: product.images ?? [],
       badge: product.badge ?? "",
+      fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
     });
   }, [product]);
 
@@ -123,6 +125,7 @@ const ProductEdit = () => {
       image_url: form.images[0] ?? null,
       badge: form.badge || null,
       published: form.status === "published",
+      fulfillment_route: form.fulfillment_route,
     };
 
     const { error } = isNew
@@ -328,6 +331,44 @@ const ProductEdit = () => {
             </CardContent>
           </Card>
 
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest text-sm">FULFILLMENT</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Route orders to</Label>
+                <Select
+                  value={form.fulfillment_route}
+                  onValueChange={(v) => setForm({ ...form, fulfillment_route: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="local_printer">🖨️ Local Printer</SelectItem>
+                    <SelectItem value="printful">Printful</SelectItem>
+                    <SelectItem value="printify">Printify</SelectItem>
+                    <SelectItem value="manual">Manual / Self-fulfill</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.fulfillment_route === "local_printer" && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Orders email to your printer with artwork specs. Configure the printer address and print requirements in{" "}
+                  <a href="/admin/settings" className="text-[#fde047] hover:underline">Settings → Fulfillment</a>.
+                </p>
+              )}
+              {form.fulfillment_route === "printful" && (
+                <p className="text-[11px] text-muted-foreground">Premium — embroidery-capable. Wires via Printful API (Phase 2).</p>
+              )}
+              {form.fulfillment_route === "printify" && (
+                <p className="text-[11px] text-muted-foreground">Low-cost, large catalog. Wires via Printify API (Phase 2).</p>
+              )}
+              {form.fulfillment_route === "manual" && (
+                <p className="text-[11px] text-muted-foreground">You ship it yourself. No automatic fulfillment triggered.</p>
+              )}
+            </CardContent>
+          </Card>
           <Button
             onClick={handleSave}
             disabled={saving}

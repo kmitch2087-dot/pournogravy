@@ -19,6 +19,7 @@ import {
   BookOpen,
   HelpCircle,
   BarChart2,
+  CalendarDays,
   Mail,
   StickyNote,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { to: "/admin/edit-requests",  label: "Client Edit Requests", icon: StickyNote,  end: false },
   { to: "/admin/manual",         label: "Admin User Manual",icon: BookOpen,        end: false },
   { to: "/admin/project-status", label: "Project Status",   icon: BarChart2,       end: false },
+  { to: "/admin/merch-drops",    label: "Merch Drop Calendar", icon: CalendarDays,    end: false },
 ];
 
 const SidebarContent = ({

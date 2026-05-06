@@ -36,6 +36,8 @@ import UserManual from "./pages/admin/UserManual";
 import ProjectStatus from "./pages/admin/ProjectStatus";
 import Inbox from "./pages/admin/Inbox";
 import EditRequests from "./pages/admin/EditRequests";
+import MerchDrops from "./pages/admin/MerchDrops";
+import { DropAnnouncementBar } from "./components/DropAnnouncementBar";
 import EditBubble from "./components/EditBubble";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,7 @@ const PublicChrome = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = pathname.startsWith("/admin");
   return (
     <>
+      {!isAdmin && <DropAnnouncementBar />}
       {!isAdmin && <Navbar />}
       {!isAdmin && <CartDrawer />}
       {children}
@@ -97,6 +100,7 @@ const App = () => (
                   <Route path="project-status" element={<ProjectStatus />} />
                   <Route path="inbox" element={<Inbox />} />
                   <Route path="edit-requests" element={<EditRequests />} />
+                  <Route path="merch-drops" element={<MerchDrops />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

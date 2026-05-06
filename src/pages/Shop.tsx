@@ -1,4 +1,5 @@
 import SEO from "@/components/SEO";
+import { DropShopBanner } from "@/components/DropShopBanner";
 import ProductCard from "@/components/ProductCard";
 import { products, collections } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
@@ -44,6 +45,9 @@ const Shop = () => {
         description="Browse the full Pournogravy collection — tees for bartenders, by bartenders. Wear your war stories. Free shipping on orders over $50."
         url="https://pournogravy.com/shop"
       />
+      {/* Drop Shop Banner */}
+      <DropShopBanner />
+
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
         <div

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
 import { products, quotes } from "@/data/products";
+import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useState } from "react";
 
 // Hero carousel config — slide 0 is the glass headline, the rest feature shirts.
@@ -105,6 +106,9 @@ const Index = () => {
         description="Bartender-themed apparel for the people who pour for a living. Because someone has to deal with the public, and it might as well be stylish."
         url="https://pournogravy.com"
       />
+      {/* Drop Hero Banner — shown above carousel when a drop is live */}
+      <DropHeroBanner />
+
       {/* Hero carousel — slide 0 is the glass headline, rest are shirts.
           Section-wide hover pause was removed by request — only hovering the
           dot indicators below pauses the rotation, so a customer reading a
