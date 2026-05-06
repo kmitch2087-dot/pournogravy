@@ -66,38 +66,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange handles future events (login, logout, token refresh).
+    // onAuthStateChange handles post-init events only.
+    // INITIAL_SESSION is intentionally skipped — getSession() below is the
+    // single authoritative init path. Handling INITIAL_SESSION here too
+    // creates a race: if it fires after getSession() already cleared loading,
+    // it re-sets loading=true and can leave the spinner stuck or clear user.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
+      if (event === 'INITIAL_SESSION') return;
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      if (newSession?.user) {
-        // Only block the UI and re-fetch the profile on actual sign-in or
-        // first load. TOKEN_REFRESHED just swaps the session tokens — the
-        // profile (is_admin) hasn't changed, so no spinner needed.
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          setLoading(true);
-          fetchProfile(newSession.user.id);
-        }
-      } else {
+
+      if (event === 'SIGNED_IN' && newSession?.user) {
+        setLoading(true);
+        fetchProfile(newSession.user.id);
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         fetchingForRef.current = null;
         setLoading(false);
       }
+      // TOKEN_REFRESHED / USER_UPDATED: session updated above, no spinner needed.
     });
 
-    // Resolve the initial session directly — don't rely on INITIAL_SESSION event,
-    // which is unreliable across Supabase JS versions.
+    // Single authoritative init: resolve the session once on mount.
     supabase.auth
       .getSession()
       .then(({ data: { session: existing } }) => {
         if (!mounted) return;
+        setSession(existing);
+        setUser(existing?.user ?? null);
         if (existing?.user) {
-          setSession(existing);
-          setUser(existing.user);
-          // loading stays true; fetchProfile will clear it in finally
+          // loading stays true; fetchProfile clears it in finally
           fetchProfile(existing.user.id);
         } else {
           setLoading(false);
@@ -105,8 +107,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
       .catch(() => { if (mounted) setLoading(false); });
 
+    // Hard failsafe: spinner can never stay up more than 8 s no matter what.
+    const failsafe = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 8000);
+
     return () => {
       mounted = false;
+      clearTimeout(failsafe);
       subscription.unsubscribe();
     };
   }, []);
