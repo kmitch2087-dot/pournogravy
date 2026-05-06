@@ -15,6 +15,7 @@ import {
   Clock,
   AlertTriangle,
   Columns2,
+  StickyNote,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,15 +24,16 @@ import { Separator } from "@/components/ui/separator";
 import { ContactKristinModal } from "@/components/admin/ContactKristinModal";
 
 const tocSections = [
-  { id: "big-picture", num: 1, icon: LayoutGrid, title: "The Big Picture" },
-  { id: "live-site", num: 2, icon: Globe, title: "Viewing Your Live Site" },
-  { id: "admin-login", num: 3, icon: LogIn, title: "Logging In" },
-  { id: "products", num: 4, icon: Package, title: "Managing Products" },
-  { id: "custom-requests", num: 5, icon: MessageSquare, title: "Custom Requests" },
-  { id: "orders", num: 6, icon: ShoppingBag, title: "Viewing Orders" },
-  { id: "can-vs-cant", num: 7, icon: CheckCircle, title: "Can vs. Can't Change" },
-  { id: "who-to-call", num: 8, icon: Phone, title: "Who to Call" },
-  { id: "glossary", num: 9, icon: BookOpen, title: "Glossary" },
+  { id: "big-picture",    num: 1,  icon: LayoutGrid,  title: "The Big Picture" },
+  { id: "live-site",      num: 2,  icon: Globe,        title: "Viewing Your Live Site" },
+  { id: "edit-bubble",    num: 3,  icon: StickyNote,   title: "Leaving Feedback for Kristin" },
+  { id: "admin-login",    num: 4,  icon: LogIn,        title: "Logging In" },
+  { id: "products",       num: 5,  icon: Package,      title: "Managing Products" },
+  { id: "custom-requests",num: 6,  icon: MessageSquare,title: "Custom Requests" },
+  { id: "orders",         num: 7,  icon: ShoppingBag,  title: "Viewing Orders" },
+  { id: "can-vs-cant",    num: 8,  icon: CheckCircle,  title: "Can vs. Can't Change" },
+  { id: "who-to-call",    num: 9,  icon: Phone,        title: "Who to Call" },
+  { id: "glossary",       num: 10, icon: BookOpen,     title: "Glossary" },
 ];
 
 const SectionCard = ({
@@ -223,8 +225,49 @@ const UserManual = () => {
             <ExternalBtn href="https://pournogravy.com" label="Open pournogravy.com" />
           </SectionCard>
 
-          {/* Section 3 */}
-          <SectionCard id="admin-login" num={3} icon={LogIn} title="Logging Into Your Admin Dashboard" adminPath="/admin">
+          {/* Section 3 — Edit Bubble */}
+          <SectionCard id="edit-bubble" num={3} icon={StickyNote} title="Leaving Feedback for Kristin" adminPath="/admin/edit-requests">
+            <p className="text-muted-foreground">
+              While you're browsing the live site (or anywhere in the admin), you'll see a small
+              <span className="mx-1 inline-flex items-center gap-1 bg-[#fde047] text-black text-xs font-bold px-2 py-0.5 rounded-sm">✏ Notes</span>
+              bubble in the bottom-right corner of your screen. This is your direct line to Kristin
+              for feedback, change requests, questions, and critiques.
+            </p>
+
+            <p className="font-medium text-foreground pt-1">How to use it:</p>
+            <div className="space-y-2">
+              <Step n={1}><strong>Click the bubble</strong> to expand it into a notepad.</Step>
+              <Step n={2}><strong>Type anything</strong> — a change you want, something that looks off, a question, a new idea. The placeholder text says it all: <em>"Add your thoughts/edits/questions/critiques here."</em></Step>
+              <Step n={3}><strong>Click Save Note</strong> when you're done. Your note is locked in, Kristin gets an email, and it's saved forever.</Step>
+              <Step n={4}><strong>Keep browsing.</strong> Scroll, click around, open the next page — the bubble follows you everywhere.</Step>
+            </div>
+
+            <InfoTable
+              rows={[
+                ["Shrink button", "The chevron (∨) in the bubble header collapses it back to a small pill so it stays out of your way"],
+                ["Drag to move", "Grab the grip handle (⠿) on the left of the bubble header and drag it anywhere on screen"],
+                ["Past notes", "Scroll down inside the open bubble to see everything you've previously saved, newest first"],
+                ["One note = one save", "Each time you click Save Note, that's a permanent entry — you can't edit it afterward, just add new ones"],
+              ]}
+            />
+
+            <Callout variant="tip">
+              <strong>Nothing gets acted on automatically.</strong> Kristin reads your notes and will reach out to discuss before making any changes. Think of it as a running list of ideas — not a work order.
+            </Callout>
+
+            <p className="font-medium text-foreground pt-1">Viewing all your notes in one place:</p>
+            <p className="text-muted-foreground">
+              Go to <strong>Admin → Client Edit Requests</strong> (the sticky note icon in the left sidebar).
+              Every note you've ever saved is listed there, with the timestamp and which page you were on when you wrote it.
+            </p>
+
+            <Callout variant="info">
+              The bubble only appears when you're logged in as admin. Customers will never see it.
+            </Callout>
+          </SectionCard>
+
+          {/* Section 4 */}
+          <SectionCard id="admin-login" num={4} icon={LogIn} title="Logging Into Your Admin Dashboard" adminPath="/admin">
             <div className="space-y-2">
               <Step n={1}>Go to <strong>pournogravy.com/admin</strong></Step>
               <Step n={2}>Enter your admin email (aopie91@gmail.com) and your password.</Step>
@@ -246,8 +289,8 @@ const UserManual = () => {
             />
           </SectionCard>
 
-          {/* Section 4 */}
-          <SectionCard id="products" num={4} icon={Package} title="Managing Products" adminPath="/admin/products">
+          {/* Section 5 */}
+          <SectionCard id="products" num={5} icon={Package} title="Managing Products" adminPath="/admin/products">
             <p className="text-muted-foreground">
               Products currently live in the code. The admin product editor lets you edit info and
               upload images. A developer is needed to add brand-new products until the full DB-backed
@@ -267,8 +310,8 @@ const UserManual = () => {
             </Callout>
           </SectionCard>
 
-          {/* Section 5 */}
-          <SectionCard id="custom-requests" num={5} icon={MessageSquare} title="Viewing Custom Garment Requests" adminPath="/admin/custom-requests">
+          {/* Section 6 */}
+          <SectionCard id="custom-requests" num={6} icon={MessageSquare} title="Viewing Custom Garment Requests" adminPath="/admin/custom-requests">
             <p className="text-muted-foreground">
               When a customer fills out the "Request a Custom Garment" form, their info appears here.
             </p>
@@ -298,8 +341,8 @@ const UserManual = () => {
             </div>
           </SectionCard>
 
-          {/* Section 6 */}
-          <SectionCard id="orders" num={6} icon={ShoppingBag} title="Viewing Orders" adminPath="/admin/orders">
+          {/* Section 7 */}
+          <SectionCard id="orders" num={7} icon={ShoppingBag} title="Viewing Orders" adminPath="/admin/orders">
             <Callout variant="warning">
               Payment processing (Stripe) is built but not yet fully activated. Once it's live, paid
               orders will appear here automatically.
@@ -324,8 +367,8 @@ const UserManual = () => {
             </div>
           </SectionCard>
 
-          {/* Section 7 */}
-          <SectionCard id="can-vs-cant" num={7} icon={CheckCircle} title="What You Can vs. Cannot Change">
+          {/* Section 8 */}
+          <SectionCard id="can-vs-cant" num={8} icon={CheckCircle} title="What You Can vs. Cannot Change">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -374,8 +417,8 @@ const UserManual = () => {
             </div>
           </SectionCard>
 
-          {/* Section 8 */}
-          <SectionCard id="who-to-call" num={8} icon={Phone} title="Who to Call When Things Break">
+          {/* Section 9 */}
+          <SectionCard id="who-to-call" num={9} icon={Phone} title="Who to Call When Things Break">
             <div className="space-y-4">
               {/* Kristin */}
               <div className="p-4 bg-[#fde047]/8 border border-[#fde047]/30 rounded-sm">
@@ -413,8 +456,8 @@ const UserManual = () => {
             </div>
           </SectionCard>
 
-          {/* Section 9 */}
-          <SectionCard id="glossary" num={9} icon={BookOpen} title="Glossary — Terms You'll See">
+          {/* Section 10 */}
+          <SectionCard id="glossary" num={10} icon={BookOpen} title="Glossary — Terms You'll See">
             <InfoTable
               rows={[
                 ["Frontend", "The part of the website customers see and interact with"],
