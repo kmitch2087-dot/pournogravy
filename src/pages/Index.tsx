@@ -114,7 +114,7 @@ const Index = () => {
           dot indicators below pauses the rotation, so a customer reading a
           shirt blurb still moves on without having to look away. */}
       <section
-        className="relative min-h-[90vh] overflow-hidden noise-overlay bg-black"
+        className="relative min-h-[75vh] sm:min-h-[90vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -126,7 +126,7 @@ const Index = () => {
             return (
               <div
                 key={`intro-${slideIdx}`}
-                className={`absolute inset-0 flex items-center justify-center pt-16 md:pt-20 transition-opacity duration-700 ${
+                className={`absolute inset-0 flex items-center justify-center pt-24 sm:pt-20 md:pt-24 transition-opacity duration-700 ${
                   active ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
                 role="group"
@@ -138,7 +138,7 @@ const Index = () => {
                   <img
                     src="/hero-bg.jpg"
                     alt=""
-                    className="w-full h-full object-cover object-top sm:object-contain sm:object-top"
+                    className="w-full h-full object-contain object-top"
                     loading="eager"
                     decoding="async"
                   />
@@ -154,14 +154,15 @@ const Index = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
                         animate={active ? { opacity: 1, scale: 1, rotate: -2 } : { opacity: 0, scale: 0.4, rotate: -18 }}
-                        transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: 0.4 }}
                         className="inline-block bg-primary/20 backdrop-blur-md rounded-2xl px-8 py-6 md:px-14 md:py-10"
                       >
-                        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.9] tracking-wider mb-0 text-primary-foreground">
-                          APPAREL FOR<br />
-                          BARTENDERS WHO<br />
-                          HAVE <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">SEEN</span><br />
-                          SOME SHIT.
+                        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1] tracking-wider mb-0 text-primary-foreground">
+                          MILDLY OFFENSIVE<br />
+                          BARTENDER APPAREL<br />
+                          FOR THE{" "}
+                          <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
+                          OFFENSIVE BARTENDER.
                         </h1>
                       </motion.div>
 
@@ -172,7 +173,7 @@ const Index = () => {
                       >
                         <Link to="/shop">
                           <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                            POUR ME ONE <ArrowRight className="ml-2 h-5 w-5" />
+                            SHOP THE DROP <ArrowRight className="ml-2 h-5 w-5" />
                           </Button>
                         </Link>
                       </motion.div>
@@ -187,7 +188,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-center pt-16 md:pt-20 transition-opacity duration-700 ${
+              className={`absolute inset-0 flex items-center pt-24 sm:pt-20 md:pt-24 transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
@@ -277,7 +278,7 @@ const Index = () => {
                           className="h-12 px-8 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
                           style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
                         >
-                          THROW IT BACK <ArrowRight className="ml-2 h-4 w-4" />
+                          <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
                         </Button>
                       </Link>
                       <Link to="/shop">

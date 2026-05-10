@@ -1512,9 +1512,13 @@ export const collections = [
 ];
 
 export const quotes = [
+  "Offend a Karen without having to open your mouth.",
   "I'm not arguing. I'm explaining why I'm right and you're ordering wrong.",
+  "Show fellow bartenders you're one of them — no verbal announcement required.",
   "Your cocktail takes 3 minutes. Your complaint takes my will to live.",
+  "Call out the general public on certain undesirable behaviors.",
   "I've cut off better people than you.",
+  "Receive looks of disgust from pretentious bartenders who still think the customer is always right. (They're guests. GUESTS. Oh, shut up.)",
   "I don't have a drinking problem. I have a customer problem.",
   "Yes, the music is loud. That's because I don't want to hear you.",
   "My face says 'welcome.' My eyes say 'don't test me.'",

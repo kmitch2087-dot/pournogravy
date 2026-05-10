@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,480 +22,644 @@ import {
   ExternalLink,
   FileText,
   Download,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  AlertTriangle,
+  User,
+  Building2,
+  Globe,
+  Wrench,
+  Star,
+  Clock,
+  Calendar,
+  TrendingUp,
+  CheckCheck,
+  Package,
+  CreditCard,
+  Mail,
+  Shield,
+  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
-// Inline markdown renderer
+// Data — session log
 // ---------------------------------------------------------------------------
-function renderMarkdown(md: string): string {
-  const lines = md.split("\n");
-  const out: string[] = [];
-  let inTable = false;
-  let tableHeader = false;
-  let inUl = false;
+const SESSION_LOG = [
+  {
+    date: "May 9, 2026",
+    tag: "TODAY",
+    tagColor: "bg-[#fde047] text-black",
+    summary:
+      "Auth spinner root-caused to Apollo extension blocking Supabase REST calls. Confirmed via incognito (extensions disabled → instant login). Bumped fetchProfile timeout to 12s as defence. All merch drop / fulfillment feature files committed and pushed.",
+    completed: [
+      "Traced fetchProfile timeout to Apollo extension (not DB, not RLS)",
+      "Confirmed incognito login works instantly — DB query is 1.42ms",
+      "Committed merch drop calendar, fulfillment routing, printer spec + all related files",
+      "Pushed 12s timeout bump to master",
+    ],
+    next: "Apollo whitelist fix, Stripe/Resend secrets QA, fulfillment partner decision",
+  },
+  {
+    date: "May 6, 2026",
+    tag: "FEATURE DROP",
+    tagColor: "bg-purple-500/20 text-purple-300",
+    summary:
+      "Full Merch Drop Calendar system shipped. New admin tab at /admin/merch-drops with month-grid, click-to-view popups, full drop builder, product picker, flyer upload, ad placement toggles, and marketing email builder. process-merch-drops edge function auto-publishes drops on schedule.",
+    completed: [
+      "Merch Drop Calendar + Builder admin page (/admin/merch-drops)",
+      "Site ad components: DropAnnouncementBar, DropHeroBanner, DropShopBanner",
+      "process-merch-drops edge function (cron-ready)",
+      "Fulfillment routing per-product with printer spec fields in Settings",
+      "SPA routing fix: 404.html strategy, _redirects removed permanently",
+      "Auth INITIAL_SESSION race condition eliminated (bcb371f)",
+    ],
+    next: "Push commits, deploy migration, wire cron schedule",
+  },
+  {
+    date: "May 5, 2026",
+    tag: "ADMIN TOOLS",
+    tagColor: "bg-blue-500/20 text-blue-300",
+    summary:
+      "User Manual, HelpPanel, ContactKristinModal, admin-contact edge function. Opie can now message Kristin directly from the dashboard. Project Status page added with Notify Opie button.",
+    completed: [
+      "Hero mobile fix (object-contain)",
+      "User Manual at /admin/manual",
+      "HelpPanel (? button in header)",
+      "ContactKristinModal — Opie messages Kristin directly from admin",
+      "admin-contact edge function",
+      "Project Status admin tab + notify-project-status edge function",
+    ],
+    next: "Push changes, verify mobile hero on live site",
+  },
+  {
+    date: "May 4, 2026",
+    tag: "PAYMENTS LIVE",
+    tagColor: "bg-green-500/20 text-green-400",
+    summary:
+      "Real payment processing live on pournogravy.com. Stripe embedded Payment Element stays on site. All 24 products seeded into DB. All edge functions deployed. payment_intent.succeeded webhook configured.",
+    completed: [
+      "Stripe embedded Payment Element live (no redirect)",
+      "All edge functions deployed via Supabase CLI",
+      "24 products seeded into Supabase",
+      "Live Stripe publishable key in .env.production",
+      "All secrets set in Supabase (Stripe + Resend)",
+    ],
+    next: "Verify DB order flips to paid, confirm Resend emails, fulfillment partner",
+  },
+  {
+    date: "April 29, 2026",
+    tag: "AUDIT + FIX",
+    tagColor: "bg-orange-500/20 text-orange-300",
+    summary:
+      "Black screen bug fixed (missing .env.production). Auth race condition patched. Admin REVOKE bug fixed. Full code audit with dead code documented. 3-day developer curriculum created.",
+    completed: [
+      "Black screen fixed (committed .env.production)",
+      "Auth race condition fixed",
+      "GRANT EXECUTE on is_admin() applied",
+      "Full code audit + docs suite created",
+      "3-day developer curriculum (~/Desktop/PG_Dev_Curriculum/)",
+    ],
+    next: "Stripe secrets, Resend key, seed tables, Storage bucket",
+  },
+  {
+    date: "April 28, 2026",
+    tag: "LAUNCH",
+    tagColor: "bg-yellow-400/20 text-yellow-400",
+    summary:
+      "Initial setup. CF Pages connected to GitHub. pournogravy.com live.",
+    completed: [
+      "CF Pages → GitHub pipeline connected (pournogravydev project)",
+      "pournogravy.com domain + SSL active",
+      "Full documentation suite created",
+    ],
+    next: "Fix CF build command, start Stripe wiring",
+  },
+];
 
-  const flushUl = () => { if (inUl) { out.push("</ul>"); inUl = false; } };
-  const flushTable = () => {
-    if (inTable) { out.push("</tbody></table></div>"); inTable = false; tableHeader = false; }
-  };
-  const inline = (s: string) =>
-    s
-      .replace(/`([^`]+)`/g, "<code>$1</code>")
-      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+// ---------------------------------------------------------------------------
+// Data — Opie's tasks
+// ---------------------------------------------------------------------------
+const OPIES_TASKS = [
+  {
+    id: "stripe-ein",
+    priority: "critical",
+    label: "CRITICAL",
+    title: "Enter EIN + Business Name in Stripe",
+    detail:
+      "Stripe Dashboard → Settings → Business Details. Enter your EIN and legal business name. Without this, Stripe may hold your payouts or flag your account for review. This is the #1 thing to do now that you have your registration sorted. The EIN does NOT go in your DNS or domain registrar — it goes here in Stripe for payout verification.",
+    icon: CreditCard,
+    done: false,
+  },
+  {
+    id: "registrar-whois",
+    priority: "high",
+    label: "HIGH",
+    title: "Update Domain Registrar — Business Name (not EIN)",
+    detail:
+      "Log into wherever pournogravy.com is registered (Cloudflare, GoDaddy, Namecheap — check your email for the original confirmation). Update the WHOIS contact/registrant name from your personal name to your LLC or business name. Your EIN itself does NOT go here — just the business name. DNS records don't change at all. This is purely ownership-record paperwork.",
+    icon: Globe,
+    done: false,
+  },
+  {
+    id: "apollo-whitelist",
+    priority: "high",
+    label: "HIGH",
+    title: "Fix Admin Login: Whitelist Supabase in Apollo Extension",
+    detail:
+      "Open your Apollo Chrome extension → Settings (gear icon) → Excluded Domains → add *.supabase.co. The extension is intercepting your Supabase API calls and blocking the profile fetch — which is why you get a spinner on admin login. In incognito (extensions off), login works instantly. This 30-second fix restores normal login in your regular browser.",
+    icon: Shield,
+    done: false,
+  },
+  {
+    id: "resend-domain",
+    priority: "high",
+    label: "HIGH",
+    title: "Verify Sender Domain in Resend",
+    detail:
+      "Log into resend.com → Domains → find pournogravy.com → verify. Resend will give you 2–3 DNS TXT records to add in Cloudflare (takes under 5 minutes). Once done, opie@pournogravy.com becomes a verified sender and customers will receive order confirmation emails. Without this, order emails either go to spam or don't send at all.",
+    icon: Mail,
+    done: false,
+  },
+  {
+    id: "fulfillment-samples",
+    priority: "medium",
+    label: "MEDIUM",
+    title: "Order Samples from Printify + Printful",
+    detail:
+      "Order at least 1 shirt from each before committing to a fulfillment partner. Check: print sharpness and alignment, shirt fabric feel and fit consistency, wash test after 3–5 washes, packaging and presentation, and actual delivery time. Printify is cheaper (~$13.15 total, ~47% margin) but Printful has better brand consistency. Sample first, commit second.",
+    icon: Package,
+    done: false,
+  },
+  {
+    id: "fulfillment-decision",
+    priority: "medium",
+    label: "MEDIUM",
+    title: "Pick a Fulfillment Partner — Tell Kristin",
+    detail:
+      "After samples arrive, decide: Printify (best margin) or Printful (premium). Let Kristin know and she'll wire the API key into the stripe-webhook edge function so orders auto-route to fulfillment on payment. Until this is wired, orders land in the DB and printer queue but nothing ships automatically.",
+    icon: Rocket,
+    done: false,
+  },
+  {
+    id: "google-business",
+    priority: "low",
+    label: "LOW",
+    title: "Set Up Google Business Profile",
+    detail:
+      "Visit google.com/business and claim or create a profile for Pournogravy. Even for an online-only brand, a Google Business Profile helps with search visibility and gives the brand a verified presence on Maps and Search. Takes about 10 minutes.",
+    icon: Building2,
+    done: false,
+  },
+];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trimEnd();
+// ---------------------------------------------------------------------------
+// Data — backlog
+// ---------------------------------------------------------------------------
+const BACKLOG = {
+  critical: [
+    { text: "Select fulfillment partner (Printify primary) + wire API key into stripe-webhook" },
+    { text: "Verify opie@pournogravy.com as Resend sender domain" },
+    { text: "Seed email_templates table — order_confirmation + custom_request rows" },
+    { text: "Create Supabase Storage products bucket with public read (ProductEdit image upload needs it)" },
+  ],
+  hygiene: [
+    { text: "Delete src/utils/supabase/ — dead second Supabase client, never used" },
+    { text: "Delete src/lib/fulfillment.ts — dead code, misleadingly named" },
+    { text: "Delete wrangler.jsonc — duplicate of wrangler.toml" },
+    { text: "Fix .env.local — rename VITE_SUPABASE_PUBLISHABLE_KEY → VITE_SUPABASE_ANON_KEY" },
+    { text: "Delete deprecated main branch from GitHub" },
+    { text: "Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)" },
+    { text: "npm audit fix — 19 vulnerabilities (none critical)" },
+  ],
+  phase3: [
+    { text: "Cloudflare Workers proxy — route Supabase calls server-side (security hardening)" },
+    { text: "Analytics — Cloudflare Web Analytics or Plausible" },
+    { text: "Cart merge on login (guest → auth cart merge)" },
+    { text: "Bundle size optimization (972KB → <500KB target via lazy-load routes)" },
+    { text: "Email marketing integration (Klaviyo or Mailchimp for captured emails)" },
+    { text: "Pour Points loyalty program" },
+    { text: "Wishlist / Save for later" },
+    { text: "Product search + filter by category" },
+    { text: "International shipping config" },
+    { text: "Wholesale portal (foundation exists at /proposal)" },
+  ],
+};
 
-    if (line.startsWith("```")) {
-      flushUl(); flushTable();
-      const code: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith("```")) { code.push(lines[i]); i++; }
-      out.push(`<pre><code>${code.join("\n").replace(/</g, "&lt;")}</code></pre>`);
-      continue;
-    }
-    if (line.startsWith("#### ")) { flushUl(); flushTable(); out.push(`<h4>${inline(line.slice(5))}</h4>`); continue; }
-    if (line.startsWith("### "))  { flushUl(); flushTable(); out.push(`<h3>${inline(line.slice(4))}</h3>`); continue; }
-    if (line.startsWith("## "))   { flushUl(); flushTable(); out.push(`<h2>${inline(line.slice(3))}</h2>`); continue; }
-    if (line.startsWith("# "))    { flushUl(); flushTable(); out.push(`<h1>${inline(line.slice(2))}</h1>`); continue; }
-    if (line.startsWith("> "))    { flushUl(); flushTable(); out.push(`<blockquote><p>${inline(line.slice(2))}</p></blockquote>`); continue; }
-    if (/^---+$/.test(line))      { flushUl(); flushTable(); out.push("<hr>"); continue; }
+const KNOWN_ISSUES = [
+  { severity: "critical", item: "Fulfillment not wired", fix: "Select Printful/Printify, add API key to stripe-webhook" },
+  { severity: "critical", item: "Email templates not seeded", fix: "INSERT rows for order_confirmation + custom_request" },
+  { severity: "critical", item: "Storage bucket missing", fix: "Create products bucket in Supabase Storage" },
+  { severity: "high", item: "Apollo extension blocks admin login", fix: "Whitelist *.supabase.co in Apollo → Excluded Domains" },
+  { severity: "medium", item: "src/utils/supabase/ dead code", fix: "Delete folder" },
+  { severity: "medium", item: "src/lib/fulfillment.ts dead code", fix: "Delete file" },
+  { severity: "medium", item: "wrangler.jsonc duplicate", fix: "Delete file" },
+  { severity: "medium", item: "Local dev env var mismatch (.env.local)", fix: "Rename VITE_SUPABASE_PUBLISHABLE_KEY → VITE_SUPABASE_ANON_KEY" },
+  { severity: "low", item: "19 npm vulnerabilities", fix: "npm audit fix" },
+  { severity: "low", item: "Bundle 972KB", fix: "Lazy-load routes in App.tsx" },
+];
 
-    if (line.startsWith("|")) {
-      flushUl();
-      const cells = line.split("|").slice(1, -1).map(c => c.trim());
-      if (!inTable) {
-        out.push('<div class="overflow-x-auto"><table><thead><tr>');
-        cells.forEach(c => out.push(`<th>${inline(c)}</th>`));
-        out.push("</tr></thead>");
-        inTable = true; tableHeader = true;
-      } else if (tableHeader && cells.every(c => /^[-:]+$/.test(c))) {
-        out.push("<tbody>"); tableHeader = false;
-      } else if (!tableHeader) {
-        out.push("<tr>");
-        cells.forEach(c => out.push(`<td>${inline(c)}</td>`));
-        out.push("</tr>");
-      }
-      continue;
-    } else if (inTable) { flushTable(); }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const severityBadge = (s: string) => {
+  if (s === "critical") return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">CRITICAL</Badge>;
+  if (s === "high")     return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[10px]">HIGH</Badge>;
+  if (s === "medium")   return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">MEDIUM</Badge>;
+  return <Badge className="bg-zinc-500/20 text-zinc-400 border-zinc-500/30 text-[10px]">LOW</Badge>;
+};
 
-    if (/^- \[x\] /i.test(line)) {
-      if (!inUl) { out.push('<ul class="task-list">'); inUl = true; }
-      out.push(`<li class="task-item done"><span style="color:#86efac;margin-right:6px;">✓</span>${inline(line.slice(6))}</li>`);
-      continue;
-    }
-    if (/^- \[ \] /.test(line)) {
-      if (!inUl) { out.push('<ul class="task-list">'); inUl = true; }
-      out.push(`<li class="task-item"><span style="color:#6b7280;margin-right:6px;">○</span>${inline(line.slice(6))}</li>`);
-      continue;
-    }
-    if (/^[-*] /.test(line)) {
-      if (!inUl) { out.push("<ul>"); inUl = true; }
-      out.push(`<li>${inline(line.slice(2))}</li>`);
-      continue;
-    }
-    if (line.trim() === "") { flushUl(); flushTable(); out.push(""); continue; }
-    flushUl(); flushTable();
-    out.push(`<p>${inline(line)}</p>`);
-  }
-  flushUl(); flushTable();
-  return out.join("\n");
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+function StatCard({ label, value, sub, icon: Icon, accent }: {
+  label: string; value: string; sub?: string; icon: React.ElementType; accent?: boolean;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+      <Card className={`border ${accent ? "border-[#fde047]/40 bg-[#fde047]/5" : "border-border bg-card"}`}>
+        <CardContent className="p-4 flex items-start gap-3">
+          <div className={`mt-0.5 p-2 rounded-md ${accent ? "bg-[#fde047]/15" : "bg-muted/50"}`}>
+            <Icon className={`h-4 w-4 ${accent ? "text-[#fde047]" : "text-muted-foreground"}`} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">{label}</p>
+            <p className={`text-2xl font-bold mt-0.5 ${accent ? "text-[#fde047]" : "text-foreground"}`}>{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function PhaseTracker() {
+  const phases = [
+    { label: "Discovery", done: true },
+    { label: "Design", done: true },
+    { label: "Development", done: true },
+    { label: "DevOps", done: true },
+    { label: "QA", done: true },
+    { label: "Launch", done: false, active: true },
+  ];
+  return (
+    <Card className="border-border bg-card">
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Build Phase</p>
+        <div className="flex items-center flex-wrap gap-1">
+          {phases.map((phase, i) => (
+            <div key={phase.label} className="flex items-center gap-1">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-colors
+                ${phase.done
+                  ? "bg-[#fde047]/10 text-[#fde047]"
+                  : phase.active
+                  ? "bg-green-400/10 text-green-400 ring-1 ring-green-400/30"
+                  : "bg-muted/30 text-muted-foreground"}`}
+              >
+                {phase.done
+                  ? <CheckCircle className="h-3 w-3" />
+                  : phase.active
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Circle className="h-3 w-3" />}
+                {phase.label}
+              </div>
+              {i < phases.length - 1 && (
+                <ChevronRight className="h-3 w-3 text-muted-foreground/30" />
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProgressBar({ label, value, color = "bg-[#fde047]" }: { label: string; value: number; color?: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{label}</span>
+        <span className="font-medium text-foreground">{value}%</span>
+      </div>
+      <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+        <motion.div
+          className={`h-full rounded-full ${color}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${value}%` }}
+          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SessionLogEntry({ entry, index }: { entry: typeof SESSION_LOG[0]; index: number }) {
+  const [expanded, setExpanded] = useState(index === 0);
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      className="relative pl-6 mb-3"
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
+      <div className={`absolute left-[-3px] top-3 h-1.5 w-1.5 rounded-full ${index === 0 ? "bg-[#fde047]" : "bg-border"}`} />
+      <div className="border border-border bg-card rounded-sm overflow-hidden">
+        <button
+          className="w-full text-left p-4 flex items-start justify-between gap-3 hover:bg-muted/20 transition-colors"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-sm font-semibold">{entry.date}</span>
+            <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded ${entry.tagColor}`}>
+              {entry.tag}
+            </span>
+          </div>
+          {expanded
+            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+        </button>
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 border-t border-border/50 space-y-3">
+                <p className="text-sm text-muted-foreground pt-3">{entry.summary}</p>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1.5">Shipped</p>
+                  <ul className="space-y-1">
+                    {entry.completed.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <CheckCircle className="h-3 w-3 text-[#fde047] shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground border-t border-border/50 pt-2">
+                  <span className="font-semibold text-foreground shrink-0">Next up:</span>
+                  <span>{entry.next}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+function OpiesTaskCard({ task, index }: { task: typeof OPIES_TASKS[0]; index: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const [done, setDone] = useState(task.done);
+  const Icon = task.icon;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06 }}
+      className={`border rounded-sm overflow-hidden bg-card transition-opacity ${
+        done ? "opacity-50" :
+        task.priority === "critical" ? "border-red-500/30" :
+        task.priority === "high"     ? "border-orange-500/20" :
+        "border-border"
+      }`}
+    >
+      <button
+        className="w-full text-left p-4 flex items-start gap-3 hover:bg-muted/20 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className={`p-1.5 rounded shrink-0 mt-0.5 ${
+          task.priority === "critical" ? "bg-red-500/15" :
+          task.priority === "high"     ? "bg-orange-500/15" :
+          "bg-muted/30"
+        }`}>
+          <Icon className={`h-4 w-4 ${
+            task.priority === "critical" ? "text-red-400" :
+            task.priority === "high"     ? "text-orange-400" :
+            "text-muted-foreground"
+          }`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Badge className={`text-[10px] ${
+              task.priority === "critical" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+              task.priority === "high"     ? "bg-orange-500/20 text-orange-400 border-orange-500/30" :
+              task.priority === "medium"   ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+              "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+            }`}>{task.label}</Badge>
+          </div>
+          <p className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+            {task.title}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDone(!done);
+              toast.success(done ? "Marked incomplete" : "Done! Pour one out 🍺");
+            }}
+            className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
+              done ? "bg-[#fde047] border-[#fde047]" : "border-muted-foreground/30 hover:border-[#fde047]/60"
+            }`}
+          >
+            {done && <CheckCheck className="h-3 w-3 text-black" />}
+          </button>
+          {expanded
+            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 border-t border-border/40">
+              <p className="text-sm text-muted-foreground pt-3 leading-relaxed">{task.detail}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function BacklogSection({ title, items, color }: { title: string; items: { text: string }[]; color: string }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="space-y-2">
+      <button
+        className="flex items-center gap-2 text-sm font-semibold w-full text-left hover:text-foreground transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
+        {title}
+        <span className="text-xs text-muted-foreground font-normal ml-1">({items.length})</span>
+        {open
+          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-auto" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <ul className="space-y-1.5 pl-4">
+              {items.map((item) => (
+                <li key={item.text} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Circle className="h-3 w-3 shrink-0 mt-1 text-muted-foreground/30" />
+                  {item.text}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
-// Prose wrapper
-// ---------------------------------------------------------------------------
-const ProseBox = ({ content }: { content: string }) => (
-  <div
-    className="prose prose-invert prose-sm max-w-none rounded-lg border bg-card p-6
-      prose-h1:text-xl prose-h1:font-bold prose-h1:tracking-tight
-      prose-h2:text-lg prose-h2:font-semibold prose-h2:border-b prose-h2:border-border prose-h2:pb-2
-      prose-h3:text-base prose-h3:font-semibold
-      prose-table:text-sm prose-th:text-left prose-th:font-semibold
-      prose-a:text-yellow-400 prose-a:no-underline hover:prose-a:underline
-      prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-      prose-pre:bg-muted prose-pre:text-xs prose-pre:overflow-x-auto
-      prose-blockquote:border-yellow-400 prose-blockquote:text-muted-foreground"
-    dangerouslySetInnerHTML={{ __html: content }}
-  />
-);
-
-// ---------------------------------------------------------------------------
-// PROJECT STATUS markdown
-// ---------------------------------------------------------------------------
-const STATUS_MD = `# Pournogravy — Project Status
-**Maintained by:** Kristin Mitchell — Aethyx
-**Live Site:** [pournogravy.com](https://pournogravy.com)
-**Repository:** [kmitch2087-dot/pournogravy](https://github.com/kmitch2087-dot/pournogravy)
-
-> **Note on dates:** This project is built using multiple AI-assisted development tools (Lovable, Claude Code, Claude Cowork, and others). Entries in this log reflect updates recognized and logged by those systems — not necessarily the literal date the work was performed. Development often happens across tools simultaneously; the log captures progress milestones, not calendar hours.
-
----
-
-## Session Log (Latest First)
-
-| Date | Summary | Completed | Next Up |
-|------|---------|-----------|---------|
-| May 5, 2026 | Hero mobile fix. User Manual, HelpPanel, ContactKristinModal, admin-contact edge function. Project Status admin tab with Notify Opie button. POD research and Cost Analysis added as admin subcategories. Auth spinner fix — split loading/profileLoading, added 6s fetch timeout. | Hero fix, User Manual, Contact Kristin modal, Project Status tab, auth fix | Push all changes, verify mobile hero, select fulfillment partner |
-| May 4, 2026 | Phase 2 audit complete. Stripe checkout live (embedded Payment Element). Products seeded. All edge functions deployed. Webhook configured. Live Stripe key added. | **Real payments processing on pournogravy.com** | Verify DB order status, confirm Resend emails, select fulfillment partner |
-| April 29, 2026 | Fixed black screen bug. Fixed auth race condition. Fixed admin REVOKE bug. Full code audit. Updated all docs. Created Phase 2/3 prompts. Created 3-day developer curriculum. | Black screen fixed, auth fixed, docs created, curriculum created | Stripe secrets, Resend key, seed tables |
-| April 28, 2026 | Initial setup. Diagnosed CF Pages build issue. Connected GitHub → Cloudflare Pages. Created full documentation suite. | CF deployment connected, docs created | Fix CF build command, start Stripe |
-
----
-
-## ✅ Completed — Full Feature Inventory
-
-### Infrastructure & Deployment
-- [x] GitHub repo (kmitch2087-dot/pournogravy, master branch)
-- [x] Cloudflare Pages connected to GitHub (project: pournogravydev)
-- [x] pournogravy.com domain + SSL active
-- [x] SPA routing via wrangler.toml
-- [x] .env.production committed with Supabase + Stripe vars
-- [x] All Supabase Edge Function secrets set (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SIGNING_SECRET, RESEND_API_KEY)
-
-### Database (Supabase)
-- [x] products, cart_items, orders, order_items, custom_requests, profiles, admin_allowlist tables + RLS
-- [x] settings, email_templates, printer_queue, product_reviews, discount_codes tables
-- [x] All 24 products seeded into DB
-- [x] is_admin() SECURITY DEFINER function + GRANT EXECUTE fix applied
-- [x] handle_new_user trigger (auto-creates profile, checks allowlist)
-
-### Edge Functions (Supabase)
-- [x] create-checkout — Stripe PaymentIntent, server-side price + discount validation
-- [x] stripe-webhook — payment_intent.succeeded, marks order paid, queues printer
-- [x] send-notification — Resend email dispatch with template system
-- [x] verify-email — syntax, disposable blocklist, MX lookup
-- [x] validate-discount — validates promo codes against cart total
-- [x] admin-contact — Opie messages Kristin from admin dashboard
-- [x] notify-project-status — project update email to Opie (once-per-day rate limit)
-
-### Frontend — Public Pages
-- [x] Homepage (hero carousel, featured products, email capture, rotating quotes)
-- [x] Shop, Product Detail, Collections, About, Contact, FAQ, 404
-- [x] /proposal — Founding Client Offer / wholesale pitch page
-
-### Frontend — Admin Dashboard
-- [x] Login, Dashboard, Products, Orders, Custom Requests, Reviews, Settings
-- [x] User Manual (/admin/manual)
-- [x] Project Status (/admin/project-status) — with Fulfillment Research and Cost Analysis tabs
-
-### Checkout & Payments
-- [x] Stripe embedded Payment Element (stays on site)
-- [x] Branded Checkout.tsx + CheckoutReturn.tsx
-- [x] Guest email capture at checkout
-- [x] Discount code validation (server-side)
-
-### SEO & Discoverability
-- [x] react-helmet-async SEO component on all 8 public pages
-- [x] Open Graph image (og-default.jpg)
-- [x] sitemap.xml + robots.txt
-
----
-
-## 📋 Remaining Backlog
-
-### 🔴 Before Real Customer Orders
-- [ ] Select fulfillment partner (Printify primary — per POD research) and wire API key into stripe-webhook
-- [ ] Verify opie@pournogravy.com as sender domain in Resend
-- [ ] Seed email_templates (order_confirmation + custom_request rows)
-- [ ] Create Supabase Storage products bucket with public read
-
-### 🟡 Code Hygiene
-- [ ] Delete src/utils/supabase/ (dead second Supabase client)
-- [ ] Delete src/lib/fulfillment.ts (dead code)
-- [ ] Delete wrangler.jsonc (duplicate of wrangler.toml)
-
-### 🟢 Phase 3 Features
-- [ ] Cloudflare Workers proxy (security hardening)
-- [ ] Analytics (Cloudflare Web Analytics or Plausible)
-- [ ] Cart merge on login
-- [ ] Bundle size optimization (~972KB currently)
-- [ ] Email marketing (Klaviyo or Mailchimp)
-- [ ] Pour Points loyalty program
-- [ ] Wishlist, product search, international shipping, wholesale portal
-`;
-
-// ---------------------------------------------------------------------------
-// FULFILLMENT RESEARCH content (from POD_research_report.pdf)
+// Fulfillment Research
 // ---------------------------------------------------------------------------
 const FulfillmentResearch = () => (
   <div className="space-y-6">
     <div className="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h2 className="text-lg font-semibold">Print-on-Demand Cost Comparison</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Benchmark: Bella+Canvas 3001 · one front print · shipped to U.S. customer · May 5, 2026
-        </p>
+        <h2 className="text-base font-semibold">Print-on-Demand Cost Comparison</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Bella+Canvas 3001 · one front print · U.S. customer · May 2026</p>
       </div>
       <Button variant="outline" size="sm" asChild>
         <a href="/docs/POD_research_report.pdf" target="_blank" rel="noopener noreferrer">
-          <Download className="h-4 w-4 mr-2" />
-          Download PDF
+          <Download className="h-4 w-4 mr-2" />Download PDF
         </a>
       </Button>
     </div>
-
-    {/* Recommendation callout */}
-    <div className="rounded-lg border border-yellow-400/40 bg-yellow-400/5 p-4 space-y-1">
-      <p className="text-xs font-semibold tracking-widest uppercase text-yellow-400">Recommended Stack for Pournogravy</p>
-      <p className="text-sm text-foreground">
-        <strong>Primary:</strong> Printify &nbsp;·&nbsp;
-        <strong>Premium backup:</strong> Printful &nbsp;·&nbsp;
-        <strong>U.S. volume play:</strong> CustomCat Pro &nbsp;·&nbsp;
-        <strong>Global/expansion:</strong> Gelato
-      </p>
-      <p className="text-xs text-muted-foreground pt-1">
-        Start with Printify for margin testing. Order samples from Printify, Printful, and CustomCat before committing. Reserve Printful for SKUs where brand consistency matters more than cost.
-      </p>
+    <div className="rounded-sm border border-[#fde047]/30 bg-[#fde047]/5 p-4 space-y-1">
+      <p className="text-xs font-bold tracking-widest uppercase text-[#fde047]">Recommended Stack</p>
+      <p className="text-sm"><strong>Primary:</strong> Printify &nbsp;·&nbsp; <strong>Premium:</strong> Printful &nbsp;·&nbsp; <strong>U.S. volume:</strong> CustomCat Pro</p>
+      <p className="text-xs text-muted-foreground pt-1">Start with Printify for margin testing. Order samples from all three before committing. Reserve Printful for SKUs where brand quality matters more than cost.</p>
     </div>
-
-    {/* Cost table */}
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b bg-muted/30">
-        <p className="text-sm font-semibold">Cost Comparison — Lowest to Highest Total</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs text-muted-foreground uppercase tracking-wider">
-              <th className="px-4 py-3">Rank</th>
-              <th className="px-4 py-3">Service</th>
-              <th className="px-4 py-3">Product Cost</th>
-              <th className="px-4 py-3">U.S. Ship</th>
-              <th className="px-4 py-3 font-bold text-foreground">Est. Total</th>
-              <th className="px-4 py-3">Best For</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {[
-              { rank: 1, name: "Printify", product: "~$8.32", ship: "$4.75", total: "~$13.15", best: "Low-cost testing, large catalogs", tag: "PRIMARY" },
-              { rank: 2, name: "Gooten", product: "From $8.65", ship: "From $4.95", total: "~$13.60", best: "Scale operations, API-style fulfillment", tag: null },
-              { rank: 3, name: "Gelato (Gelato+)", product: "$8.55", ship: "From $4.99", total: "~$13.54", best: "International customers, global shipping", tag: null },
-              { rank: 4, name: "Printful", product: "$11.69", ship: "From $4.75", total: "~$16.44", best: "Premium brand experience, embroidery", tag: "PREMIUM" },
-              { rank: 5, name: "CustomCat Pro", product: "$8.67", ship: "~$4.99", total: "~$13.66", best: "U.S.-focused, fast production (Detroit)", tag: "U.S. MARGIN" },
-            ].map((r) => (
-              <tr key={r.rank} className={r.tag ? "bg-yellow-400/5" : ""}>
-                <td className="px-4 py-3 text-muted-foreground">{r.rank}</td>
-                <td className="px-4 py-3 font-medium">
-                  {r.name}
-                  {r.tag && (
-                    <span className="ml-2 text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-400">
-                      {r.tag}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{r.product}</td>
-                <td className="px-4 py-3 text-muted-foreground">{r.ship}</td>
-                <td className="px-4 py-3 font-semibold">{r.total}</td>
-                <td className="px-4 py-3 text-muted-foreground text-xs">{r.best}</td>
+    <Card className="border-border">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm">Cost Comparison</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-2.5">Rank</th><th className="px-4 py-2.5">Service</th>
+                <th className="px-4 py-2.5">Product</th><th className="px-4 py-2.5">Shipping</th>
+                <th className="px-4 py-2.5 font-bold text-foreground">Total</th><th className="px-4 py-2.5">Margin @$25</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    {/* Margin table */}
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b bg-muted/30">
-        <p className="text-sm font-semibold">Gross Margin at $25 Retail Price</p>
-        <p className="text-xs text-muted-foreground">Before Shopify, card processing, ad costs, refunds, or customer service time</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs text-muted-foreground uppercase tracking-wider">
-              <th className="px-4 py-3">Service</th>
-              <th className="px-4 py-3">Est. Cost</th>
-              <th className="px-4 py-3">Gross Profit</th>
-              <th className="px-4 py-3">Gross Margin</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {[
-              { name: "Printify", cost: "~$13.15", profit: "~$11.85", margin: "~47%", highlight: true },
-              { name: "Gooten", cost: "~$13.60", profit: "~$11.40", margin: "~46%", highlight: false },
-              { name: "Gelato with Gelato+", cost: "~$13.54", profit: "~$11.46", margin: "~46%", highlight: false },
-              { name: "CustomCat Pro", cost: "~$13.66", profit: "~$11.34", margin: "~45%", highlight: false },
-              { name: "Gelato Free", cost: "~$15.68", profit: "~$9.32", margin: "~37%", highlight: false },
-              { name: "Printful", cost: "~$16.44", profit: "~$8.56", margin: "~34%", highlight: false },
-              { name: "CustomCat Lite", cost: "~$16.46", profit: "~$8.54", margin: "~34%", highlight: false },
-            ].map((r) => (
-              <tr key={r.name} className={r.highlight ? "bg-yellow-400/5" : ""}>
-                <td className="px-4 py-3 font-medium">{r.name}{r.highlight && <span className="ml-2 text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-400">PRIMARY</span>}</td>
-                <td className="px-4 py-3 text-muted-foreground">{r.cost}</td>
-                <td className="px-4 py-3">{r.profit}</td>
-                <td className="px-4 py-3 font-semibold text-green-400">{r.margin}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    {/* Sample checklist */}
-    <div className="rounded-lg border bg-card p-4 space-y-2">
-      <p className="text-sm font-semibold">Sample Testing Checklist</p>
-      <p className="text-xs text-muted-foreground">Order samples from Printify, Printful, and CustomCat before committing to a primary vendor.</p>
-      <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-        {["Print sharpness and alignment", "Shirt fabric feel and fit consistency", "Wash test after 3–5 washes", "Packaging and presentation", "Actual order-to-delivery time", "Customer support response if there is an issue"].map(item => (
-          <li key={item} className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 shrink-0" />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-
-    <p className="text-xs text-muted-foreground">
-      Bottom line: the winning vendor for bartender shirts isn't just the cheapest — it's the one that lets you sell at $28–$32, protect print quality after washing, and avoid apologizing to customers.
-    </p>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {[
+                { rank: 1, name: "Printify", product: "~$8.32", ship: "$4.75", total: "~$13.15", margin: "~47%", tag: "PRIMARY" },
+                { rank: 2, name: "Gooten", product: "~$8.65", ship: "~$4.95", total: "~$13.60", margin: "~46%", tag: null },
+                { rank: 3, name: "Gelato (Gelato+)", product: "$8.55", ship: "~$4.99", total: "~$13.54", margin: "~46%", tag: null },
+                { rank: 4, name: "CustomCat Pro", product: "$8.67", ship: "~$4.99", total: "~$13.66", margin: "~45%", tag: "U.S. MARGIN" },
+                { rank: 5, name: "Printful", product: "$11.69", ship: "~$4.75", total: "~$16.44", margin: "~34%", tag: "PREMIUM" },
+              ].map((r) => (
+                <tr key={r.rank} className={r.tag === "PRIMARY" ? "bg-[#fde047]/5" : ""}>
+                  <td className="px-4 py-3 text-muted-foreground">{r.rank}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {r.name}
+                    {r.tag && <span className="ml-2 text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#fde047]/20 text-[#fde047]">{r.tag}</span>}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{r.product}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{r.ship}</td>
+                  <td className="px-4 py-3 font-semibold">{r.total}</td>
+                  <td className="px-4 py-3 text-green-400 font-semibold">{r.margin}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 );
 
 // ---------------------------------------------------------------------------
-// COST ANALYSIS content (from COST_ANALYSIS.md)
+// Cost Analysis
 // ---------------------------------------------------------------------------
-const COST_MD = `# Pournogravy — Cost Analysis
-## Market Value vs. Actual Investment
-**Prepared by:** Kristin Mitchell — Aethyx
-**Last Updated:** April 29, 2026
-
----
-
-## Overview
-
-This document provides a transparent comparison between what the Pournogravy website build would have cost at standard market rates versus what Aethyx charged as a portfolio-rate engagement.
-
-**Scope note:** The scope delivered includes a full serverless payment pipeline (Stripe + Webhook handling), transactional email system (Resend via Edge Functions), admin dashboard with role-based access control, multi-table database schema with complex RLS, and production-grade DevOps troubleshooting.
-
----
-
-## Market Rate Breakdown
-
-### Phase 1 — Discovery & Strategy
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| Brand discovery, competitive research, positioning | $1,000–2,500 | $2,500–6,000 |
-| Technical architecture planning | $750–2,000 | $2,000–5,000 |
-| Content & product strategy | $500–1,500 | $1,500–4,000 |
-| **Phase 1 Subtotal** | **$2,250–6,000** | **$6,000–15,000** |
-
-### Phase 2 — Design
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| Custom UI/UX design (all pages) | $3,000–8,000 | $8,000–20,000 |
-| Mobile-responsive design system | $1,000–2,500 | $2,500–6,000 |
-| Brand alignment & style guide | $500–1,500 | $1,500–4,000 |
-| Animation & interaction design | $500–1,500 | $1,500–4,000 |
-| **Phase 2 Subtotal** | **$5,000–13,500** | **$13,500–34,000** |
-
-### Phase 3 — Development
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| React/TypeScript frontend (all pages) | $6,000–15,000 | $15,000–35,000 |
-| E-commerce cart & order pipeline | $3,000–7,000 | $7,000–18,000 |
-| Supabase database design & RLS setup | $1,500–4,000 | $4,000–10,000 |
-| Admin role system (allowlist, SECURITY DEFINER, JWT) | $1,000–3,000 | $3,000–8,000 |
-| Admin dashboard (orders, custom requests, product mgmt) | $3,000–8,000 | $8,000–20,000 |
-| Stripe Checkout + Webhook Edge Functions | $2,500–6,000 | $6,000–15,000 |
-| Transactional email system (Resend + template engine) | $1,000–3,000 | $3,000–8,000 |
-| Email verification Edge Function | $500–1,500 | $1,500–4,000 |
-| Custom garment request system | $1,000–2,500 | $2,500–6,000 |
-| Product variant/color system + static/DB merge hook | $750–2,000 | $2,000–5,000 |
-| Hero carousel & animations | $500–1,500 | $1,500–3,500 |
-| Humor/brand copy integration | $500–1,500 | $1,500–3,500 |
-| **Phase 3 Subtotal** | **$21,250–55,000** | **$55,000–136,000** |
-
-### Phase 4 — DevOps & Deployment
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| GitHub repo setup & workflow | $250–750 | $750–2,000 |
-| Cloudflare Pages deployment & config | $500–1,500 | $1,500–4,000 |
-| Custom domain & SSL setup | $250–500 | $500–1,500 |
-| CI/CD pipeline (GitHub → CF Pages auto-deploy) | $500–1,500 | $1,500–4,000 |
-| SPA routing config (wrangler.toml) | $250–750 | $750–2,000 |
-| Environment variable architecture | $250–750 | $750–2,000 |
-| **Phase 4 Subtotal** | **$2,000–5,750** | **$5,750–15,500** |
-
-### Phase 5 — Debugging & QA
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| Cross-browser & device testing | $500–1,500 | $1,500–3,500 |
-| Production debugging (black screen, auth race condition, REVOKE bug) | $1,500–4,000 | $4,000–10,000 |
-| Code audit + tech debt documentation | $750–2,000 | $2,000–5,000 |
-| **Phase 5 Subtotal** | **$3,250–9,000** | **$9,000–22,500** |
-
-### Phase 6 — Project Management & Documentation
-
-| Deliverable | Freelancer Rate | Boutique Agency Rate |
-|-------------|---------------|---------------------|
-| Client communication & requirements | $500–1,500 | $1,500–4,000 |
-| Ongoing revisions & iteration | $1,000–3,000 | $3,000–8,000 |
-| Full developer handoff documentation | $500–1,500 | $1,500–4,000 |
-| Owner user manual | $250–750 | $750–2,000 |
-| Executive summary & business analysis | $500–1,500 | $1,500–4,000 |
-| Developer curriculum creation | $500–1,500 | $1,500–4,000 |
-| **Phase 6 Subtotal** | **$3,250–9,750** | **$9,750–26,000** |
-
----
-
-## Summary
-
-| | Freelancer | Boutique Agency |
-|--|-----------|----------------|
-| Phase 1 — Discovery & Strategy | $2,250–6,000 | $6,000–15,000 |
-| Phase 2 — Design | $5,000–13,500 | $13,500–34,000 |
-| Phase 3 — Development | $21,250–55,000 | $55,000–136,000 |
-| Phase 4 — DevOps & Deployment | $2,000–5,750 | $5,750–15,500 |
-| Phase 5 — Debugging & QA | $3,250–9,000 | $9,000–22,500 |
-| Phase 6 — Project Management | $3,250–9,750 | $9,750–26,000 |
-| **TOTAL** | **$37,000–99,000** | **$99,000–249,000** |
-| **Midpoint Estimate** | **~$68,000** | **~$174,000** |
-
----
-
-## What Aethyx Actually Charged
-
-| Item | Amount |
-|------|--------|
-| Development fee (portfolio rate) | $900.00 |
-| Software & infrastructure costs | $500.00 |
-| **Total** | **$1,400.00** |
-
----
-
-## Value Delivered vs. Cost
-
-| Metric | Value |
-|--------|-------|
-| Estimated market value (freelancer midpoint) | ~$68,000 |
-| Estimated market value (agency midpoint) | ~$174,000 |
-| Aethyx portfolio rate | $1,400 |
-| **Discount vs. freelancer market rate** | **~98%** |
-| **Discount vs. agency market rate** | **~99%** |
-
----
-
-## Notes
-
-- These estimates reflect a full custom build — not a template, Shopify install, or no-code platform.
-- Market rates sourced from Clutch.co, Upwork enterprise tier, and boutique agency pricing benchmarks (2025–2026).
-- Aethyx charged the portfolio rate to acquire a real-world case study. This arrangement was mutually beneficial.
-- As Aethyx takes on future clients, rates will reflect standard market pricing.
-
-*Document maintained by Aethyx. For questions, contact Kristin Mitchell.*
-`;
+const CostAnalysis = () => (
+  <div className="space-y-6">
+    <div>
+      <h2 className="text-base font-semibold">Market Rate vs. Actual Investment</h2>
+      <p className="text-sm text-muted-foreground mt-0.5">Prepared by Kristin Mitchell — Aethyx · April 29, 2026</p>
+    </div>
+    <div className="rounded-sm border border-[#fde047]/30 bg-[#fde047]/5 p-4">
+      <p className="text-xs font-bold tracking-widest uppercase text-[#fde047] mb-1">Bottom Line</p>
+      <p className="text-sm">Freelancer midpoint: <strong>~$68,000</strong> · Agency midpoint: <strong>~$174,000</strong> · Aethyx portfolio rate: <strong>$1,400</strong></p>
+      <p className="text-xs text-muted-foreground pt-2">~98% discount vs. freelancer market. ~99% vs. boutique agency. Portfolio-rate engagement to build a real-world case study — mutually beneficial deal.</p>
+    </div>
+    <Card className="border-border">
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-3">Phase</th><th className="px-4 py-3">Freelancer</th><th className="px-4 py-3">Agency</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {[
+                { phase: "1 — Discovery & Strategy", free: "$2,250–6,000", agency: "$6,000–15,000" },
+                { phase: "2 — Design", free: "$5,000–13,500", agency: "$13,500–34,000" },
+                { phase: "3 — Development", free: "$21,250–55,000", agency: "$55,000–136,000" },
+                { phase: "4 — DevOps & Deployment", free: "$2,000–5,750", agency: "$5,750–15,500" },
+                { phase: "5 — Debugging & QA", free: "$3,250–9,000", agency: "$9,000–22,500" },
+                { phase: "6 — Project Management", free: "$3,250–9,750", agency: "$9,750–26,000" },
+              ].map((r) => (
+                <tr key={r.phase}>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{r.phase}</td>
+                  <td className="px-4 py-3">{r.free}</td>
+                  <td className="px-4 py-3">{r.agency}</td>
+                </tr>
+              ))}
+              <tr className="bg-muted/20 font-semibold">
+                <td className="px-4 py-3">TOTAL</td><td className="px-4 py-3">$37,000–99,000</td><td className="px-4 py-3">$99,000–249,000</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+    <Card className="border-[#fde047]/20 bg-[#fde047]/5">
+      <CardContent className="p-4">
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-border/50">
+            <tr><td className="py-2.5 text-muted-foreground">Development fee (portfolio rate)</td><td className="py-2.5 font-medium text-right">$900.00</td></tr>
+            <tr><td className="py-2.5 text-muted-foreground">Software & infrastructure costs</td><td className="py-2.5 font-medium text-right">$500.00</td></tr>
+            <tr className="font-bold text-[#fde047]"><td className="py-2.5">Aethyx Total</td><td className="py-2.5 text-right">$1,400.00</td></tr>
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  </div>
+);
 
 // ---------------------------------------------------------------------------
-// Component
+// Main
 // ---------------------------------------------------------------------------
 export default function ProjectStatus() {
   const [notifyOpen, setNotifyOpen] = useState(false);
@@ -513,7 +680,7 @@ export default function ProjectStatus() {
       if (data?.rateLimited) {
         setResult({ ok: false, message: data.error });
       } else if (data?.ok) {
-        setResult({ ok: true, message: data.dryRun ? "Dry run (RESEND_API_KEY not set)." : `Email sent to ${data.sentTo ?? "Opie"}.` });
+        setResult({ ok: true, message: data.dryRun ? "Dry run — RESEND_API_KEY not set." : `Sent to ${data.sentTo ?? "Opie"}.` });
         setSummary(""); setChanges("");
       } else {
         setResult({ ok: false, message: data?.error ?? "Unknown error" });
@@ -525,74 +692,181 @@ export default function ProjectStatus() {
     }
   };
 
+  const daysSinceLaunch = Math.floor(
+    (new Date().getTime() - new Date("2026-04-28").getTime()) / (1000 * 60 * 60 * 24)
+  );
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Project Status</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Build timeline, fulfillment research, and cost analysis — all in one place.
+          <h1 className="font-display text-2xl tracking-widest">PROJECT STATUS</h1>
+          <p className="text-xs text-muted-foreground mt-1 font-marker tracking-widest uppercase">
+            pournogravy.com // back of house
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" asChild>
             <a href="https://github.com/kmitch2087-dot/pournogravy/blob/master/docs/PROJECT_STATUS.md" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              GitHub
+              <ExternalLink className="h-4 w-4 mr-2" />GitHub
             </a>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a href="/docs/POD_research_report.pdf" target="_blank" rel="noopener noreferrer">
-              <FileText className="h-4 w-4 mr-2" />
-              POD Report
+              <FileText className="h-4 w-4 mr-2" />POD Report
             </a>
           </Button>
-          <Button size="sm" onClick={() => { setResult(null); setNotifyOpen(true); }} className="bg-yellow-400 text-black hover:bg-yellow-300 font-semibold">
-            <Bell className="h-4 w-4 mr-2" />
-            Notify Opie
+          <Button
+            size="sm"
+            onClick={() => { setResult(null); setNotifyOpen(true); }}
+            className="bg-[#fde047] text-black hover:bg-yellow-300 font-semibold"
+          >
+            <Bell className="h-4 w-4 mr-2" />Notify Opie
           </Button>
         </div>
       </div>
 
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Features Shipped" value="40+" icon={CheckCheck} accent />
+        <StatCard label="Completion" value="~85%" sub="Core features done" icon={TrendingUp} />
+        <StatCard label="Days Active" value={`${daysSinceLaunch}`} sub="Since April 28, 2026" icon={Calendar} />
+        <StatCard label="Sessions" value="6" sub="Across all tools" icon={Clock} />
+      </div>
+
+      {/* Phase Tracker */}
+      <PhaseTracker />
+
+      {/* Progress Bars */}
+      <Card className="border-border bg-card">
+        <CardContent className="p-4 space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Progress by Area</p>
+          <ProgressBar label="Infrastructure & Deployment" value={100} />
+          <ProgressBar label="Database & Edge Functions" value={95} />
+          <ProgressBar label="Admin Dashboard" value={92} />
+          <ProgressBar label="Public Storefront" value={95} />
+          <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
+          <ProgressBar label="Fulfillment Pipeline" value={30} color="bg-orange-400" />
+          <ProgressBar label="Email & Notifications" value={75} color="bg-blue-400" />
+        </CardContent>
+      </Card>
+
       {/* Tabs */}
-      <Tabs defaultValue="status">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="status">Project Status</TabsTrigger>
-          <TabsTrigger value="fulfillment">Fulfillment Research</TabsTrigger>
-          <TabsTrigger value="cost">Cost Analysis</TabsTrigger>
+      <Tabs defaultValue="opie" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="opie" className="text-xs gap-1.5">
+            <User className="h-3.5 w-3.5" />Opie's Tasks
+          </TabsTrigger>
+          <TabsTrigger value="log" className="text-xs gap-1.5">
+            <Clock className="h-3.5 w-3.5" />Session Log
+          </TabsTrigger>
+          <TabsTrigger value="backlog" className="text-xs gap-1.5">
+            <Wrench className="h-3.5 w-3.5" />Backlog
+          </TabsTrigger>
+          <TabsTrigger value="fulfillment" className="text-xs gap-1.5">
+            <Package className="h-3.5 w-3.5" />Fulfillment
+          </TabsTrigger>
+          <TabsTrigger value="cost" className="text-xs gap-1.5">
+            <Star className="h-3.5 w-3.5" />Cost Analysis
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="status" className="mt-4">
-          <ProseBox content={renderMarkdown(STATUS_MD)} />
+        {/* Opie's Tasks */}
+        <TabsContent value="opie" className="mt-4 space-y-3">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold">Opie's Action Items</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Things that need your hands, not Kristin's. Click any item for details. Check off when done.
+              </p>
+            </div>
+            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {OPIES_TASKS.filter(t => !t.done && t.priority === "critical").length} Critical Open
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {OPIES_TASKS.map((task, i) => (
+              <OpiesTaskCard key={task.id} task={task} index={i} />
+            ))}
+          </div>
         </TabsContent>
 
+        {/* Session Log */}
+        <TabsContent value="log" className="mt-4">
+          <div className="pt-2">
+            {SESSION_LOG.map((entry, i) => (
+              <SessionLogEntry key={entry.date} entry={entry} index={i} />
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Backlog */}
+        <TabsContent value="backlog" className="mt-4 space-y-6">
+          <BacklogSection title="Before Real Customer Orders" items={BACKLOG.critical} color="bg-red-400" />
+          <BacklogSection title="Code Hygiene" items={BACKLOG.hygiene} color="bg-yellow-400" />
+          <BacklogSection title="Phase 3 Features" items={BACKLOG.phase3} color="bg-green-400" />
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-orange-400" />Known Issues
+            </h3>
+            <Card className="border-border">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2.5">Severity</th>
+                        <th className="px-4 py-2.5">Issue</th>
+                        <th className="px-4 py-2.5 hidden md:table-cell">Fix</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {KNOWN_ISSUES.map((issue) => (
+                        <tr key={issue.item}>
+                          <td className="px-4 py-2.5">{severityBadge(issue.severity)}</td>
+                          <td className="px-4 py-2.5 font-medium text-xs">{issue.item}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">{issue.fix}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Fulfillment */}
         <TabsContent value="fulfillment" className="mt-4">
           <FulfillmentResearch />
         </TabsContent>
 
+        {/* Cost Analysis */}
         <TabsContent value="cost" className="mt-4">
-          <ProseBox content={renderMarkdown(COST_MD)} />
+          <CostAnalysis />
         </TabsContent>
       </Tabs>
 
-      {/* Notify Opie dialog */}
+      {/* Notify Opie Dialog */}
       <Dialog open={notifyOpen} onOpenChange={setNotifyOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Notify Opie of Project Update</DialogTitle>
             <DialogDescription>
-              Sends a branded email to aopie91@gmail.com with a link to this page. Limited to once per day.
+              Sends a branded email to aopie91@gmail.com. Limited to once per day.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label htmlFor="summary">Summary <span className="text-red-500">*</span></Label>
-              <Textarea id="summary" placeholder="Plain-English summary for Opie — no tech jargon needed." value={summary} onChange={e => setSummary(e.target.value)} rows={4} className="resize-none" />
+              <Textarea id="summary" placeholder="Plain-English summary for Opie — no tech jargon needed." value={summary} onChange={(e) => setSummary(e.target.value)} rows={4} className="resize-none" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="changes">What Changed <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Textarea id="changes" placeholder="• Checkout now stays on the site&#10;• Added User Manual to your dashboard&#10;• You can now message Kristin directly" value={changes} onChange={e => setChanges(e.target.value)} rows={4} className="resize-none" />
+              <Textarea id="changes" placeholder={"• Added Opie's Tasks section\n• Your EIN goes in Stripe, not DNS — details in your dashboard\n• Apollo extension fix restores admin login"} value={changes} onChange={(e) => setChanges(e.target.value)} rows={4} className="resize-none" />
             </div>
             {result && (
               <div className={`flex items-start gap-2 rounded-md p-3 text-sm ${result.ok ? "bg-green-950 text-green-300" : "bg-red-950 text-red-300"}`}>
@@ -602,7 +876,7 @@ export default function ProjectStatus() {
             )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setNotifyOpen(false)} disabled={sending}>Cancel</Button>
-              <Button onClick={handleNotify} disabled={sending || !summary.trim()} className="bg-yellow-400 text-black hover:bg-yellow-300 font-semibold">
+              <Button onClick={handleNotify} disabled={sending || !summary.trim()} className="bg-[#fde047] text-black hover:bg-yellow-300 font-semibold">
                 {sending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending…</> : <><Bell className="h-4 w-4 mr-2" />Send to Opie</>}
               </Button>
             </div>

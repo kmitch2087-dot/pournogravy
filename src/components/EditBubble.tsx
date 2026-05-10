@@ -19,7 +19,8 @@ interface EditRequest {
 const DRAFT_KEY = "pg_edit_bubble_draft";
 
 const EditBubble = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const myAuthor = user?.email?.includes("aopie") ? "opie" : "kristin";
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => localStorage.getItem(DRAFT_KEY) ?? "");
   const [saving, setSaving] = useState(false);
@@ -52,6 +53,7 @@ const EditBubble = () => {
     const { error } = await (supabase.from("client_edit_requests" as never) as ReturnType<typeof supabase.from>).insert({
       content: draft.trim(),
       page_url: pageUrl,
+      author: myAuthor,
     });
 
     if (error) {
