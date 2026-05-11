@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useLocation, useNavigate, Link } from "react-router-dom";
@@ -107,7 +108,7 @@ const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/checkout/return?order=${orderId}`,
+        return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${displayTotal.toFixed(2)}`,
         shipping: {
           name: form.fullName,
           address: {
@@ -209,6 +210,14 @@ const Checkout = () => {
   };
   const navigate = useNavigate();
   const { items, totalPrice, appliedDiscount, discountedTotal } = useCart();
+
+  const { trackCheckoutStart } = useAnalytics();
+
+  // Fire checkout_start once per checkout session (when we have a valid client secret)
+  useEffect(() => {
+    if (state?.clientSecret) trackCheckoutStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!state?.clientSecret || !state.orderId) {
     navigate("/shop", { replace: true });

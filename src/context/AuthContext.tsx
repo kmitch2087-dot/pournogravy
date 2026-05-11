@@ -28,15 +28,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Prevents duplicate in-flight fetches for the same user
   const fetchingForRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    if (fetchingForRef.current === userId) {
-      console.log('[Auth] fetchProfile deduplicated for', userId);
-      return;
-    }
-    console.log('[Auth] fetchProfile start', userId);
+    if (fetchingForRef.current === userId) return;
     fetchingForRef.current = userId;
     try {
       const timeoutPromise = new Promise<null>((_, reject) =>
@@ -52,16 +47,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (result && "data" in result) {
         if (result.error) {
-          console.error("[Auth] fetchProfile query error:", result.error);
+          console.error("[Auth] fetchProfile error:", result.error);
         } else {
-          console.log('[Auth] fetchProfile success', { is_admin: result.data?.is_admin });
           setProfile(result.data);
         }
       }
     } catch (err) {
-      console.error("[Auth] fetchProfile failed or timed out:", err);
+      console.error("[Auth] fetchProfile failed:", err);
     } finally {
-      console.log('[Auth] fetchProfile finally → setLoading(false)');
       setLoading(false);
       fetchingForRef.current = null;
     }
@@ -70,62 +63,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange handles post-init events only.
-    // INITIAL_SESSION is intentionally skipped — getSession() below is the
-    // single authoritative init path. Handling INITIAL_SESSION here too
-    // creates a race: if it fires after getSession() already cleared loading,
-    // it re-sets loading=true and can leave the spinner stuck or clear user.
+    // CRITICAL: INITIAL_SESSION is never handled here.
+    // getSession() below is the single authoritative init path.
+    // Handling INITIAL_SESSION in onAuthStateChange creates a race that
+    // re-sets loading=true after getSession() already cleared it.
+    // See CLAUDE.md → Auth Architecture for full explanation.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
-      console.log(`[Auth] onAuthStateChange: ${event}`, { user: newSession?.user?.email ?? null });
-      if (event === 'INITIAL_SESSION') {
-        console.log('[Auth] INITIAL_SESSION skipped — getSession() is authoritative');
-        return;
-      }
+      if (event === "INITIAL_SESSION") return; // intentionally skipped
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
-      if (event === 'SIGNED_IN' && newSession?.user) {
+      if (event === "SIGNED_IN" && newSession?.user) {
         setLoading(true);
         fetchProfile(newSession.user.id);
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === "SIGNED_OUT") {
         setProfile(null);
         fetchingForRef.current = null;
         setLoading(false);
       }
-      // TOKEN_REFRESHED / USER_UPDATED: session updated above, no spinner needed.
     });
 
-    // Single authoritative init: resolve the session once on mount.
+    // Single authoritative init
     supabase.auth
       .getSession()
       .then(({ data: { session: existing } }) => {
         if (!mounted) return;
-        console.log('[Auth] getSession resolved', { user: existing?.user?.email ?? null });
         setSession(existing);
         setUser(existing?.user ?? null);
         if (existing?.user) {
-          // loading stays true; fetchProfile clears it in finally
           fetchProfile(existing.user.id);
         } else {
-          console.log('[Auth] no session → loading cleared');
           setLoading(false);
         }
       })
       .catch((err) => {
-        console.error('[Auth] getSession error', err);
+        console.error("[Auth] getSession error:", err);
         if (mounted) setLoading(false);
       });
 
-    // Hard failsafe: spinner can never stay up more than 8 s no matter what.
+    // Hard failsafe: spinner never stays up more than 8s
     const failsafe = setTimeout(() => {
-      if (mounted) {
-        console.warn('[Auth] 8-second failsafe fired — loading forced to false');
-        setLoading(false);
-      }
+      if (mounted) setLoading(false);
     }, 8000);
 
     return () => {
@@ -157,16 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        isAdmin: !!profile?.is_admin,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-      }}
+      value={{ user, session, profile, isAdmin: !!profile?.is_admin, loading, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>

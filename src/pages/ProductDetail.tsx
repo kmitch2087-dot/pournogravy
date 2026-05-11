@@ -2,6 +2,7 @@ import SEO from "@/components/SEO";
 import { useParams, Link } from "react-router-dom";
 import { products, type ProductVariant, type ProductColor } from "@/data/products";
 import { useCart } from "@/context/CartContext";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, Truck, RotateCcw, Star } from "lucide-react";
@@ -18,6 +19,7 @@ const ProductDetail = () => {
   // (matches the behavior of the shop grid + featured row hiding them).
   const product = products.find((p) => p.id === id && p.published === true);
   const { addItem } = useCart();
+  const { trackAddToCart } = useAnalytics();
   const [selectedSize, setSelectedSize] = useState("");
   const [justAdded, setJustAdded] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
@@ -151,8 +153,44 @@ const ProductDetail = () => {
     // Pass fit + color so the cart can distinguish Men's L Black from
     // Women's L Cream (they're different SKUs to the printer).
     addItem(product, selectedSize, selectedVariant?.id, selectedColor?.id);
+    trackAddToCart(product.id, { size: selectedSize, variant: selectedVariant?.id });
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
+  };
+
+  // ── JSON-LD: Google rich results + Shopping eligibility ──────────────────
+  const jsonLd = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: product.name,
+    description: `${product.humor} — ${product.name}. Bartender-themed apparel for the service industry.`,
+    brand: { "@type": "Brand", name: "Pournogravy" },
+    image: product.images,
+    url: `https://pournogravy.com/product/${product.id}`,
+    sku: product.id,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "USD",
+      price: product.price.toFixed(2),
+      availability: "https://schema.org/InStock",
+      seller: { "@type": "Organization", name: "Pournogravy" },
+      url: `https://pournogravy.com/product/${product.id}`,
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "USD" },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          businessDays: { "@type": "QuantitativeValue", minValue: 5, maxValue: 10 },
+        },
+      },
+    },
+    ...(reviews && reviews.length > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: (reviews.reduce((s: number, r: {rating: number}) => s + r.rating, 0) / reviews.length).toFixed(1),
+        reviewCount: reviews.length,
+      },
+    }),
   };
 
   return (
@@ -163,6 +201,10 @@ const ProductDetail = () => {
         image={product.images[0]}
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="container mx-auto px-4">
         {/* Back link */}

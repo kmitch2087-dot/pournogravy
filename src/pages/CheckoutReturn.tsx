@@ -1,17 +1,22 @@
 import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CheckoutReturn = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get("order");
+  const revenue = parseFloat(searchParams.get("amount") ?? "0") || 0;
   const { clearCart } = useCart();
+  const { trackPurchase } = useAnalytics();
 
   useEffect(() => {
     clearCart();
-  }, [clearCart]);
+    if (orderId) trackPurchase(orderId, revenue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

@@ -17,6 +17,7 @@
 
 | Date | Summary | Completed | Next Up |
 |------|---------|-----------|---------|
+| May 9–11, 2026 | **Hygiene + polish sprint.** Diagnosed Apollo Chrome extension as root cause of all fetchProfile timeouts (blocked `/rest/v1/profiles`). Bumped fetchProfile timeout to 12s. Stripped all 12 debug console.log/warn from AuthContext — only real errors remain. Deleted dead files: `src/lib/fulfillment.ts`, `wrangler.jsonc`. Lazy-loaded all non-critical routes in App.tsx (28 components) via `React.lazy()` + Suspense — bundle target <500KB. Added `client_edit_request` email template migration. Fixed VS Code lockfile warning (bun.lock vs package-lock.json). **Homepage redesign** (Opie's 8 client notes): headline rewritten, hero height mobile fix, object-fit mobile fix, button copy updated, marquee speed 20s → 14s, quotes expanded to 10 entries. **Rebuilt EditRequests** as two-column split view (Opie left / Kristin right) with mark-done, archive, inline reply threads, author attribution. **Rebuilt ProjectStatus** page with animated stat cards, 6-phase visual pipeline, 5 tabs (Opie's Tasks / Session Log / Backlog / Fulfillment / Cost), 7 priority action items for Opie. Seeded Opie's 8 client notes into DB (migration `20260509000001`). EIN guidance documented — goes in Stripe Business Details, not DNS. | Dead code deleted, debug logs stripped, lazy routing, homepage changes live, EditRequests rebuilt, ProjectStatus rebuilt, email template migration written | Push to GitHub, run migration in Supabase SQL Editor, delete src/utils/supabase/ + bun.lock from Terminal, npm audit fix from Terminal |
 | May 6, 2026 | Built full **Merch Drop Calendar** system. New admin tab at `/admin/merch-drops` with month-grid calendar, click-to-view popups, and full drop builder. Drops include: name/description, scheduling (drop date + ad launch date), product picker with inline Quick Create, flyer/graphic upload to Supabase Storage (`drops` bucket), tag picker (stamp badge or red marker style), site ad placement toggles (announcement bar, hero banner, featured section, shop banner), and full marketing email builder. Site-wide advertisement components wired into public pages (DropAnnouncementBar, DropHeroBanner, DropShopBanner). `process-merch-drops` edge function auto-publishes drops and sends branded pre-shift-meeting email on schedule. Supabase migration `20260506000001_merch_drops.sql` written. TypeScript clean. | Merch Drop Calendar + Builder + Ad system + Email function | Deploy migration, wire process-merch-drops to a cron schedule, push to GitHub |
 | May 5, 2026 | Hero mobile fix — `object-contain` so background image shows full on mobile; navbar clearance (`top-16`). Claude Code integrated User Manual into admin dashboard (`/admin/manual`), added HelpPanel (? button in header), ContactKristinModal, and `admin-contact` edge function so Opie can message Kristin directly from the dashboard. Project Status page added as admin tab with Notify Opie button. | Hero fix, User Manual in admin, Contact Kristin modal, Project Status admin tab | Push pending changes, verify mobile hero on live site, select fulfillment partner |
 | May 4, 2026 | Phase 2 audit — all prompts already built in code. Stripe checkout debugged and live. Migrated from Stripe hosted redirect to embedded Payment Element (stays on site). Seeded products table (was empty, causing all checkout attempts to fail). Deployed all edge functions via Supabase CLI. Configured `payment_intent.succeeded` webhook. Added live Stripe publishable key to `.env.production`. Verified all secrets set in Supabase. | **Real payments processing on pournogravy.com.** Checkout end-to-end working. Secrets confirmed. | Verify orders flip to 'paid' in DB. Confirm Resend confirmation emails. Select fulfillment partner. |
@@ -86,6 +87,8 @@
 - [x] **Project Status (`/admin/project-status` — this page; Notify Opie button)**
 - [x] HelpPanel (? button in header — quick-reference slide-out)
 - [x] ContactKristinModal — Opie can message Kristin directly; sends branded email
+- [x] **EditRequests (`/admin/edit-requests`)** — split-view notes system (Opie left / Kristin right), mark done, archive, inline reply threads, author-attributed messages, DB-backed with RLS
+- [x] **ProjectStatus (`/admin/project-status`)** — fully rebuilt: animated stat cards, 6-phase visual pipeline, animated progress bars, 5 tabs (Opie's Tasks / Session Log / Backlog / Fulfillment / Cost Analysis), 7 priority action items
 
 ### Frontend — Components
 - [x] Navbar (cart icon + count, responsive)
@@ -135,15 +138,15 @@
 
 - [ ] Select fulfillment partner (Printful or Printify) and wire API key into `stripe-webhook`
 - [ ] Verify `opie@pournogravy.com` confirmed as sender domain in Resend (Resend → Domains)
-- [ ] Seed `email_templates` — insert `order_confirmation` + `custom_request` rows
+- [x] Seed `email_templates` — `client_edit_request` row added (migration 20260509000002); `order_confirmation` was already seeded in original migration
 - [ ] Create Supabase Storage `products` bucket with public read (ProductEdit image upload needs it)
 - [ ] Switch Stripe to test mode for QA, then back to live before launch
 
 ### 🟡 Code Hygiene (Won't Break Anything, But Should Be Done)
 
 - [ ] Delete `src/utils/supabase/` — dead second Supabase client, never used
-- [ ] Delete `src/lib/fulfillment.ts` — dead code, misleadingly named
-- [ ] Delete `wrangler.jsonc` — duplicate of `wrangler.toml`
+- [x] Delete `src/lib/fulfillment.ts` — DELETED ✓
+- [x] Delete `wrangler.jsonc` — DELETED ✓
 - [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY` for local dev
 - [ ] Delete deprecated `main` branch from GitHub
 - [ ] Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)
@@ -154,7 +157,7 @@
 - [ ] Cloudflare Workers — proxy Supabase calls server-side (security hardening)
 - [ ] Analytics — Cloudflare Web Analytics or Plausible
 - [ ] Cart merge on login (guest → auth cart merge)
-- [ ] Bundle size optimization (currently ~972KB; lazy-load routes for <500KB target)
+- [x] Bundle size optimization — all 28 non-critical routes lazy-loaded in App.tsx via React.lazy() + Suspense
 - [ ] Email marketing integration (Klaviyo or Mailchimp) for captured emails
 - [ ] Pour Points loyalty program
 - [ ] Wishlist / Save for later
@@ -169,14 +172,14 @@
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
 | Fulfillment not wired | 🔴 Critical | Open | Select Printful/Printify, add API key to stripe-webhook |
-| Email templates not seeded | 🔴 High | Open | INSERT rows for order_confirmation + custom_request |
+| Email templates not seeded | 🟡 Medium | Partial — needs db push | `order_confirmation` was already seeded. `client_edit_request` migration written (20260509000002) — push to Supabase |
 | Storage bucket missing | 🔴 High | Open | Create `products` bucket in Supabase Storage |
 | `src/utils/supabase/` dead code | 🟡 Medium | Open | Delete folder |
-| `src/lib/fulfillment.ts` dead code | 🟡 Medium | Open | Delete file |
-| `wrangler.jsonc` duplicate | 🟡 Medium | Open | Delete file |
+| `src/lib/fulfillment.ts` dead code | 🟡 Medium | ✅ Resolved | Deleted |
+| `wrangler.jsonc` duplicate | 🟡 Medium | ✅ Resolved | Deleted |
 | Local dev env var mismatch | 🟡 Medium | Open | Rename key in `.env.local` |
-| 19 npm vulnerabilities | 🟡 Low | Open | `npm audit fix` |
-| Bundle 972KB | 🟡 Low | Open | Lazy-load routes in App.tsx |
+| 5 npm vulnerabilities | 🟡 Low | Needs Terminal | Run `npm audit fix` from Terminal in project root. Note: esbuild/Vite moderate vuln requires `--force` (Vite 8 upgrade) — dev-server-only risk, safe to defer. |
+| Bundle ~972KB | 🟡 Low | ✅ Resolved | Lazy-loaded 28 routes via React.lazy() + Suspense |
 
 ---
 
