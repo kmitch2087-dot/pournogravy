@@ -33,7 +33,8 @@ const Account       = lazy(() => import("./pages/Account"));
 const Checkout      = lazy(() => import("./pages/Checkout"));
 const CheckoutReturn= lazy(() => import("./pages/CheckoutReturn"));
 const NotFound      = lazy(() => import("./pages/NotFound"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const PrivacyPolicy  = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
 const AdminLogin     = lazy(() => import("./pages/admin/AdminLogin"));
@@ -140,6 +141,7 @@ const App = () => (
                       <Route path="discount-codes"    element={<DiscountCodes />} />
                     </Route>
                     <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms"   element={<TermsOfService />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

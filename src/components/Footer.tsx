@@ -66,6 +66,12 @@ const Footer = () => {
               <Link to="/contact" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
                 Contact
               </Link>
+              <Link to="/terms" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
+                Privacy Policy
+              </Link>
             </div>
           </div>
 
@@ -99,18 +105,37 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-14 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
+        {/* Bottom bar */}
+        <div className="mt-14 pt-6 border-t border-white/10 flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
             <p className="text-xs text-white/40">
               © {new Date().getFullYear()} POURnogravy. All rights reserved. Don't steal our stuff.
             </p>
-            <Link to="/privacy" className="text-xs text-white/30 hover:text-white/60 transition-colors">
-              Privacy Policy
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link to="/terms" className="text-xs text-white/30 hover:text-[#fde047] transition-colors">
+                Terms of Service
+              </Link>
+              <span className="text-white/20 text-xs">|</span>
+              <Link to="/privacy" className="text-xs text-white/30 hover:text-[#fde047] transition-colors">
+                Privacy Policy
+              </Link>
+            </div>
+            <p className="font-marker text-xs tracking-[0.3em] text-white/30 uppercase">
+              ☠ Drink responsibly. Clock out loudly.
+            </p>
           </div>
-          <p className="font-marker text-xs tracking-[0.3em] text-white/30 uppercase">
-            ☠ Drink responsibly. Clock out loudly.
-          </p>
+
+          {/* Aethyx credit */}
+          <div className="text-center">
+            <a
+              href="https://aethyx.space"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-white/20 hover:text-[#fde047] transition-colors font-marker tracking-widest"
+            >
+              ⚡ Built by Aethyx — We make the internet weird, on purpose.
+            </a>
+          </div>
         </div>
       </div>
     </footer>
