@@ -50,6 +50,7 @@ const Inbox          = lazy(() => import("./pages/admin/Inbox"));
 const EditRequests    = lazy(() => import("./pages/admin/EditRequests"));
 const MerchDrops     = lazy(() => import("./pages/admin/MerchDrops"));
 const Analytics      = lazy(() => import("./pages/admin/Analytics"));
+const Loyalty        = lazy(() => import("./pages/admin/Loyalty"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -129,6 +130,7 @@ const App = () => (
                       <Route path="edit-requests"     element={<EditRequests />} />
                       <Route path="merch-drops"       element={<MerchDrops />} />
                       <Route path="analytics"         element={<Analytics />} />
+                      <Route path="loyalty"           element={<Loyalty />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
