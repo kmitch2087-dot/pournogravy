@@ -128,7 +128,19 @@ Deno.serve(async (req) => {
       },
     });
 
-    // 2) Printer notification (fulfillment)
+    // 2) Pour Points — 1 point per $1 spent (auth users only)
+    if (order.user_id && (order.total_cents ?? 0) > 0) {
+      const pointsEarned = Math.floor((order.total_cents ?? 0) / 100);
+      if (pointsEarned > 0) {
+        await supabase.rpc("increment_loyalty_points", {
+          p_user_id: order.user_id,
+          p_points: pointsEarned,
+          p_order_id: order.id,
+        });
+      }
+    }
+
+    // 3) Printer notification (fulfillment)
     if (settings?.fulfillment_provider === "local_printer" && settings.printer_email) {
       const addr = order.shipping_address
         ? JSON.stringify(order.shipping_address, null, 2)

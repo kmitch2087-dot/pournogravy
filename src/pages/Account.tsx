@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useLoyalty } from "@/hooks/useLoyalty";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Package, LogOut, LayoutDashboard } from "lucide-react";
+import { Loader2, Package, LogOut, LayoutDashboard, Star, Gift, Heart } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 interface OrderRow {
   id: string;
@@ -18,9 +20,12 @@ interface OrderRow {
 
 const Account = () => {
   const { user, profile, isAdmin, loading, signOut } = useAuth();
+  const { account, transactions, loading: loyaltyLoading, redeem, rewardsAvailable, pointsToNextReward } = useLoyalty();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemedCode, setRedeemedCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -40,20 +45,26 @@ const Account = () => {
       if (cancelled) return;
       if (error) {
         toast.error("Couldn't load your orders");
-        console.error(error);
       } else {
         setOrders(data ?? []);
       }
       setOrdersLoading(false);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user]);
 
-  // Spinner only while auth state is genuinely unknown (both loading AND no user).
-  // If we already have a user, render the page even if the profile is still fetching —
-  // display_name falls back to email prefix gracefully.
+  const handleRedeem = async () => {
+    setRedeeming(true);
+    const result = await redeem();
+    if ("error" in result) {
+      toast.error(result.error);
+    } else {
+      setRedeemedCode(result.code);
+      toast.success(`Code created: ${result.code}`);
+    }
+    setRedeeming(false);
+  };
+
   if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -61,21 +72,22 @@ const Account = () => {
       </div>
     );
   }
-
-  // Auth resolved, no user — redirect effect will fire. Render nothing in the meantime.
   if (!user) return null;
 
   const fmt = (cents: number, currency: string) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 
+  const balance = account?.points_balance ?? 0;
+  const progressPct = Math.min(100, ((balance % 100) / 100) * 100);
+
   return (
     <div className="min-h-screen bg-background pt-28 pb-20">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+      <div className="container mx-auto px-4 max-w-4xl space-y-8">
+
+        {/* Header */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2">
-              Your tab
-            </p>
+            <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2">Your tab</p>
             <h1 className="font-display text-4xl md:text-5xl tracking-widest">
               {profile?.display_name || user.email?.split("@")[0]?.toUpperCase() || "ACCOUNT"}
             </h1>
@@ -85,22 +97,124 @@ const Account = () => {
             {isAdmin && (
               <Link to="/admin">
                 <Button variant="outline" className="h-10 font-display tracking-widest gap-2">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Admin
+                  <LayoutDashboard className="h-4 w-4" />Admin
                 </Button>
               </Link>
             )}
-            <Button
-              onClick={() => signOut()}
-              variant="outline"
-              className="h-10 font-display tracking-widest gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
+            <Link to="/wishlist">
+              <Button variant="outline" className="h-10 font-display tracking-widest gap-2">
+                <Heart className="h-4 w-4" />Wishlist
+              </Button>
+            </Link>
+            <Button onClick={() => signOut()} variant="outline" className="h-10 font-display tracking-widest gap-2">
+              <LogOut className="h-4 w-4" />Sign out
             </Button>
           </div>
         </div>
 
+        {/* Pour Points card */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative border border-[#fde047]/30 bg-card overflow-hidden"
+        >
+          {/* Glow */}
+          <div aria-hidden className="absolute inset-0 pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at 0% 50%, rgba(253,224,71,0.06), transparent 60%)" }} />
+
+          <header className="px-6 py-4 border-b border-[#fde047]/20 flex items-center gap-2">
+            <Star className="h-4 w-4 text-[#fde047] fill-[#fde047]" />
+            <h2 className="font-display tracking-widest text-sm">POUR POINTS</h2>
+            <span className="ml-auto text-[10px] font-marker tracking-widest text-muted-foreground uppercase">1 pt per $1 · 100 pts = $5 off</span>
+          </header>
+
+          <div className="px-6 py-6">
+            {loyaltyLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Balance + progress */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-marker mb-1">Current Balance</p>
+                  <p className="font-display text-5xl tracking-wider text-[#fde047]"
+                    style={{ textShadow: "0 0 20px rgba(253,224,71,0.4)" }}>
+                    {balance.toLocaleString()}
+                    <span className="text-lg text-muted-foreground ml-2">pts</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {account?.lifetime_points?.toLocaleString() ?? 0} lifetime points earned
+                  </p>
+
+                  {/* Progress bar */}
+                  <div className="mt-4">
+                    <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                      <span>{balance % 100} / 100 pts to next reward</span>
+                      {rewardsAvailable > 0 && (
+                        <span className="text-[#fde047]">{rewardsAvailable} reward{rewardsAvailable !== 1 ? "s" : ""} ready</span>
+                      )}
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ background: "linear-gradient(90deg, #fde047, #f59e0b)" }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Redeem button */}
+                  <div className="mt-5">
+                    {redeemedCode ? (
+                      <div className="border border-[#fde047]/40 bg-[#fde047]/5 rounded p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Your discount code:</p>
+                        <p className="font-mono text-lg text-[#fde047] font-bold tracking-widest">{redeemedCode}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Apply this at checkout for $5 off. Valid 30 days.</p>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleRedeem}
+                        disabled={rewardsAvailable === 0 || redeeming}
+                        className="h-10 font-display tracking-widest gap-2 bg-[#fde047] text-black hover:bg-[#fde047]/90 disabled:opacity-40"
+                      >
+                        {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                        {rewardsAvailable > 0 ? `Redeem 100 pts for $5 off` : `${pointsToNextReward} pts to next reward`}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent transactions */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-marker mb-3">Recent Activity</p>
+                  {transactions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No activity yet — make your first order to earn points.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {transactions.map((tx) => (
+                        <li key={tx.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <p className="text-xs">{tx.description ?? tx.type}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(tx.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className={`font-display text-sm tracking-wider ${tx.points > 0 ? "text-[#fde047]" : "text-muted-foreground"}`}>
+                            {tx.points > 0 ? "+" : ""}{tx.points} pts
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.section>
+
+        {/* Order history */}
         <section className="border border-[#fde047]/20 bg-card">
           <header className="px-6 py-4 border-b border-[#fde047]/20 flex items-center gap-2">
             <Package className="h-4 w-4 text-[#fde047]" />
@@ -127,9 +241,7 @@ const Account = () => {
               {orders.map((order) => (
                 <li key={order.id} className="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-display tracking-widest text-sm">
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </p>
+                    <p className="font-display tracking-widest text-sm">#{order.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(order.created_at).toLocaleDateString()} · {order.status}
                     </p>
@@ -139,9 +251,7 @@ const Account = () => {
                       </p>
                     )}
                   </div>
-                  <p className="font-display tracking-widest">
-                    {fmt(order.total_cents, order.currency)}
-                  </p>
+                  <p className="font-display tracking-widest">{fmt(order.total_cents, order.currency)}</p>
                 </li>
               ))}
             </ul>

@@ -5,13 +5,14 @@ import { products, collections } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, X } from "lucide-react";
+import { Search, X, ArrowUpDown } from "lucide-react";
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initial = searchParams.get("collection") || "all";
   const [activeFilter, setActiveFilter] = useState(initial);
   const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "default");
 
   // Keep URL in sync so filter + search state is shareable/back-button friendly
   useEffect(() => {
@@ -25,9 +26,14 @@ const Shop = () => {
     } else {
       searchParams.delete("q");
     }
+    if (sortBy !== "default") {
+      searchParams.set("sort", sortBy);
+    } else {
+      searchParams.delete("sort");
+    }
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, query]);
+  }, [activeFilter, query, sortBy]);
 
   // Only published products are visible to shoppers. Drafts (anything not
   // explicitly `published: true`) are hidden from the catalog. This is the
@@ -39,14 +45,18 @@ const Shop = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return visible.filter((p) => {
+    const base = visible.filter((p) => {
       const matchesCollection = activeFilter === "all" || p.category === activeFilter;
       const matchesSearch = !q ||
         p.name.toLowerCase().includes(q) ||
         (p.description ?? "").toLowerCase().includes(q);
       return matchesCollection && matchesSearch;
     });
-  }, [activeFilter, query, visible]);
+    if (sortBy === "price-asc") return [...base].sort((a, b) => a.price - b.price);
+    if (sortBy === "price-desc") return [...base].sort((a, b) => b.price - a.price);
+    if (sortBy === "alpha") return [...base].sort((a, b) => a.name.localeCompare(b.name));
+    return base;
+  }, [activeFilter, query, sortBy, visible]);
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
@@ -117,9 +127,22 @@ const Shop = () => {
                   </button>
                 )}
               </div>
-              <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap ml-auto">
-                {filtered.length} Product{filtered.length === 1 ? "" : "s"}
-              </p>
+              <div className="flex items-center gap-2 ml-auto">
+                <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="text-xs bg-transparent border border-border text-muted-foreground focus:outline-none focus:border-[#fde047] py-1.5 px-2 cursor-pointer"
+                >
+                  <option value="default">Featured</option>
+                  <option value="price-asc">Price: Low → High</option>
+                  <option value="price-desc">Price: High → Low</option>
+                  <option value="alpha">A → Z</option>
+                </select>
+                <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap hidden sm:block">
+                  {filtered.length} item{filtered.length === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
             {/* Collection filters */}
             <div className="flex flex-wrap gap-2">
