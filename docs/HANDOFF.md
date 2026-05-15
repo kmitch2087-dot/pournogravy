@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** May 14, 2026  
+**Last Updated:** May 14, 2026 (end of sprint)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -120,6 +120,10 @@ src/
 │       ├── ProjectStatus.tsx  # 6-phase pipeline, stat cards, session log
 │       ├── Inbox.tsx          # Admin inbox/messages
 │       ├── Analytics.tsx      # Site analytics dashboard
+│       ├── Loyalty.tsx        # Pour Points — member table, tx history, manual adjustments
+│       ├── Customers.tsx      # Customer lookup by email — stats, order history
+│       ├── Subscribers.tsx    # Email subscriber list, CSV export, 8-week sparkline
+│       ├── DiscountCodes.tsx  # Create/toggle/delete promo codes, usage tracking
 │       ├── UserManual.tsx     # Full operational guide for Opie
 │       └── Settings.tsx       # Site config (requires settings row id=1)
 ├── components/
@@ -133,7 +137,12 @@ src/
 │       └── AdminLayout.tsx    # Admin nav shell with mobile sidebar
 ├── context/
 │   ├── AuthContext.tsx        # Auth state — race condition fixed (see §5)
-│   └── CartContext.tsx        # Hybrid guest (session_id) + auth (user_id) cart
+│   └── CartContext.tsx        # Cart: localStorage + debounced DB sync; merge on login
+├── hooks/
+│   ├── useAnalytics.ts        # Page-view + event tracking; auto-fires on route change
+│   ├── useLoyalty.ts          # Pour Points balance, transactions, redeem()
+│   ├── useProductRatings.ts   # Shared React Query cache for star ratings on cards
+│   └── useWishlist.ts         # Auth = Supabase wishlists, guest = localStorage
 ├── data/
 │   └── products.ts            # Static product data (DB takes precedence via useMergedProducts)
 ├── lib/
@@ -214,7 +223,7 @@ The Apollo Chrome extension blocks `/rest/v1/profiles` requests. This causes `fe
 | `profiles` | User profiles with `is_admin` flag |
 | `admin_allowlist` | 3 admin emails; `handle_new_user` trigger checks this |
 | `products` | DB products (24 seeded; merged with static via `useMergedProducts`) |
-| `cart_items` | Guest (session_id) + auth (user_id) carts |
+| `cart_items` | Guest (session_id) + auth (user_id) carts — includes size, variant_id, color_id, product_slug |
 | `orders` | Order records — written via service_role (Stripe webhook) |
 | `order_items` | Line items per order |
 | `custom_requests` | Custom garment inquiry form submissions |
@@ -226,7 +235,11 @@ The Apollo Chrome extension blocks `/rest/v1/profiles` requests. This causes `fe
 | `inbox_messages` | Admin inbox for internal messages |
 | `merch_drops` | Scheduled drop calendar — date, products, ads, flyers, marketing email |
 | `edit_requests` | Client edit notes (Opie) + Kristin replies — threaded, mark-done, archive |
-| `analytics_events` | Client-side event tracking (page views, add to cart, etc.) |
+| `analytics_events` | Client-side event tracking (page views, add to cart, purchases) |
+| `wishlists` | User saved products — user_id + product_id (text slug), unique per pair |
+| `loyalty_accounts` | Pour Points — points_balance, lifetime_points per user |
+| `loyalty_transactions` | Point earn/redeem/adjustment history per user |
+| `email_subscribers` | Homepage email capture — email + source, unique constraint |
 
 ### Key Schema Details
 
@@ -270,6 +283,10 @@ show_shop_banner, email_subject, email_body, status, created_at
 | merch_drops | ✅ | ✅ | admin write |
 | edit_requests | ❌ | ❌ | admin full |
 | analytics_events | write | write | read |
+| wishlists | ❌ | own only | — |
+| loyalty_accounts | ❌ | own only | admin read/write |
+| loyalty_transactions | ❌ | own only | admin read/insert |
+| email_subscribers | write | ❌ | admin read |
 
 ---
 
@@ -291,6 +308,7 @@ All functions live in `supabase/functions/`.
 | `process-merch-drops` | Cron — auto-publishes scheduled drops, sends pre-shift email | `RESEND_API_KEY` |
 | `receive-email` | Handles inbound email from Cloudflare Email Worker routing | None |
 | `track-event` | Ingests analytics events into `analytics_events` table | None |
+| `redeem-points` | Exchanges 100 Pour Points for a single-use $5 discount code; atomic deduction with optimistic concurrency | None |
 
 ### Required Secrets (all confirmed set in Supabase):
 ```
@@ -371,12 +389,10 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 - `npm audit fix` (some vulnerabilities remain)
 
 ### 🟢 Phase 3 Features (when ready)
-- Cart merge on login (guest → auth)
-- Email marketing integration (Klaviyo or Mailchimp)
-- Product search + filter
-- Wishlist / Save for later
-- Pour Points loyalty program
-- Bundle size continued optimization
+- Email marketing integration (Klaviyo or Mailchimp) to activate subscriber list
+- International shipping config
+- Wholesale portal (foundation at `/proposal`)
+- Vite 8 upgrade (`npm audit fix --force` — breaking change, defer to dedicated session)
 
 ---
 
@@ -414,6 +430,18 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 | May 9, 2026 | Rebuilt ProjectStatus: stat cards, 6-phase pipeline, 5 tabs, 7 priority items |
 | May 9, 2026 | Seeded Opie's 8 client notes into DB (migration 20260509000001) |
 | May 11, 2026 | Analytics system — `analytics_events` table + `track-event` edge function + Analytics admin page |
+| May 14, 2026 | Shop search (URL-synced `?q=`) + sort: Featured / Price Low→High / Price High→Low / A→Z |
+| May 14, 2026 | Wishlist system — `wishlists` table + `useWishlist` hook (auth=DB, guest=localStorage) + heart toggle on ProductCard + `/wishlist` page + Navbar badge |
+| May 14, 2026 | Star ratings on ProductCard via shared `useProductRatings` React Query cache (one fetch for all cards) |
+| May 14, 2026 | Pour Points loyalty — `loyalty_accounts` + `loyalty_transactions` tables + `increment_loyalty_points()` SECURITY DEFINER fn + `redeem-points` edge function + `useLoyalty` hook + Account page rewrite + CheckoutReturn "+X Pour Points" banner |
+| May 14, 2026 | Admin Loyalty panel (`/admin/loyalty`) — member table, expandable tx history, manual adjustment modal |
+| May 14, 2026 | Admin Customer Lookup (`/admin/customers`) — email search, stats grid, expandable order history |
+| May 14, 2026 | Admin Email Subscribers (`/admin/subscribers`) — list, CSV export, 8-week sparkline |
+| May 14, 2026 | Admin Discount Codes (`/admin/discount-codes`) — create/toggle/delete, usage progress bar, status badges |
+| May 14, 2026 | Homepage email capture wired to `email_subscribers` table (dedup on 23505 conflict error) |
+| May 14, 2026 | Organization JSON-LD on homepage; Product JSON-LD already on ProductDetail (schema.org rich results) |
+| May 14, 2026 | Cart merge — CartContext rewritten with DB sync; `cart_items` extended with size/variant_id/color_id/product_slug; guest cart survives login + cross-device sync |
+| May 14, 2026 | `products` Storage bucket created (public read, admin write) — product image uploads now work |
 
 ---
 

@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** April 29, 2026
+**Last Updated:** May 14, 2026
 
 ---
 
@@ -37,8 +37,8 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 ### Payments & Email
 | Technology | What It Does |
 |-----------|-------------|
-| **Stripe** | Payment processing via Checkout Sessions and Webhooks (built and ready for activation) |
-| **Resend** | Transactional email — order confirmations and custom request notifications (built, pending API key) |
+| **Stripe** | Payment processing via embedded Payment Element and Webhooks — live payments active |
+| **Resend** | Transactional email — order confirmations and custom request notifications (API key set, sender domain pending verification) |
 
 ### Deployment & Hosting
 | Technology | What It Does |
@@ -53,54 +53,76 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ### Storefront
 - **Hero carousel** — auto-rotating product showcase with featured designs and brand messaging
-- **Shop page** — full product catalog with filtering and browsing
-- **Product detail pages** — per-product pages with size selector, color selector (Black / Cream), Men's/Women's fit variants, image galleries, product descriptions, and humor-forward "Bad Bartender Advice" copy
+- **Shop page** — full product catalog with live search (`?q=`) and sort controls (Featured / Price / A→Z)
+- **Product detail pages** — per-product pages with size selector, color selector (Black / Cream), Men's/Women's fit variants, image galleries, star ratings, and humor-forward "Bad Bartender Advice" copy
 - **Collections page** — curated product groupings
 - **Featured products** — dynamically controlled from product data; easy to update
+- **Wishlist** — customers can save products with a heart toggle; persists without an account (localStorage) and syncs to their profile on login
 
 ### Cart & Checkout Flow
 - **Persistent cart drawer** — slides in from the right; works for guests and logged-in users
-- **Guest cart support** — no account required to shop; cart saved to browser session
+- **Cart merge on login** — guest cart items survive login and merge with any saved cart from another device
+- **Discount code field** — built into the cart; server-validated via edge function
 - **Quantity management** — add, update, remove items
 - **Order pipeline** — database-backed order records with status tracking (pending → paid → fulfilled)
-- **Stripe Checkout** — server-validated pricing, pending order creation, redirect to Stripe hosted checkout
+- **Stripe Checkout** — embedded Payment Element; pricing validated server-side; payments live
 
 ### Customer Features
 - **Custom garment request form** — customers can request any design on a different garment; submissions go directly to the admin dashboard
 - **FAQ page** — addresses common questions about sizing, shipping, customs, and brand values
 - **About page** — brand story and mission
 - **Contact page** — direct customer communication channel
-- **Email newsletter capture** — homepage email collection for future marketing campaigns
-- **Order confirmation emails** — templated transactional email via Resend (pending activation)
+- **Email newsletter capture** — homepage email collection connected to a subscriber database; ready for Klaviyo/Mailchimp integration
+- **Order confirmation emails** — templated transactional email via Resend (pending domain verification)
+- **Pour Points loyalty program** — customers earn 1 point per $1 spent; every 100 points redeems for a $5 discount code; balance visible on account page with full transaction history
+- **Product reviews** — star ratings on product cards; customers can leave reviews on product pages (admin approval queue)
 
 ### Admin / Owner Dashboard
 - **Protected admin section** — login-gated, allowlist-based admin access (no customer can access)
-- **Orders view** — see all orders and their status in the admin UI
+- **Orders view** — see all orders and their status
 - **Custom requests view** — see and manage custom garment submissions
-- **Product management** — product editing UI with image upload to Supabase Storage
+- **Product management** — product editing UI with image upload to Supabase Storage (bucket live)
+- **Reviews queue** — approve or reject customer reviews before they go live
+- **Discount codes** — create, toggle active/inactive, and delete promo codes; usage progress bars; status badges (Active / Expired / Exhausted)
+- **Pour Points panel** — view all members, point balances, full transaction history; manual adjustment tool
+- **Customer lookup** — search any customer by email; see order history, loyalty balance, wishlist count
+- **Email subscribers** — view all newsletter signups, subscriber growth trend, export CSV
+- **Merch drop calendar** — schedule product drops with ad placement, email campaigns, and auto-publish
+- **Analytics dashboard** — page views, event funnel, top products
 - **Site settings** — configurable site-wide settings
+- **Inbox** — admin messaging system
+- **Edit requests** — split-view note system; Opie submits requests, Kristin replies with inline threads
+- **Project status** — real-time build pipeline with phase tracker and session log
+- **Direct contact to developer** — Opie can message Kristin directly from the dashboard
 
 ### Brand & Content
 - Humor-forward brand voice baked into every product page
 - Mobile-responsive on all screen sizes
 - Smooth animations and transitions throughout
 - Consistent design system using the brand's color palette
+- SEO-optimized with structured data (JSON-LD Product + Organization schemas) for Google Shopping eligibility
 
 ---
 
-## 4. Current Status (April 29, 2026)
+## 4. Current Status (May 14, 2026)
 
-**Site is live at pournogravy.com.** The storefront, cart, and admin dashboard are fully functional. The following items are built and require final configuration before the site can accept real payments:
+**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, and analytics are all fully operational. The following items remain before a full marketing push:
 
 | Item | Status | Action Needed |
 |------|--------|--------------|
 | Storefront | ✅ Live | None |
 | Admin Dashboard | ✅ Live | None |
-| Cart & order pipeline | ✅ Built | None |
-| Stripe payment processing | ⚠️ Built, needs secrets | Add Stripe API keys to Supabase |
-| Order confirmation emails | ⚠️ Built, needs API key | Add Resend API key to Supabase |
-| Fulfillment partner | ❌ Not selected | Choose Printful or Printify |
-| Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp |
+| Cart & order pipeline | ✅ Live | None |
+| Stripe payment processing | ✅ Live | None |
+| Discount codes | ✅ Live | None |
+| Pour Points loyalty | ✅ Live | None |
+| Wishlist | ✅ Live | None |
+| Analytics | ✅ Live | None |
+| Email subscribers | ✅ Live | None |
+| Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend |
+| Fulfillment partner | ❌ Not selected | Choose Printful or Printify — wire API key into stripe-webhook |
+| Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp to existing subscriber list |
+| Inbound email routing | ⚠️ Partial | Wire Cloudflare Email Worker `wild-mouse-2b64` routing rule |
 
 ---
 
@@ -140,24 +162,27 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ## 6. Future Suggested Roadmap
 
-### Phase 1 — Payment Activation (Next 1–2 weeks)
-- **Activate Stripe** — add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to Supabase edge function secrets
-- **Activate Resend** — add `RESEND_API_KEY`; verify sender domain (opie@pournogravy.com)
-- **Select fulfillment partner** — Printful or Printify; wire API key into stripe-webhook function
-- **Seed admin settings** — one SQL statement to enable admin settings page
-- **Email marketing** — connect captured emails to Klaviyo or Mailchimp
+### ✅ Phase 1 — Payment Activation (Complete)
+- Stripe live payments active
+- Resend API key set; sender domain pending verification
+- All edge functions deployed and confirmed
+- Admin dashboard fully operational
 
-### Phase 2 — Growth (30–60 days)
-- **SEO optimization** — meta tags, Open Graph images, sitemap, structured product data
-- **Discount codes** — promo code support for launch campaigns and influencer partnerships
-- **Product reviews** — social proof on product pages
-- **Cart merge** — guest → auth cart merging on login
+### ✅ Phase 2 — Growth (Complete)
+- SEO — meta tags, Open Graph, sitemap, Product + Organization JSON-LD (Google Shopping ready)
+- Discount codes — full admin panel; server-validated at checkout
+- Product reviews — star ratings on cards + product pages; admin approval queue
+- Cart merge — guest cart survives login; cross-device sync via Supabase
+- Wishlist — heart toggle on every product; localStorage for guests, DB for auth users
+- Pour Points — loyalty program with earn-on-purchase and redeem-for-discount
+- Shop search and sort controls
+- Email subscriber capture wired to database
 
-### Phase 3 — Scale (60–120 days)
+### Phase 3 — Scale (Next)
+- **Fulfillment partner** — select Printful or Printify; wire API key into stripe-webhook (required before first real order ships)
+- **Email marketing** — connect existing subscriber list to Klaviyo or Mailchimp
 - **Cloudflare Workers** — proxy Supabase API calls server-side for enhanced security
-- **Analytics** — privacy-friendly analytics (Cloudflare Web Analytics or Plausible)
-- **Subscription / loyalty program** — repeat-customer rewards
-- **Wholesale portal** — B2B ordering with tiered pricing
+- **Wholesale portal** — B2B ordering with tiered pricing (foundation at `/proposal`)
 - **International shipping** — expanded shipping zone configuration
 
 ---
