@@ -6,10 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
 import { products, quotes } from "@/data/products";
-import { DropHeroBanner } from "@/components/DropHeroBanner";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 const TICKER_ITEMS = [
   "Offend a Karen without having to open your mouth.",
@@ -18,6 +14,10 @@ const TICKER_ITEMS = [
   "THEY'RE NOT CUSTOMERS! THEY'RE GUESTS!...OH, SHUT UP!!!",
   ...quotes,
 ];
+import { DropHeroBanner } from "@/components/DropHeroBanner";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Hero carousel config — slide 0 is the glass headline, the rest feature shirts.
 // Product IDs are pulled from products.ts at runtime so name/price/humor stay
