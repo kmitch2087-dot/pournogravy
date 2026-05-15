@@ -13,9 +13,7 @@ export interface CartItem {
   product: Product;
   size: string;
   quantity: number;
-  /** Optional fit variant id ("mens" / "womens") when the product has variants */
   variantId?: string;
-  /** Optional color id ("black" / "cream") when the product has colors */
   colorId?: string;
 }
 
@@ -46,13 +44,6 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // ---------- localStorage helpers ----------
-// Storage format is intentionally SLIM — only productId + size + (optional) variantId/colorId + quantity.
-// We re-look up the full Product on hydrate so price/description/image updates
-// flow through to existing carts automatically.
-// Version history:
-//   v1 — productId + size only
-//   v2 — added variantId (Men's / Women's / Unisex)
-//   v3 — added colorId (Black / Cream)
 const CART_STORAGE_KEY = "pournogravy:cart:v3";
 const LEGACY_CART_KEYS = ["pournogravy:cart:v1", "pournogravy:cart:v2"];
 const SESSION_ID_KEY = "pournogravy:session_id";
@@ -65,7 +56,6 @@ type StoredCartItem = {
   colorId?: string;
 };
 
-/** Two line items are "the same" when product, fit variant, color, and size all match. */
 const sameLine = (
   a: { product: Product; size: string; variantId?: string; colorId?: string },
   productId: string,
@@ -89,7 +79,6 @@ const loadSessionId = (): string => {
     window.localStorage.setItem(SESSION_ID_KEY, fresh);
     return fresh;
   } catch {
-    // localStorage blocked (private mode, etc.) — return ephemeral id
     return crypto.randomUUID();
   }
 };
@@ -97,7 +86,6 @@ const loadSessionId = (): string => {
 const loadCart = (): CartItem[] => {
   if (!isBrowser) return [];
   try {
-    // Best-effort cleanup of any older versions of the cart key.
     for (const k of LEGACY_CART_KEYS) {
       try { window.localStorage.removeItem(k); } catch { /* noop */ }
     }
@@ -106,7 +94,6 @@ const loadCart = (): CartItem[] => {
     const stored = JSON.parse(raw) as StoredCartItem[];
     if (!Array.isArray(stored)) return [];
 
-    // Hydrate: resolve productId → full Product. Drop anything we can't find.
     const productMap = new Map(products.map((p) => [p.id, p]));
     return stored
       .filter((s): s is StoredCartItem =>
@@ -118,16 +105,13 @@ const loadCart = (): CartItem[] => {
       .map((s) => {
         const product = productMap.get(s.productId);
         if (!product) return null;
-        // Drop if the saved size is no longer available for this product.
         if (!product.sizes.includes(s.size)) return null;
-        // If product has variants, the saved variantId must still exist.
         let variantId: string | undefined;
         if (product.variants && product.variants.length > 0) {
           const match = product.variants.find((v) => v.id === s.variantId);
           if (!match) return null;
           variantId = match.id;
         }
-        // If product has colors, the saved colorId must still exist.
         let colorId: string | undefined;
         if (product.colors && product.colors.length > 0) {
           const match = product.colors.find((c) => c.id === s.colorId);
@@ -144,7 +128,6 @@ const loadCart = (): CartItem[] => {
       })
       .filter((i): i is CartItem => i !== null);
   } catch {
-    // Corrupt JSON — start fresh
     return [];
   }
 };
@@ -161,8 +144,57 @@ const saveCart = (items: CartItem[]) => {
     }));
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(slim));
   } catch {
-    // Quota exceeded or storage blocked — nothing to do
+    // Quota exceeded or storage blocked
   }
+};
+
+// ---------- DB sync helpers ----------
+
+type DbCartRow = {
+  product_slug: string;
+  size: string;
+  variant_id: string | null;
+  color_id: string | null;
+  quantity: number;
+};
+
+/** Merge DB rows into current cart. DB items fill gaps; local items win on conflict. */
+const mergeDbIntoLocal = (local: CartItem[], rows: DbCartRow[]): CartItem[] => {
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const merged = [...local];
+  for (const row of rows) {
+    if (!row.product_slug) continue;
+    const product = productMap.get(row.product_slug);
+    if (!product) continue;
+    if (!product.sizes.includes(row.size)) continue;
+    const variantId = row.variant_id ?? undefined;
+    const colorId = row.color_id ?? undefined;
+    const idx = merged.findIndex((i) =>
+      sameLine(i, row.product_slug, row.size, variantId, colorId),
+    );
+    if (idx >= 0) {
+      // Local wins — keep local quantity
+    } else {
+      merged.push({ product, size: row.size, quantity: row.quantity, ...(variantId ? { variantId } : {}), ...(colorId ? { colorId } : {}) });
+    }
+  }
+  return merged;
+};
+
+/** Write current cart to DB for a logged-in user (delete + insert). */
+const syncCartToDb = async (userId: string, items: CartItem[]) => {
+  await supabase.from("cart_items").delete().eq("user_id", userId);
+  if (items.length === 0) return;
+  await supabase.from("cart_items").insert(
+    items.map((item) => ({
+      user_id: userId,
+      product_slug: item.product.id,
+      size: item.size,
+      variant_id: item.variantId ?? null,
+      color_id: item.colorId ?? null,
+      quantity: item.quantity,
+    })),
+  );
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -170,74 +202,89 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
-  // Track whether we've loaded from storage yet, so we don't overwrite it
-  // with the empty initial state before hydration finishes.
   const hydrated = useRef(false);
   const mergedForUser = useRef<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hydrate once on mount
+  // ── Init: load localStorage, then merge any existing DB cart ──────────────
   useEffect(() => {
-    setItems(loadCart());
+    const local = loadCart();
+    setItems(local);
     setSessionId(loadSessionId());
     hydrated.current = true;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) return;
+      const userId = session.user.id;
+      currentUserIdRef.current = userId;
+      if (mergedForUser.current === userId) return;
+      mergedForUser.current = userId;
+      await doMerge(userId, local);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist on every items change (after hydration)
-  useEffect(() => {
-    if (!hydrated.current) return;
-    saveCart(items);
-  }, [items]);
-
-  // On login: merge any Supabase-saved auth cart into the current guest cart.
-  // Runs once per unique user ID per session. No-op if Supabase cart is empty.
+  // ── Auth state changes: handle actual login / logout ──────────────────────
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event !== "SIGNED_IN" || !session?.user) return;
-        const userId = session.user.id;
-        if (mergedForUser.current === userId) return;
-        mergedForUser.current = userId;
+        if (event === "INITIAL_SESSION") return; // per auth race condition fix
 
-        const { data: saved } = await supabase
-          .from("cart_items")
-          .select("product_id, quantity")
-          .eq("user_id", userId);
-
-        if (saved?.length) {
-          const productMap = new Map(products.map((p) => [p.id, p]));
+        if (event === "SIGNED_IN" && session?.user) {
+          const userId = session.user.id;
+          currentUserIdRef.current = userId;
+          if (mergedForUser.current === userId) return;
+          mergedForUser.current = userId;
+          // Capture current items at the time of login
           setItems((prev) => {
-            const merged = [...prev];
-            for (const row of saved) {
-              const product = productMap.get(row.product_id);
-              if (!product) continue;
-              const idx = merged.findIndex((i) => i.product.id === row.product_id);
-              if (idx >= 0) {
-                merged[idx] = {
-                  ...merged[idx],
-                  quantity: Math.min(99, merged[idx].quantity + row.quantity),
-                };
-              } else {
-                merged.push({
-                  product,
-                  size: product.sizes[0] ?? "",
-                  quantity: row.quantity,
-                  ...(product.variants?.[0] ? { variantId: product.variants[0].id } : {}),
-                  ...(product.colors?.[0] ? { colorId: product.colors[0].id } : {}),
-                });
-              }
-            }
-            return merged;
+            doMerge(userId, prev);
+            return prev; // unchanged until doMerge resolves
           });
         }
 
-        // Clean up any session-based rows
-        if (sessionId) {
-          await supabase.from("cart_items").delete().eq("session_id", sessionId);
+        if (event === "SIGNED_OUT") {
+          currentUserIdRef.current = null;
+          mergedForUser.current = null;
         }
       },
     );
     return () => subscription.unsubscribe();
-  }, [sessionId]);
+  }, []);
+
+  // ── Persist to localStorage + debounced DB sync when logged in ───────────
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveCart(items);
+
+    const userId = currentUserIdRef.current;
+    if (!userId) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => syncCartToDb(userId, items), 1000);
+  }, [items]);
+
+  // ── Merge helper: fetch DB cart, merge into local, write back ────────────
+  const doMerge = async (userId: string, localItems: CartItem[]) => {
+    const { data: saved } = await supabase
+      .from("cart_items")
+      .select("product_slug, size, variant_id, color_id, quantity")
+      .eq("user_id", userId);
+
+    const merged = saved?.length
+      ? mergeDbIntoLocal(localItems, saved as DbCartRow[])
+      : localItems;
+
+    setItems(merged);
+    saveCart(merged);
+    // Write merged cart back so cross-device is up to date
+    await syncCartToDb(userId, merged);
+
+    // Clean up any stale session-based rows from the old guest session
+    const sid = loadSessionId();
+    if (sid) {
+      await supabase.from("cart_items").delete().eq("session_id", sid);
+    }
+  };
 
   const addItem = useCallback(
     (product: Product, size: string, variantId?: string, colorId?: string) => {
