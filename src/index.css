@@ -134,3 +134,9 @@
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="marquee-scroll"] {
+    animation: none !important;
+  }
+}

@@ -3,11 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Mail, Instagram, MessageCircle, Check } from "lucide-react";
+import { useRef, useState } from "react";
+import { Mail, Instagram, MessageCircle, Check, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
@@ -81,9 +85,26 @@ const Contact = () => {
                 </motion.div>
               ) : (
                 <form
-                  onSubmit={(e) => {
+                  ref={formRef}
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    setSubmitted(true);
+                    const data = new FormData(formRef.current!);
+                    const name = (data.get("name") as string).trim();
+                    const email = (data.get("email") as string).trim();
+                    const message = (data.get("message") as string).trim();
+                    setSubmitting(true);
+                    const { error } = await supabase.from("custom_requests").insert({
+                      name,
+                      email,
+                      garment: "contact-form",
+                      notes: message,
+                    });
+                    setSubmitting(false);
+                    if (error) {
+                      toast.error("Couldn't send your message — try again.");
+                    } else {
+                      setSubmitted(true);
+                    }
                   }}
                   className="space-y-5"
                 >
@@ -96,6 +117,7 @@ const Contact = () => {
                     </label>
                     <Input
                       id="name"
+                      name="name"
                       className="h-12 bg-muted/50 border-border focus-visible:ring-[#fde047] focus-visible:border-[#fde047]"
                       placeholder="Your name"
                       required
@@ -110,6 +132,7 @@ const Contact = () => {
                     </label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       className="h-12 bg-muted/50 border-border focus-visible:ring-[#fde047] focus-visible:border-[#fde047]"
                       placeholder="your@email.com"
@@ -125,6 +148,7 @@ const Contact = () => {
                     </label>
                     <Textarea
                       id="message"
+                      name="message"
                       className="min-h-[160px] bg-muted/50 border-border resize-none focus-visible:ring-[#fde047] focus-visible:border-[#fde047]"
                       placeholder="What the hell do you want?"
                       required
@@ -132,10 +156,11 @@ const Contact = () => {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full h-12 font-display tracking-widest text-base bg-[#fde047] text-black hover:bg-[#fde047]/90"
+                    disabled={submitting}
+                    className="w-full h-12 font-display tracking-widest text-base bg-[#fde047] text-black hover:bg-[#fde047]/90 disabled:opacity-60"
                     style={{ boxShadow: "0 0 20px rgba(253,224,71,0.3)" }}
                   >
-                    SEND IT
+                    {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />SENDING…</> : "SEND IT"}
                   </Button>
                   <p className="text-[11px] text-muted-foreground text-center">
                     No spam. No bullshit. Just human replies.
@@ -164,13 +189,15 @@ const Contact = () => {
                     icon={<Instagram className="h-4 w-4" />}
                     label="Instagram"
                     value="@pournogravy"
-                    href="#"
+                    href="https://www.instagram.com/pournogravy/"
+                    external
                   />
                   <ContactCard
                     icon={<MessageCircle className="h-4 w-4" />}
                     label="DMs open"
                     value="For horror stories"
-                    href="#"
+                    href="https://www.instagram.com/pournogravy/"
+                    external
                   />
                 </div>
               </div>
@@ -197,14 +224,17 @@ const ContactCard = ({
   label,
   value,
   href,
+  external,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   href: string;
+  external?: boolean;
 }) => (
   <a
     href={href}
+    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     className="group flex items-center gap-3 p-3 border border-border hover:border-[#fde047]/50 transition-colors"
   >
     <div className="h-9 w-9 flex items-center justify-center bg-muted group-hover:bg-[#fde047] group-hover:text-black transition-colors">

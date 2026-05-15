@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import { Loader2 } from "lucide-react";
 
 // ─── EAGER: always-on chrome ─────────────────────────────────────────────────
@@ -94,6 +95,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <WishlistProvider>
             <AnalyticsTracker />
           <CartProvider>
               <PublicChrome>
@@ -148,6 +150,7 @@ const App = () => (
               </PublicChrome>
               <EditBubble />
             </CartProvider>
+            </WishlistProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

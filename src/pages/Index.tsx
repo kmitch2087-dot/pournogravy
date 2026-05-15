@@ -358,7 +358,12 @@ const Index = () => {
             "inset 0 0 40px rgba(253,224,71,0.15), 0 0 20px rgba(253,224,71,0.2)",
         }}
       >
-        <div className="flex whitespace-nowrap" style={{ animation: "marquee-scroll 40s linear infinite" }}>
+        <div
+          className="flex whitespace-nowrap"
+          style={{ animation: "marquee-scroll 40s linear infinite" }}
+          onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
+          onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
+        >
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((q, i) => (
             <span
               key={i}

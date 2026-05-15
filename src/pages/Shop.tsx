@@ -222,6 +222,7 @@ const FilterPill = ({
 }) => (
   <button
     onClick={onClick}
+    aria-pressed={active}
     className={`px-4 py-2 text-xs font-display tracking-widest uppercase border transition-all ${
       active
         ? "bg-[#fde047] text-black border-[#fde047]"

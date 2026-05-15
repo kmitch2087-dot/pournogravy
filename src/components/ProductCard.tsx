@@ -47,7 +47,7 @@ const ProductCard = ({ product }: { product: Product }) => {
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product.id); }}
             aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
-            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+            className="absolute top-2 right-2 p-2 rounded-full bg-black/50 backdrop-blur-sm sm:opacity-0 sm:group-hover:opacity-100 opacity-100 transition-opacity hover:bg-black/70"
           >
             <Heart
               className={`w-4 h-4 transition-colors ${saved ? "fill-[#ff1744] text-[#ff1744]" : "text-white"}`}

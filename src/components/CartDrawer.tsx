@@ -189,10 +189,8 @@ const CartDrawer = () => {
                           decoding="async"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="font-marker text-xs tracking-wider text-muted-foreground">
-                            PNG
-                          </span>
+                        <div className="w-full h-full flex items-center justify-center bg-muted">
+                          <ShoppingBag className="h-6 w-6 text-muted-foreground/40" />
                         </div>
                       )}
                     </div>

@@ -31,7 +31,7 @@ export const DropAnnouncementBar = () => {
           <span className="font-marker tracking-widest text-xs uppercase mr-2 opacity-90">
             🍺 Pre-Shift Bulletin:
           </span>
-          <p className="text-xs font-medium text-center flex-1 max-w-xl truncate">{text}</p>
+          <p className="text-xs font-medium text-center flex-1 max-w-xl line-clamp-2 sm:line-clamp-1">{text}</p>
           <button
             onClick={() => setDismissed(true)}
             className="shrink-0 opacity-70 hover:opacity-100 transition"

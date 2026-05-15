@@ -198,7 +198,7 @@ const ProductDetail = () => {
       <SEO
         title={product.name}
         description={`${product.humor} — ${product.name} available in Men's and Women's fits. Shop Pournogravy.`}
-        image={product.images[0]}
+        image={product.images?.[0] ?? product.image}
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"
       />
@@ -591,7 +591,8 @@ const ProductDetail = () => {
                       key={n}
                       type="button"
                       onClick={() => setReviewRating(n)}
-                      className="p-0.5 transition-transform hover:scale-110"
+                      aria-label={`Rate ${n} star${n !== 1 ? "s" : ""}`}
+                      className="p-2 transition-transform hover:scale-110 -m-1"
                     >
                       <Star
                         className="h-6 w-6"
