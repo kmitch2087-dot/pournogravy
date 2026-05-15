@@ -135,7 +135,7 @@ const Index = () => {
           dot indicators below pauses the rotation, so a customer reading a
           shirt blurb still moves on without having to look away. */}
       <section
-        className="relative min-h-[75vh] sm:min-h-[90vh] overflow-hidden noise-overlay bg-black"
+        className="relative min-h-[90vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -155,7 +155,7 @@ const Index = () => {
                 aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
                 aria-hidden={!active}
               >
-                <div className="absolute inset-x-0 bottom-0 top-16 md:top-20">
+                <div className="absolute inset-x-0 bottom-0 top-24 md:top-28">
                   <img
                     src="/hero-bg.jpg"
                     alt=""
@@ -209,7 +209,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-center pt-28 sm:pt-24 md:pt-28 transition-opacity duration-700 ${
+              className={`absolute inset-0 flex items-start sm:items-center pt-32 sm:pt-24 md:pt-28 transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
