@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** May 14, 2026
+**Last Updated:** May 15, 2026
 
 ---
 
@@ -71,7 +71,9 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - **Custom garment request form** — customers can request any design on a different garment; submissions go directly to the admin dashboard
 - **FAQ page** — addresses common questions about sizing, shipping, customs, and brand values
 - **About page** — brand story and mission
-- **Contact page** — direct customer communication channel
+- **Contact page** — direct customer communication channel; messages stored in database and visible to Opie from the admin dashboard
+- **Privacy Policy** — `/privacy` — clear, brand-voice privacy policy
+- **Terms of Service** — `/terms` — plain-language ToS covering shipping, returns, IP
 - **Email newsletter capture** — homepage email collection connected to a subscriber database; ready for Klaviyo/Mailchimp integration
 - **Order confirmation emails** — templated transactional email via Resend (pending domain verification)
 - **Pour Points loyalty program** — customers earn 1 point per $1 spent; every 100 points redeems for a $5 discount code; balance visible on account page with full transaction history
@@ -104,9 +106,9 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (May 14, 2026)
+## 4. Current Status (May 15, 2026)
 
-**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, and analytics are all fully operational. The following items remain before a full marketing push:
+**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, Privacy Policy, Terms of Service, and contact form are all fully operational. A full code audit was completed May 15 — 11 UX, accessibility, and performance issues resolved (including a bug where all custom garment request submissions were silently failing). The following items remain before a full marketing push:
 
 | Item | Status | Action Needed |
 |------|--------|--------------|
@@ -119,6 +121,8 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Wishlist | ✅ Live | None |
 | Analytics | ✅ Live | None |
 | Email subscribers | ✅ Live | None |
+| Contact form | ✅ Live | Messages appear in admin Custom Requests panel |
+| Privacy Policy + Terms of Service | ✅ Live | Linked from footer |
 | Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend |
 | Fulfillment partner | ❌ Not selected | Choose Printful or Printify — wire API key into stripe-webhook |
 | Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp to existing subscriber list |

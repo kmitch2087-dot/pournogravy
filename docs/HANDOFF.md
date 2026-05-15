@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** May 14, 2026 (end of sprint)  
+**Last Updated:** May 15, 2026 (audit pass + homepage polish)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -94,13 +94,15 @@ npm run dev   # → http://localhost:8080
 ```
 src/
 ├── pages/
-│   ├── Index.tsx              # Homepage — hero carousel, featured products, rotating quotes
+│   ├── Index.tsx              # Homepage — hero carousel, featured products, TICKER_ITEMS marquee, rotating quotes
 │   ├── Shop.tsx               # Full catalog with sort/filter
 │   ├── ProductDetail.tsx      # Product page (variants, colors, gallery, reviews, cart)
 │   ├── Collections.tsx        # Curated product groupings
 │   ├── About.tsx
-│   ├── Contact.tsx
+│   ├── Contact.tsx            # Wired to Supabase (custom_requests, garment='contact-form')
 │   ├── FAQ.tsx
+│   ├── PrivacyPolicy.tsx      # /privacy
+│   ├── TermsOfService.tsx     # /terms
 │   ├── Checkout.tsx           # Embedded Stripe Payment Element
 │   ├── CheckoutReturn.tsx     # Post-payment confirmation screen
 │   ├── Account.tsx            # Auth user account page
@@ -137,12 +139,13 @@ src/
 │       └── AdminLayout.tsx    # Admin nav shell with mobile sidebar
 ├── context/
 │   ├── AuthContext.tsx        # Auth state — race condition fixed (see §5)
-│   └── CartContext.tsx        # Cart: localStorage + debounced DB sync; merge on login
+│   ├── CartContext.tsx        # Cart: localStorage + debounced DB sync; merge on login
+│   └── WishlistContext.tsx    # Single shared wishlist instance — auth subscription + DB/localStorage
 ├── hooks/
 │   ├── useAnalytics.ts        # Page-view + event tracking; auto-fires on route change
 │   ├── useLoyalty.ts          # Pour Points balance, transactions, redeem()
 │   ├── useProductRatings.ts   # Shared React Query cache for star ratings on cards
-│   └── useWishlist.ts         # Auth = Supabase wishlists, guest = localStorage
+│   └── useWishlist.ts         # Re-exports from WishlistContext (do not add logic here)
 ├── data/
 │   └── products.ts            # Static product data (DB takes precedence via useMergedProducts)
 ├── lib/
@@ -211,7 +214,13 @@ All product data starts in `src/data/products.ts`. `useMergedProducts()` merges 
 The Apollo Chrome extension blocks `/rest/v1/profiles` requests. This causes `fetchProfile` timeouts on affected machines. `fetchProfile` timeout is set to 12 seconds (not the default 5) to defend against this. Do not reduce it.
 
 ### Canonical Supabase Client
-`src/integrations/supabase/client.ts` — use this everywhere. A dead second client in `src/utils/supabase/` was deleted.
+`src/integrations/supabase/client.ts` — use this everywhere. A dead second client in `src/utils/supabase/` was deleted. `CustomGarmentRequestModal` had a stale import to `@/lib/supabase` (a path that never existed) — it was silently failing on all custom garment submissions until fixed May 15.
+
+### WishlistContext — Do Not Revert to Per-Component Hook
+`src/context/WishlistContext.tsx` is the single source of truth for wishlist state. `useWishlist.ts` simply re-exports from it. The wishlist was previously instantiated once per `ProductCard`, creating N simultaneous `onAuthStateChange` subscriptions and N Supabase queries on the Shop grid. The fix is load-bearing — do not move the logic back into the hook file.
+
+### Contact Form — Stored in custom_requests
+The Contact page form inserts into `custom_requests` with `garment = 'contact-form'` to distinguish general inquiries from garment requests. The admin can filter by garment type in the Custom Requests panel. If a dedicated `contact_submissions` table is ever added, migrate these rows and update `Contact.tsx`.
 
 ---
 
@@ -442,6 +451,20 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 | May 14, 2026 | Organization JSON-LD on homepage; Product JSON-LD already on ProductDetail (schema.org rich results) |
 | May 14, 2026 | Cart merge — CartContext rewritten with DB sync; `cart_items` extended with size/variant_id/color_id/product_slug; guest cart survives login + cross-device sync |
 | May 14, 2026 | `products` Storage bucket created (public read, admin write) — product image uploads now work |
+| May 15, 2026 | Homepage marquee: switched from Tailwind `animate-marquee` to `marquee-scroll` CSS keyframe (40s); TICKER_ITEMS adds Opie's 4 Shopify copy lines; pause-on-hover; `prefers-reduced-motion` CSS media query stops animation |
+| May 15, 2026 | Hero slide top padding: `pt-24 sm:pt-20 md:pt-24` → `pt-28 sm:pt-24 md:pt-28` — clears fixed navbar on mobile |
+| May 15, 2026 | Privacy Policy (`/privacy`) and Terms of Service (`/terms`) pages added; Footer updated with links in Info column and bottom bar |
+| May 15, 2026 | `.claude/shared/` communication bridge folder added to git (Index, Footer, Navbar, DropAnnouncementBar, PATCH_INSTRUCTIONS.md) for Claude Desktop ↔ Claude Code coordination |
+| May 15, 2026 | `useWishlist` lifted to `WishlistContext` — eliminated N auth subscriptions (was one per ProductCard) |
+| May 15, 2026 | Contact form wired to Supabase — was fake/cosmetic-only; now inserts to `custom_requests` |
+| May 15, 2026 | `CustomGarmentRequestModal` fixed dead import path — all custom garment submissions were silently failing |
+| May 15, 2026 | Contact page Instagram + DMs links fixed from `"#"` to real Instagram URL |
+| May 15, 2026 | ProductCard wishlist heart: always visible on mobile, hover-only on desktop |
+| May 15, 2026 | Cart thumbnail "PNG" text replaced with ShoppingBag icon |
+| May 15, 2026 | DropAnnouncementBar: `truncate` → `line-clamp-2 sm:line-clamp-1` (mobile teaser no longer cut off) |
+| May 15, 2026 | Star rating buttons: `p-0.5` → `p-2` touch targets + `aria-label` added |
+| May 15, 2026 | FilterPill buttons: `aria-pressed` added for screen reader active state |
+| May 15, 2026 | ProductDetail SEO image: `product.images[0]` → `product.images?.[0] ?? product.image` (null guard) |
 
 ---
 

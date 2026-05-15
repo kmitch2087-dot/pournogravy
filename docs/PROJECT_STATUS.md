@@ -17,6 +17,7 @@
 
 | Date | Summary | Completed | Next Up |
 |------|---------|-----------|---------|
+| May 15, 2026 | **Homepage polish + full code audit.** Applied updated `Index.tsx` from Claude Desktop: `TICKER_ITEMS` constant with Opie's 4 Shopify marketing lines + existing quotes; marquee switched from Tailwind `animate-marquee` class to `marquee-scroll` CSS keyframe at 40s with pause-on-hover; marquee respects `prefers-reduced-motion` via CSS media query; hero slide top padding bumped to `pt-28 sm:pt-24 md:pt-28` so headline clears the fixed navbar on mobile. Created `.claude/shared/` communication bridge folder (Index, Footer, Navbar, DropAnnouncementBar, PATCH_INSTRUCTIONS.md) — committed to git. **Code audit pass (11 issues fixed):** `useWishlist` lifted to `WishlistContext` (was creating N auth subscriptions — one per card; now 1 shared instance for the whole app); Contact form wired to Supabase (was fake — submitted nothing); `CustomGarmentRequestModal` fixed dead import path (`@/lib/supabase` → correct client — all custom garment submissions were silently failing); Contact page Instagram + DMs links fixed from `"#"` to real Instagram URL; ProductCard wishlist heart always visible on mobile (was hover-only — touch users couldn't wishlist); cart thumbnail "PNG" text replaced with ShoppingBag icon; DropAnnouncementBar `truncate` → `line-clamp-2` on mobile; star rating touch targets enlarged; `FilterPill` `aria-pressed` added; `ProductDetail` SEO image null-guarded (`product.images?.[0] ?? product.image`); Privacy Policy + Terms of Service pages added to site and Footer. | Index.tsx marquee upgrade, mobile hero nav fix, `.claude/shared/` bridge, Privacy Policy, Terms of Service, Footer links, full audit pass (11 fixes across UX/a11y/perf/bugs) | Fulfillment partner selection; Resend domain verify; CF Email Worker routing rule; npm audit fix |
 | May 14, 2026 | **Phase 3 feature sprint.** Shop search (URL-synced `?q=`) + sort (Featured/Price/A→Z). Wishlist system — `wishlists` table, `useWishlist` hook (auth = DB, guest = localStorage), heart toggle on ProductCard, `/wishlist` page, Navbar heart badge. Pour Points loyalty system — `loyalty_accounts` + `loyalty_transactions` tables, `increment_loyalty_points()` SECURITY DEFINER fn, `redeem-points` edge function (generates single-use $5 discount code, deducts 100 pts atomically), `useLoyalty` hook, Account page rewrite with animated balance + progress bar + transaction history, CheckoutReturn shows "+X Pour Points" for auth users. Admin Loyalty panel at `/admin/loyalty` — member table, expandable tx history, manual adjustment modal. Star ratings on ProductCard via shared `useProductRatings` React Query cache. Admin Customer Lookup at `/admin/customers` — email search, stats grid (orders/spend/loyalty/wishlist), expandable order history. Email Subscribers admin at `/admin/subscribers` — list + CSV export + 8-week sparkline. Homepage email capture now saves to `email_subscribers` table (deduplication handled). Organization JSON-LD structured data. Discount Codes admin page (`/admin/discount-codes`) — create/toggle/delete, usage progress bar, status badges. Analytics page and `track-event` edge function scaffolded. Page-view tracking via `useAnalytics` hook. 3 new migrations written. | Wishlist, Pour Points, Admin Loyalty, Customer Lookup, Subscribers, Discount Codes, Shop search/sort, Star ratings, JSON-LD, Analytics scaffolding | Run migrations (wishlists, pour_points, email_subscribers) in Supabase SQL Editor; push to GitHub; wire Stripe fulfillment partner |
 | May 9–11, 2026 | **Hygiene + polish sprint.** Diagnosed Apollo Chrome extension as root cause of all fetchProfile timeouts (blocked `/rest/v1/profiles`). Bumped fetchProfile timeout to 12s. Stripped all 12 debug console.log/warn from AuthContext — only real errors remain. Deleted dead files: `src/lib/fulfillment.ts`, `wrangler.jsonc`. Lazy-loaded all non-critical routes in App.tsx (28 components) via `React.lazy()` + Suspense — bundle target <500KB. Added `client_edit_request` email template migration. Fixed VS Code lockfile warning (bun.lock vs package-lock.json). **Homepage redesign** (Opie's 8 client notes): headline rewritten, hero height mobile fix, object-fit mobile fix, button copy updated, marquee speed 20s → 14s, quotes expanded to 10 entries. **Rebuilt EditRequests** as two-column split view (Opie left / Kristin right) with mark-done, archive, inline reply threads, author attribution. **Rebuilt ProjectStatus** page with animated stat cards, 6-phase visual pipeline, 5 tabs (Opie's Tasks / Session Log / Backlog / Fulfillment / Cost), 7 priority action items for Opie. Seeded Opie's 8 client notes into DB (migration `20260509000001`). EIN guidance documented — goes in Stripe Business Details, not DNS. | Dead code deleted, debug logs stripped, lazy routing, homepage changes live, EditRequests rebuilt, ProjectStatus rebuilt, email template migration written | Push to GitHub, run migration in Supabase SQL Editor, delete src/utils/supabase/ + bun.lock from Terminal, npm audit fix from Terminal |
 | May 6, 2026 | Built full **Merch Drop Calendar** system. New admin tab at `/admin/merch-drops` with month-grid calendar, click-to-view popups, and full drop builder. Drops include: name/description, scheduling (drop date + ad launch date), product picker with inline Quick Create, flyer/graphic upload to Supabase Storage (`drops` bucket), tag picker (stamp badge or red marker style), site ad placement toggles (announcement bar, hero banner, featured section, shop banner), and full marketing email builder. Site-wide advertisement components wired into public pages (DropAnnouncementBar, DropHeroBanner, DropShopBanner). `process-merch-drops` edge function auto-publishes drops and sends branded pre-shift-meeting email on schedule. Supabase migration `20260506000001_merch_drops.sql` written. TypeScript clean. | Merch Drop Calendar + Builder + Ad system + Email function | Deploy migration, wire process-merch-drops to a cron schedule, push to GitHub |
@@ -72,16 +73,18 @@
 - [x] `track-event` — analytics event ingestion (page_view, add_to_cart, purchase, etc.)
 
 ### Frontend — Public Pages
-- [x] Homepage (hero carousel, INTRO_HOLD_MS intro image, glass card overlay, featured products, email capture now DB-backed, rotating quotes, Organization JSON-LD)
+- [x] Homepage (hero carousel, INTRO_HOLD_MS intro image, glass card overlay, featured products, email capture now DB-backed, rotating quotes, Organization JSON-LD, TICKER_ITEMS marquee with pause-on-hover + `prefers-reduced-motion`)
 - [x] Shop (full catalog, published filter, URL-synced search `?q=`, sort: Featured/Price/A→Z `?sort=`)
 - [x] Product detail (variants, colors, gallery, cart add, custom request modal, reviews display)
 - [x] Collections
 - [x] About
-- [x] Contact
+- [x] Contact (wired to Supabase — submits to `custom_requests` with `garment='contact-form'`; Instagram link live)
 - [x] FAQ
 - [x] 404
 - [x] `/proposal` — Founding Client Offer page (wholesale/partnership pitch)
 - [x] `/wishlist` — saved products page (auth = DB, guest = localStorage)
+- [x] `/privacy` — Privacy Policy page
+- [x] `/terms` — Terms of Service page
 
 ### Frontend — Admin Dashboard (`/admin`)
 - [x] Admin Login
@@ -119,6 +122,7 @@
 - [x] Guest cart (session_id) + Auth cart (user_id)
 - [x] Cart context (add / remove / update quantity / apply discount)
 - [x] `useMergedProducts()` — merges static + DB products; DB takes precedence by slug
+- [x] `WishlistContext` — single shared auth subscription for entire app; `useWishlist` re-exports from context
 
 ### Payments
 - [x] Stripe embedded Payment Element (stays on site, no redirect)
@@ -156,7 +160,7 @@
 
 ### 🟡 Code Hygiene (Won't Break Anything, But Should Be Done)
 
-- [ ] Delete `src/utils/supabase/` — dead second Supabase client, never used
+- [ ] Delete `src/utils/supabase/` — dead second Supabase client, never used (confirmed still present)
 - [x] Delete `src/lib/fulfillment.ts` — DELETED ✓
 - [x] Delete `wrangler.jsonc` — DELETED ✓
 - [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY` for local dev
