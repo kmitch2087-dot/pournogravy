@@ -24,6 +24,7 @@ import {
   Mail,
   StickyNote,
   Coins,
+  Users,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { to: "/admin/project-status", label: "Project Status",   icon: BarChart2,       end: false },
   { to: "/admin/merch-drops",    label: "Merch Drop Calendar", icon: CalendarDays,    end: false },
   { to: "/admin/loyalty",        label: "Pour Points",          icon: Coins,           end: false },
+  { to: "/admin/customers",     label: "Customer Lookup",      icon: Users,           end: false },
 ];
 
 const SidebarContent = ({

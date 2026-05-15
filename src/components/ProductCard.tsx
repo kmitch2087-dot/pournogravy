@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
 import { Product } from "@/data/products";
 import { motion } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 const ProductCard = ({ product }: { product: Product }) => {
   const { isSaved, toggle } = useWishlist();
+  const ratings = useProductRatings();
   const saved = isSaved(product.id);
+  const rating = ratings.get(product.id);
 
   const cardImage =
     product.variants?.[0]?.images?.[0] ?? product.image ?? product.images?.[0];
@@ -54,7 +57,20 @@ const ProductCard = ({ product }: { product: Product }) => {
 
         <div className="mt-3 space-y-1">
           <h3 className="font-display text-sm tracking-wider truncate">{product.name}</h3>
-          <p className="text-sm text-muted-foreground">${product.price.toFixed(2)}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">${product.price.toFixed(2)}</p>
+            {rating && (
+              <div className="flex items-center gap-0.5">
+                {[1,2,3,4,5].map((s) => (
+                  <Star
+                    key={s}
+                    className={`w-2.5 h-2.5 ${s <= Math.round(rating.avg) ? "fill-[#fde047] text-[#fde047]" : "text-muted-foreground/30"}`}
+                  />
+                ))}
+                <span className="text-[9px] text-muted-foreground ml-0.5">({rating.count})</span>
+              </div>
+            )}
+          </div>
         </div>
       </Link>
     </motion.div>
