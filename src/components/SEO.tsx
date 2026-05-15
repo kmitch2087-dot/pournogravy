@@ -6,6 +6,7 @@ interface SEOProps {
   image?: string;
   url?: string;
   type?: "website" | "product";
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 const BASE_URL = "https://pournogravy.com";
@@ -17,6 +18,7 @@ export default function SEO({
   image = DEFAULT_IMAGE,
   url = BASE_URL,
   type = "website",
+  jsonLd,
 }: SEOProps) {
   const fullTitle = `${title} — Pournogravy`;
 
@@ -36,6 +38,12 @@ export default function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+
+      {jsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(Array.isArray(jsonLd) ? jsonLd : jsonLd)}
+        </script>
+      )}
     </Helmet>
   );
 }

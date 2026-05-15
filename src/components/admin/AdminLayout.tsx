@@ -54,6 +54,7 @@ const navItems: NavItem[] = [
   { to: "/admin/merch-drops",    label: "Merch Drop Calendar", icon: CalendarDays,    end: false },
   { to: "/admin/loyalty",        label: "Pour Points",          icon: Coins,           end: false },
   { to: "/admin/customers",     label: "Customer Lookup",      icon: Users,           end: false },
+  { to: "/admin/subscribers",   label: "Email Subscribers",    icon: Mail,            end: false },
 ];
 
 const SidebarContent = ({

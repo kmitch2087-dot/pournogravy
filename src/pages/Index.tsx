@@ -8,6 +8,8 @@ import ProductCard from "@/components/ProductCard";
 import { products, quotes } from "@/data/products";
 import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Hero carousel config — slide 0 is the glass headline, the rest feature shirts.
 // Product IDs are pulled from products.ts at runtime so name/price/humor stay
@@ -31,6 +33,8 @@ const HERO_DURATIONS_MS = {
 
 const Index = () => {
   const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
   const [heroPaused, setHeroPaused] = useState(false);
@@ -105,6 +109,15 @@ const Index = () => {
         title="Home"
         description="Bartender-themed apparel for the people who pour for a living. Because someone has to deal with the public, and it might as well be stylish."
         url="https://pournogravy.com"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Pournogravy",
+          "url": "https://pournogravy.com",
+          "logo": "https://pournogravy.com/logo.webp",
+          "description": "Bartender-themed apparel for the people who pour for a living.",
+          "sameAs": [],
+        }}
       />
       {/* Drop Hero Banner — shown above carousel when a drop is live */}
       <DropHeroBanner />
@@ -569,28 +582,44 @@ const Index = () => {
             <p className="text-white/60 text-sm md:text-base mb-8">
               Early drops, industry humor, and discounts that actually feel like ones.
             </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setEmail("");
-              }}
-              className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
-            >
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-12 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#fde047]"
-              />
-              <Button
-                type="submit"
-                className="h-12 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
+            {subscribed ? (
+              <p className="font-marker text-sm tracking-widest text-[#fde047] uppercase">
+                You're on the list. Don't embarrass us.
+              </p>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!email.trim()) return;
+                  setSubscribing(true);
+                  const { error } = await supabase.from("email_subscribers").insert({ email: email.trim().toLowerCase(), source: "homepage" });
+                  if (error && error.code !== "23505") {
+                    toast.error("Something went wrong — try again.");
+                  } else {
+                    setSubscribed(true);
+                    setEmail("");
+                  }
+                  setSubscribing(false);
+                }}
+                className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
               >
-                SUBSCRIBE
-              </Button>
-            </form>
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-12 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#fde047]"
+                />
+                <Button
+                  type="submit"
+                  disabled={subscribing}
+                  className="h-12 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90 disabled:opacity-60"
+                >
+                  {subscribing ? "…" : "SUBSCRIBE"}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </section>
