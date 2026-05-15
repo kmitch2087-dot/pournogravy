@@ -53,6 +53,7 @@ const Analytics      = lazy(() => import("./pages/admin/Analytics"));
 const Loyalty        = lazy(() => import("./pages/admin/Loyalty"));
 const Customers      = lazy(() => import("./pages/admin/Customers"));
 const Subscribers    = lazy(() => import("./pages/admin/Subscribers"));
+const DiscountCodes  = lazy(() => import("./pages/admin/DiscountCodes"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -135,6 +136,7 @@ const App = () => (
                       <Route path="loyalty"           element={<Loyalty />} />
                       <Route path="customers"         element={<Customers />} />
                       <Route path="subscribers"       element={<Subscribers />} />
+                      <Route path="discount-codes"    element={<DiscountCodes />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
