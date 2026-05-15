@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import { Product } from "@/data/products";
 import { motion } from "framer-motion";
+import { Heart } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const ProductCard = ({ product }: { product: Product }) => {
-  // Prefer the first variant's hero image when present, so consolidated
-  // products (Men's/Women's/Unisex) show the right photo on grid views.
+  const { isSaved, toggle } = useWishlist();
+  const saved = isSaved(product.id);
+
   const cardImage =
     product.variants?.[0]?.images?.[0] ?? product.image ?? product.images?.[0];
 
@@ -36,6 +39,17 @@ const ProductCard = ({ product }: { product: Product }) => {
               {product.badge}
             </div>
           )}
+
+          {/* Wishlist heart */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product.id); }}
+            aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${saved ? "fill-[#ff1744] text-[#ff1744]" : "text-white"}`}
+            />
+          </button>
         </div>
 
         <div className="mt-3 space-y-1">

@@ -5,22 +5,29 @@ import { products, collections } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Search, X } from "lucide-react";
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initial = searchParams.get("collection") || "all";
   const [activeFilter, setActiveFilter] = useState(initial);
+  const [query, setQuery] = useState(searchParams.get("q") || "");
 
-  // Keep URL in sync so filter state is shareable/back-button friendly
+  // Keep URL in sync so filter + search state is shareable/back-button friendly
   useEffect(() => {
     if (activeFilter === "all") {
       searchParams.delete("collection");
     } else {
       searchParams.set("collection", activeFilter);
     }
+    if (query.trim()) {
+      searchParams.set("q", query.trim());
+    } else {
+      searchParams.delete("q");
+    }
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter]);
+  }, [activeFilter, query]);
 
   // Only published products are visible to shoppers. Drafts (anything not
   // explicitly `published: true`) are hidden from the catalog. This is the
@@ -30,13 +37,16 @@ const Shop = () => {
     []
   );
 
-  const filtered = useMemo(
-    () =>
-      activeFilter === "all"
-        ? visible
-        : visible.filter((p) => p.category === activeFilter),
-    [activeFilter, visible]
-  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return visible.filter((p) => {
+      const matchesCollection = activeFilter === "all" || p.category === activeFilter;
+      const matchesSearch = !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q);
+      return matchesCollection && matchesSearch;
+    });
+  }, [activeFilter, query, visible]);
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
@@ -86,8 +96,33 @@ const Shop = () => {
       <div className="container mx-auto px-4">
         {/* Filters */}
         <div className="sticky top-16 md:top-20 z-30 -mx-4 px-4 bg-background/90 backdrop-blur-md border-b border-border">
-          <div className="flex items-center justify-between gap-4 py-4">
-            <div className="flex flex-wrap gap-2 flex-1">
+          <div className="flex flex-col gap-3 py-4">
+            <div className="flex items-center gap-3">
+              {/* Search input */}
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search products…"
+                  className="w-full pl-8 pr-8 py-2 text-xs bg-transparent border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#fde047] transition-colors"
+                />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap ml-auto">
+                {filtered.length} Product{filtered.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            {/* Collection filters */}
+            <div className="flex flex-wrap gap-2">
               <FilterPill
                 active={activeFilter === "all"}
                 onClick={() => setActiveFilter("all")}
@@ -104,9 +139,6 @@ const Shop = () => {
                 </FilterPill>
               ))}
             </div>
-            <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase hidden sm:block whitespace-nowrap">
-              {filtered.length} Product{filtered.length === 1 ? "" : "s"}
-            </p>
           </div>
         </div>
 
@@ -142,8 +174,13 @@ const Shop = () => {
               Nothing here yet.
             </p>
             <p className="text-sm text-muted-foreground mt-3">
-              Try another filter — or check back after our next shift.
+              {query ? `No results for "${query}" — try a different search.` : "Try another filter — or check back after our next shift."}
             </p>
+            {query && (
+              <button onClick={() => setQuery("")} className="mt-4 text-xs text-[#fde047] hover:underline">
+                Clear search
+              </button>
+            )}
           </div>
         )}
       </div>

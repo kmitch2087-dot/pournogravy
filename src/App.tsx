@@ -21,6 +21,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 // ─── LAZY: public pages ───────────────────────────────────────────────────────
 const Shop          = lazy(() => import("./pages/Shop"));
+const Wishlist      = lazy(() => import("./pages/Wishlist"));
 const Collections   = lazy(() => import("./pages/Collections"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const About         = lazy(() => import("./pages/About"));
@@ -102,6 +103,7 @@ const App = () => (
                     <Route path="/proposal"        element={<Proposal />} />
                     <Route path="/login"           element={<Login />} />
                     <Route path="/account"         element={<Account />} />
+                    <Route path="/wishlist"        element={<Wishlist />} />
                     <Route path="/checkout"        element={<Checkout />} />
                     <Route path="/checkout/return" element={<CheckoutReturn />} />
                     <Route path="/admin/login"     element={<AdminLogin />} />

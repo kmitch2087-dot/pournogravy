@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Menu, X, User, LayoutDashboard } from "lucide-react";
+import { ShoppingBag, Menu, X, User, LayoutDashboard, Heart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useWishlist } from "@/hooks/useWishlist";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +18,7 @@ const navLinks = [
 const Navbar = () => {
   const { toggleCart, totalItems } = useCart();
   const { user, isAdmin } = useAuth();
+  const { wishlist } = useWishlist();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -110,6 +112,18 @@ const Navbar = () => {
               Log in
             </Link>
           )}
+          <Link
+            to="/wishlist"
+            aria-label={`Wishlist, ${wishlist.length} saved`}
+            className="relative p-2 text-foreground hover:text-[#ff1744] transition-colors"
+          >
+            <Heart className={`h-5 w-5 ${wishlist.length > 0 ? "fill-[#ff1744] text-[#ff1744]" : ""}`} />
+            {wishlist.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ff1744] text-[9px] font-bold text-white">
+                {wishlist.length}
+              </span>
+            )}
+          </Link>
           <button
             onClick={toggleCart}
             aria-label={`Open cart, ${totalItems} item${totalItems === 1 ? "" : "s"}`}
