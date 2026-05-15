@@ -129,3 +129,8 @@
     font-weight: 500;
   }
 }
+
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
