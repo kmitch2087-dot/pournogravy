@@ -100,9 +100,14 @@ const Footer = () => {
         </div>
 
         <div className="mt-14 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-white/40">
-            © {new Date().getFullYear()} POURnogravy. All rights reserved. Don't steal our stuff.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-xs text-white/40">
+              © {new Date().getFullYear()} POURnogravy. All rights reserved. Don't steal our stuff.
+            </p>
+            <Link to="/privacy" className="text-xs text-white/30 hover:text-white/60 transition-colors">
+              Privacy Policy
+            </Link>
+          </div>
           <p className="font-marker text-xs tracking-[0.3em] text-white/30 uppercase">
             ☠ Drink responsibly. Clock out loudly.
           </p>

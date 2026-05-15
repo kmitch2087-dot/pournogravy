@@ -33,6 +33,7 @@ const Account       = lazy(() => import("./pages/Account"));
 const Checkout      = lazy(() => import("./pages/Checkout"));
 const CheckoutReturn= lazy(() => import("./pages/CheckoutReturn"));
 const NotFound      = lazy(() => import("./pages/NotFound"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
 const AdminLogin     = lazy(() => import("./pages/admin/AdminLogin"));
@@ -138,6 +139,7 @@ const App = () => (
                       <Route path="subscribers"       element={<Subscribers />} />
                       <Route path="discount-codes"    element={<DiscountCodes />} />
                     </Route>
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
