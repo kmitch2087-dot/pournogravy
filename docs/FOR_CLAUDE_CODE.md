@@ -1,64 +1,109 @@
-# Cowork → Claude Code Communication Log
-
-This file is the message board between Claude (Cowork) and Claude Code.
-Screenshots from Kristin are described here in detail so Claude Code can act on them without needing the images.
-
----
-
-## 📬 Pending Messages for Claude Code
+# Pournogravy — Claude Briefing Document
+**Use this file to onboard any Claude session (Desktop, Code, or Cowork) on this project.**  
+**Last Updated:** May 14, 2026
 
 ---
 
-### 🔴 [May 5, 2026] — Cloudflare Email Worker Exists But Has No Route
+## What This Project Is
 
-**What Kristin showed me (2 screenshots from Cloudflare dashboard):**
+**pournogravy.com** — a real, live e-commerce site for Adam "Opie" Oppenheimer's bartender-themed apparel brand. Built and managed by Kristin Mitchell (Aethyx). Real customers, real Stripe payments, real orders. Not a demo.
 
-**Screenshot 1 — Cloudflare → Email Routing → pournogravy.com → Destination Workers tab**
-- Email Routing status: **Syncing** (not fully active yet)
-- DNS records: **Locked**
-- There is one Email Worker listed: **`wild-mouse-2b64`** (production environment)
-- Last updated: 1 minute ago · 5 requests · 5ms response time
-- There is a **"Create route"** button next to it — meaning the worker EXISTS but has NO routing rule attached yet
-- The worker receives no emails because it has no route telling Cloudflare which email addresses to forward to it
-
-**Screenshot 2 — Cloudflare → Workers & Pages → wild-mouse-2b64 → Overview**
-- Worker name: `wild-mouse-2b64`
-- Account: Vibeshiftstudios (Kristin's CF account)
-- Deployed version: `022e02bf`, deployed 2 minutes ago by `vibeshiftstudios`
-- Worker URL: `wild-mouse-2b64.vibeshiftstudios.workers.dev`
-- **Domains: 1** (pournogravy.com is linked)
-- **Workers: 0** (no sub-workers)
-- **Queues: 0**
-- **Triggers: 1** (one trigger is set, likely the email routing trigger)
-- **Tail workers: 0**
-- **Bindings: 0** ← IMPORTANT — no KV, R2, D1, secrets, or env vars bound to the worker
-- Metrics: 5 requests, 0 errors, 0.52ms CPU time
-- Custom domains: none (dash/empty)
-- Workers Logs: Enabled · Workers Traces: Disabled
-
-**What this means / what Claude Code needs to investigate:**
-
-1. **A Cloudflare Email Worker called `wild-mouse-2b64` exists and is deployed** — but Kristin (and I) don't know what it does or who/what created it. It may have been auto-created during Cloudflare Email Routing setup or created manually.
-
-2. **No routing rule is wired** — the "Create route" button is still showing. Without a routing rule, no emails to addresses @pournogravy.com are being processed by this worker.
-
-3. **Bindings: 0** — if this worker is supposed to forward emails, call a webhook, or interact with Supabase/Resend, it needs secrets/bindings added. Right now it's running blind.
-
-4. **What Claude Code should do:**
-   - Check what `wild-mouse-2b64` actually does — click "Edit code" in the Cloudflare dashboard to see its source, OR check if there's a wrangler config for it in the repo (there shouldn't be based on the current codebase).
-   - Determine if this worker is needed for the `opie@pournogravy.com` email flow (Resend sender domain verification requires the domain to receive certain verification emails — this worker may be part of that).
-   - If the worker is meant to receive emails at `opie@pournogravy.com` and forward/process them:
-     - Create a routing rule: catch-all or specific addresses → this worker
-     - Add any needed bindings (Resend API key, Supabase URL, etc.)
-   - If the worker is NOT intentional (orphaned/auto-created), document it and potentially remove it.
-
-5. **Context on why this matters:** `opie@pournogravy.com` needs to be verified in Resend as a sender domain. Resend sends a verification email to that address. If no routing rule exists, the verification email bounces and Resend can never confirm the domain. This blocks ALL outgoing emails from the site (order confirmations, admin-contact messages, etc.).
-
-**Ask for Kristin:** Does she know what created this worker? Was it set up intentionally to handle inbound email, or did it appear on its own?
+- **Repo:** github.com/kmitch2087-dot/pournogravy (master branch)
+- **Cloudflare Pages project:** `pournogravydev` (NOT `pournogravy`)
+- **Supabase project ID:** `emtjkawcmsfgjyimnncf`
+- **Admin allowlist:** kmitch2087@gmail.com, kristinmitchell@aethyx.space, aopie91@gmail.com (Opie)
 
 ---
 
-## ✅ Resolved / Archived
+## Current Status (May 14, 2026)
 
-*(Completed items move here)*
+**The site is fully built and live with real payments.** This is NOT in early development.
 
+### What IS Built
+- Full public storefront (shop, product pages, cart, checkout, collections, about, contact, FAQ)
+- Embedded Stripe Payment Element (PaymentIntents — NOT hosted Checkout Sessions)
+- Supabase auth with admin vs. customer role separation
+- Full admin dashboard with 14 pages:
+  - Dashboard, Products, Orders, Custom Requests, Reviews
+  - Merch Drops calendar (schedule drops with ad placement, flyers, marketing emails)
+  - Edit Requests (split-view client notes with reply threads)
+  - Project Status (6-phase pipeline, stat cards, Notify Opie email)
+  - Inbox, Analytics, User Manual, Settings
+- 11 Supabase Edge Functions (all deployed, all secrets set):
+  `create-checkout`, `stripe-webhook`, `send-notification`, `send-reply`,
+  `verify-email`, `validate-discount`, `admin-contact`, `notify-project-status`,
+  `process-merch-drops`, `receive-email`, `track-event`
+- 17 database tables with full RLS
+- Analytics event tracking
+- Discount codes system
+- Product reviews with admin approval
+- Lazy-loaded routes (28 components via React.lazy)
+
+### What Is NOT Done Yet (before marketing)
+1. Fulfillment partner selection (Printful or Printify) — must wire API key into stripe-webhook
+2. Resend sender domain verification for opie@pournogravy.com
+3. Cloudflare Email Worker `wild-mouse-2b64` needs a routing rule → receive-email edge function
+4. process-merch-drops needs to be wired to a Supabase cron schedule
+
+---
+
+## Tech Stack
+
+```
+Frontend:   React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui + Framer Motion
+Backend:    Supabase (PostgreSQL + Auth + Edge Functions + Storage)
+Payments:   Stripe (embedded PaymentIntent flow)
+Email:      Resend
+Hosting:    Cloudflare Pages (auto-deploy on push to master)
+```
+
+---
+
+## Critical Architecture — Do Not Break
+
+### SPA Routing
+`wrangler.toml` handles SPA routing: `not_found_handling = "single-page-application"`.  
+**DO NOT add a `_redirects` file** — CF Pages Pretty URLs make `/* /index.html 200` an infinite redirect loop. This has been confirmed multiple times.
+
+### Auth Race Condition Fix (commit bcb371f)
+`INITIAL_SESSION` is **NEVER** handled in `onAuthStateChange`. `getSession()` is the sole init path. ProtectedRoute must check `loading` before `isAdmin`. fetchProfile timeout = 12s (Apollo Chrome extension blocks /rest/v1/profiles on some machines).
+
+### Stripe Flow
+PaymentIntent (NOT Checkout Sessions). Webhook secret key name in Supabase = `STRIPE_WEBHOOK_SIGNING_SECRET`.
+
+### Env Vars
+`.env.production` is committed to the repo — Vite needs public keys at build time and CF Pages Secrets are runtime-only. This is intentional.
+
+### Supabase Client
+Only `src/integrations/supabase/client.ts`. A dead second client in `src/utils/supabase/` was deleted.
+
+---
+
+## Key Files
+
+| File | What It Is |
+|------|-----------|
+| `CLAUDE.md` | Full project instructions for Claude Code — read this |
+| `docs/HANDOFF.md` | Complete technical handoff (updated May 14) |
+| `docs/PROJECT_STATUS.md` | Session log, backlog, completed features |
+| `src/context/AuthContext.tsx` | Auth — race condition fix lives here, do not regress |
+| `src/App.tsx` | Router — all 28 non-critical routes lazy-loaded |
+| `src/data/products.ts` | Static product data (merged with DB via useMergedProducts) |
+| `src/integrations/supabase/client.ts` | Canonical Supabase singleton |
+| `supabase/functions/` | All 11 edge functions |
+| `supabase/migrations/` | All DB migrations (last: 20260511000001_analytics_events.sql) |
+
+---
+
+## Pending Claude Code / Cowork Notes
+
+### ⚠️ Cloudflare Email Worker — Needs Investigation
+A Cloudflare Email Worker named `wild-mouse-2b64` exists in the account but has no routing rule.
+- It handles inbound email to @pournogravy.com
+- No routing rule = no emails arrive
+- The `receive-email` edge function is built and deployed
+- Next step: create a routing rule in CF Email Routing → point catch-all → this worker → forward to receive-email
+
+---
+
+*To get full project context in any Claude session: read this file + `CLAUDE.md` + `docs/PROJECT_STATUS.md`.*
