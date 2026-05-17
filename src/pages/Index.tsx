@@ -209,7 +209,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-center transition-opacity duration-700 ${
+              className={`absolute inset-0 flex items-start sm:items-center pt-6 sm:pt-0 overflow-y-auto transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
@@ -229,7 +229,7 @@ const Index = () => {
               />
 
               <div className="relative z-10 container mx-auto px-4">
-                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                <div className="grid md:grid-cols-2 gap-3 md:gap-12 items-center">
                   {/* Product image — taped polaroid vibe */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
@@ -277,20 +277,20 @@ const Index = () => {
                     className="order-1 md:order-2 text-white text-center md:text-left"
                   >
                     <p
-                      className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-4"
+                      className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-4"
                       style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
                     >
                       ☠ Featured drop
                     </p>
-                    <h2 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider leading-[0.95] mb-4">
+                    <h2 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider leading-[0.95] mb-2 md:mb-4">
                       {product.name.toUpperCase()}
                     </h2>
                     {product.humor && (
-                      <p className="font-marker text-base md:text-lg text-white/80 italic mb-6 max-w-md mx-auto md:mx-0">
+                      <p className="font-marker text-sm md:text-lg text-white/80 italic mb-2 md:mb-6 max-w-md mx-auto md:mx-0">
                         "{product.humor}"
                       </p>
                     )}
-                    <p className="font-display text-2xl md:text-3xl tracking-wider mb-6">
+                    <p className="font-display text-xl md:text-3xl tracking-wider mb-3 md:mb-6">
                       ${product.price.toFixed(2)}
                     </p>
                     <div className="flex flex-wrap gap-3 justify-center md:justify-start">
