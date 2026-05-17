@@ -112,7 +112,7 @@ const Index = () => {
   }, [heroIndex, heroPaused, totalSlides, introHoldElapsed]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-16 md:pt-20">
       <SEO
         title="Home"
         description="Bartender-themed apparel for the people who pour for a living. Because someone has to deal with the public, and it might as well be stylish."
@@ -147,7 +147,7 @@ const Index = () => {
             return (
               <div
                 key={`intro-${slideIdx}`}
-                className={`absolute inset-0 flex items-center justify-center pt-28 sm:pt-24 md:pt-28 transition-opacity duration-700 ${
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${
                   active ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
                 role="group"
@@ -155,7 +155,7 @@ const Index = () => {
                 aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
                 aria-hidden={!active}
               >
-                <div className="absolute inset-x-0 bottom-0 top-24 md:top-28">
+                <div className="absolute inset-x-0 bottom-0 top-6 md:top-10">
                   <img
                     src="/hero-bg.jpg"
                     alt=""
@@ -209,7 +209,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-start sm:items-center pt-32 sm:pt-24 md:pt-28 transition-opacity duration-700 ${
+              className={`absolute inset-0 flex items-center transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
@@ -239,7 +239,7 @@ const Index = () => {
                         : { opacity: 0, scale: 0.9, rotate: -3 }
                     }
                     transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="order-2 md:order-1 relative mx-auto max-w-md w-full"
+                    className="order-2 md:order-1 relative mx-auto max-w-[180px] sm:max-w-sm md:max-w-md w-full"
                   >
                     <div
                       className="relative aspect-square bg-muted border-[12px] border-white/90 shadow-2xl overflow-hidden"
@@ -360,7 +360,7 @@ const Index = () => {
       >
         <div
           className="flex whitespace-nowrap"
-          style={{ animation: "marquee-scroll 40s linear infinite" }}
+          style={{ animation: "marquee-scroll 22s linear infinite" }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
