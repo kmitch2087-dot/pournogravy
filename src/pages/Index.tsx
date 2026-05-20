@@ -209,7 +209,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-start sm:items-center pt-6 sm:pt-0 overflow-y-auto transition-opacity duration-700 ${
+              className={`absolute inset-0 flex items-start sm:items-center pt-6 sm:pt-2 transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
