@@ -33,7 +33,9 @@ const AdminLogin = () => {
       toast.success("Check your email to confirm your account");
     } else {
       toast.success("Welcome back");
-      navigate(from, { replace: true });
+      // Full page reload so getSession() handles profile fetch (avoids Apollo extension
+      // blocking the REST call triggered by the SIGNED_IN onAuthStateChange event)
+      window.location.replace(from);
     }
   };
 

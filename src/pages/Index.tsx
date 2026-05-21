@@ -209,7 +209,7 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 flex items-start sm:items-center pt-6 sm:pt-2 transition-opacity duration-700 ${
+              className={`absolute inset-0 transition-opacity duration-700 ${
                 active ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               role="group"
@@ -228,7 +228,12 @@ const Index = () => {
                 }}
               />
 
-              <div className="relative z-10 container mx-auto px-4">
+              {/* Content: top-16 anchors us below the fixed navbar on mobile
+                  regardless of where the section lands in the document flow.
+                  sm:top-0 restores normal flow at tablet+ where items-center
+                  does the vertical positioning. */}
+              <div className="absolute inset-x-0 bottom-0 top-16 sm:top-0 flex items-start sm:items-center sm:pt-2 z-10">
+              <div className="container mx-auto px-4 w-full">
                 <div className="grid md:grid-cols-2 gap-3 md:gap-12 items-center">
                   {/* Product image — taped polaroid vibe */}
                   <motion.div
@@ -313,6 +318,7 @@ const Index = () => {
                     </div>
                   </motion.div>
                 </div>
+              </div>
               </div>
             </div>
           );
