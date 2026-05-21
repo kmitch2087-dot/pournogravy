@@ -228,14 +228,14 @@ const Index = () => {
                 }}
               />
 
-              {/* Content: top-16 anchors us below the fixed navbar on mobile
-                  regardless of where the section lands in the document flow.
-                  sm:top-0 restores normal flow at tablet+ where items-center
-                  does the vertical positioning. */}
-              <div className="absolute inset-x-0 bottom-0 top-16 sm:top-0 flex items-start sm:items-center sm:pt-2 z-10">
+              {/* Content: image-first on mobile so the photo sits just below the
+                  navbar and the text naturally falls below it.
+                  sm:items-center restores vertical centering on tablet+. */}
+              <div className="absolute inset-0 flex items-start sm:items-center pt-3 sm:pt-0 z-10">
               <div className="container mx-auto px-4 w-full">
                 <div className="grid md:grid-cols-2 gap-3 md:gap-12 items-center">
-                  {/* Product image — taped polaroid vibe */}
+                  {/* Product image — taped polaroid vibe. order-1 keeps it
+                      first on mobile so it clears the navbar for the text. */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
                     animate={
@@ -244,7 +244,7 @@ const Index = () => {
                         : { opacity: 0, scale: 0.9, rotate: -3 }
                     }
                     transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="order-2 md:order-1 relative mx-auto max-w-[180px] sm:max-w-sm md:max-w-md w-full"
+                    className="order-1 relative mx-auto max-w-[180px] sm:max-w-sm md:max-w-md w-full"
                   >
                     <div
                       className="relative aspect-square bg-muted border-[12px] border-white/90 shadow-2xl overflow-hidden"
@@ -279,7 +279,7 @@ const Index = () => {
                     initial={{ opacity: 0, x: 30 }}
                     animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
                     transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                    className="order-1 md:order-2 text-white text-center md:text-left"
+                    className="order-2 text-white text-center md:text-left"
                   >
                     <p
                       className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-4"
