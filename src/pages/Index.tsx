@@ -16,6 +16,8 @@ const TICKER_ITEMS = [
   "Go out and show fellow bartenders that you're a bartender too without having to verbally announce it (You entitled freak!).",
   "Call out the general public on certain undesirable behaviors.",
   "THEY'RE NOT CUSTOMERS! THEY'RE GUESTS!...OH, SHUT UP!!!",
+  "Eye rolls.",
+  "Your parents refusing to be seen out with you while you're wearing that.",
   ...quotes,
 ];
 
@@ -186,6 +188,9 @@ const Index = () => {
                           <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
                           OFFENSIVE BARTENDER.
                         </h1>
+                        <p className="font-marker text-base md:text-xl text-white/80 mt-4 tracking-wider italic">
+                          Use your sleeve to give them a piece of your mind.
+                        </p>
                       </motion.div>
 
                       <motion.div
@@ -386,7 +391,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Intro / pitch band */}
+      {/* Super Powers section — Opie's original Shopify copy */}
       <section className="relative noise-overlay overflow-hidden">
         <div
           className="absolute inset-0 -z-0"
@@ -395,50 +400,104 @@ const Index = () => {
               "radial-gradient(ellipse at top left, rgba(253,224,71,0.08), transparent 50%), radial-gradient(ellipse at bottom right, rgba(255,23,68,0.08), transparent 50%), linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%)",
           }}
         />
-        <div className="container mx-auto px-4 py-20 md:py-28 relative">
-          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <p className="font-marker text-sm tracking-widest text-[#fde047] mb-4 uppercase">
-                Unapologetic AF
+        <div className="container mx-auto px-4 py-20 md:py-28 relative max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="space-y-10"
+          >
+            {/* Super Powers block */}
+            <div>
+              <p
+                className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-5"
+                style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
+              >
+                Super Powers include:
               </p>
-              <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[0.95] tracking-wider mb-4">
-                SHIRTS THAT<br />
-                SPEAK LOUDER<br />
-                <span className="font-marker stamp-rotate inline-block text-[#ff1744]">
-                  THAN TIPS.
-                </span>
-              </h2>
-            </motion.div>
+              <ul className="space-y-3">
+                {[
+                  "Offend a Karen without having to open your mouth.",
+                  "Go out and show fellow bartenders that you're a bartender too without having to verbally announce it (You entitled freak!).",
+                  "Call out the general public on certain undesirable behaviors.",
+                ].map((item, i) => (
+                  <motion.li
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-start gap-3 text-base md:text-lg text-foreground leading-relaxed"
+                  >
+                    <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="space-y-6"
+            {/* BUT WAIT THERE'S MORE block */}
+            <div
+              className="border-2 border-[#fde047]/40 bg-black/40 p-6 md:p-8"
+              style={{ boxShadow: "0 0 30px rgba(253,224,71,0.1)" }}
             >
-              <p className="text-muted-foreground text-base md:text-lg leading-relaxed">
-                Built for the bartenders who stopped pretending. The ones who smile with their teeth, side-eye with their soul, and cut you off with their reputation. If your shift ends with a drink and a grudge — you're home.
+              <p
+                className="font-display text-xl md:text-2xl tracking-wider text-[#fde047] mb-1"
+                style={{ textShadow: "0 0 10px rgba(253,224,71,0.4)" }}
+              >
+                BUT WAIT, THERE'S MORE:
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/shop">
-                  <Button className="h-12 px-8 font-display tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                    ORDER A ROUND <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link to="/about">
-                  <Button variant="outline" className="h-12 px-8 font-display tracking-widest">
-                    MY STORY
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          </div>
+              <p
+                className="font-marker text-xs tracking-[0.3em] text-white/50 uppercase mb-5"
+              >
+                Also included:
+              </p>
+              <ul className="space-y-3">
+                {[
+                  "Eye rolls.",
+                  "Your parents refusing to be seen out with you while you're wearing that.",
+                  "Receive looks of disgust from pretentious bartenders who still thinks the customer is always right (THEY'RE NOT CUSTOMERS! THEY'RE GUESTS!...OH, SHUT UP!!!).",
+                ].map((item, i) => (
+                  <motion.li
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-start gap-3 text-base md:text-lg text-foreground/90 leading-relaxed"
+                  >
+                    <span className="text-[#ff1744] font-marker mt-0.5 shrink-0">★</span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Closing manifesto */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="font-marker text-lg md:text-xl text-center text-white/80 italic tracking-wider"
+            >
+              Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!
+            </motion.p>
+
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-3 justify-center pt-2">
+              <Link to="/shop">
+                <Button className="h-12 px-8 font-display tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
+                  ORDER A ROUND <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/about">
+                <Button variant="outline" className="h-12 px-8 font-display tracking-widest">
+                  MY STORY
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 
