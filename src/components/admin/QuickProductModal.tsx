@@ -5,17 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const CATEGORIES = [
-  { value: "industry-truths", label: "Industry Truths" },
-  { value: "bar-wisdom", label: "Bar Wisdom" },
-  { value: "shift-life", label: "Shift Life" },
-  { value: "guest-behavior", label: "Guest Behavior" },
-  { value: "pour-decisions", label: "Pour Decisions" },
-];
 
 interface QuickProductModalProps {
   open: boolean;
@@ -28,7 +19,6 @@ export const QuickProductModal = ({ open, onClose, onCreated }: QuickProductModa
   const [form, setForm] = useState({
     name: "",
     price_dollars: "",
-    category: "industry-truths",
     description: "",
     humor: "",
   });
@@ -52,7 +42,6 @@ export const QuickProductModal = ({ open, onClose, onCreated }: QuickProductModa
         name: form.name.trim(),
         description: form.description.trim(),
         humor: form.humor.trim(),
-        category: form.category,
         price_cents: Math.round(price * 100),
         currency: "usd",
         status: "draft",
@@ -66,7 +55,7 @@ export const QuickProductModal = ({ open, onClose, onCreated }: QuickProductModa
       if (error) throw error;
       toast.success(`"${data.name}" created — finish editing it from Products.`);
       onCreated({ id: data.id, name: data.name });
-      setForm({ name: "", price_dollars: "", category: "industry-truths", description: "", humor: "" });
+      setForm({ name: "", price_dollars: "", description: "", humor: "" });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -89,20 +78,9 @@ export const QuickProductModal = ({ open, onClose, onCreated }: QuickProductModa
             <Label>Product Name *</Label>
             <Input placeholder="e.g. Last Call Crew Neck" value={form.name} onChange={set("name")} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Price (USD) *</Label>
-              <Input type="number" min="0" step="0.01" placeholder="27.99" value={form.price_dollars} onChange={set("price_dollars")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Category</Label>
-              <Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label>Price (USD) *</Label>
+            <Input type="number" min="0" step="0.01" placeholder="27.99" value={form.price_dollars} onChange={set("price_dollars")} />
           </div>
           <div className="space-y-1.5">
             <Label>Description</Label>

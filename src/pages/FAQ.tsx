@@ -1,4 +1,5 @@
 import SEO from "@/components/SEO";
+import { useSiteContent } from "@/context/SiteContentContext";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -35,6 +36,7 @@ const faqs = [
 ];
 
 const FAQ = () => {
+  const { getValue } = useSiteContent();
   return (
     <div className="min-h-screen pt-24 md:pt-28">
       <SEO
@@ -69,7 +71,7 @@ const FAQ = () => {
               Asked more than "one more drink?"
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-              FAQ
+              {getValue("faq", "header", "heading", "FAQ")}
             </h1>
             <p className="text-white/70 text-sm md:text-base mt-3 max-w-md">
               The stuff everyone wants to know. Answered with minimal sarcasm.

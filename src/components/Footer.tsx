@@ -43,8 +43,8 @@ const Footer = () => {
               <Link to="/shop" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
                 All Products
               </Link>
-              <Link to="/collections" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
-                Collections
+              <Link to="/merch-drops" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
+                Merch Drops
               </Link>
             </div>
           </div>

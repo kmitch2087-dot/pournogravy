@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { SiteContentProvider } from "@/context/SiteContentContext";
+import { SiteEditor } from "@/components/admin/SiteEditor";
 import { Loader2 } from "lucide-react";
 
 // ─── EAGER: always-on chrome ─────────────────────────────────────────────────
@@ -81,6 +83,7 @@ const PublicChrome = ({ children }: { children: React.ReactNode }) => {
       {!isAdmin && <DropAnnouncementBar />}
       {!isAdmin && <Navbar />}
       {!isAdmin && <CartDrawer />}
+      {!isAdmin && <SiteEditor />}
       {children}
       {!isAdmin && <Footer />}
     </>
@@ -95,6 +98,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <SiteContentProvider>
             <WishlistProvider>
             <AnalyticsTracker />
           <CartProvider>
@@ -151,6 +155,7 @@ const App = () => (
               <EditBubble />
             </CartProvider>
             </WishlistProvider>
+            </SiteContentProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

@@ -46,7 +46,6 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   price: r.price_cents / 100,
   description: r.description ?? "",
   longDescription: Array.isArray(r.description_long) ? (r.description_long as string[]) : undefined,
-  category: r.category ?? "",
   sizes: r.sizes ?? [],
   image: r.image_url ?? r.images?.[0],
   images: r.images ?? [],

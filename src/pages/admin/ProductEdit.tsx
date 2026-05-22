@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { products as staticProducts } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,52 +10,103 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Upload, X } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { PRODUCT_STATUSES, slugify } from "@/lib/admin";
+import { slugify } from "@/lib/admin";
 
 const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
 
+interface FormState {
+  slug: string;
+  name: string;
+  description: string;
+  humor: string;
+  longDescription: string[];
+  badAdviceTitle: string;
+  badAdviceParagraphs: string[];
+  price_dollars: string;
+  isLive: boolean;
+  featured: boolean;
+  fit_type: string;
+  sizes: string[];
+  images: string[];
+  badge: string;
+  fulfillment_route: string;
+}
+
+const defaultForm = (): FormState => ({
+  slug: "", name: "", description: "", humor: "",
+  longDescription: [], badAdviceTitle: "", badAdviceParagraphs: [],
+  price_dollars: "", isLive: false, featured: false, fit_type: "unisex",
+  sizes: DEFAULT_SIZES, images: [], badge: "", fulfillment_route: "local_printer",
+});
+
+// Dynamic paragraph list editor
+const ParagraphList = ({
+  label, paragraphs, onChange, placeholder, rows = 3,
+}: {
+  label: string; paragraphs: string[]; onChange: (p: string[]) => void;
+  placeholder?: string; rows?: number;
+}) => {
+  const update = (i: number, v: string) => {
+    const next = [...paragraphs]; next[i] = v; onChange(next);
+  };
+  const remove = (i: number) => onChange(paragraphs.filter((_, idx) => idx !== i));
+  const add = () => onChange([...paragraphs, ""]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        <Button type="button" variant="ghost" size="sm" onClick={add} className="text-xs text-[#fde047] h-6 px-2">
+          <Plus className="h-3 w-3 mr-1" /> Add paragraph
+        </Button>
+      </div>
+      {paragraphs.length === 0 && (
+        <p className="text-xs text-muted-foreground italic">No paragraphs yet. Click "Add paragraph" to start.</p>
+      )}
+      {paragraphs.map((para, i) => (
+        <div key={i} className="relative group">
+          <Textarea
+            value={para}
+            onChange={(e) => update(i, e.target.value)}
+            rows={rows}
+            placeholder={placeholder ?? `Paragraph ${i + 1}`}
+            className="pr-8 resize-none"
+          />
+          <button
+            type="button"
+            onClick={() => remove(i)}
+            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ProductEdit = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromSlug = searchParams.get("from"); // static product slug to pre-populate from
   const isNew = !id || id === "new";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  const [form, setForm] = useState({
-    slug: "",
-    name: "",
-    description: "",
-    humor: "",
-    category: "",
-    price_dollars: "",
-    status: "draft" as (typeof PRODUCT_STATUSES)[number],
-    is_active: true,
-    featured: false,
-    fit_type: "unisex",
-    sizes: DEFAULT_SIZES,
-    images: [] as string[],
-    badge: "",
-    fulfillment_route: "local_printer",
-  });
+  const [form, setForm] = useState<FormState>(defaultForm());
+  const [initialized, setInitialized] = useState(false);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["admin-product", id],
     queryFn: async () => {
       if (isNew) return null;
       const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id!)
-        .single();
+        .from("products").select("*").eq("id", id!).single();
       if (error) throw error;
       return data;
     },
@@ -62,38 +114,63 @@ const ProductEdit = () => {
   });
 
   useEffect(() => {
-    if (!product) return;
-    setForm({
-      slug: product.slug,
-      name: product.name,
-      description: product.description ?? "",
-      humor: product.humor ?? "",
-      category: product.category ?? "",
-      price_dollars: (product.price_cents / 100).toFixed(2),
-      status: product.status as (typeof PRODUCT_STATUSES)[number],
-      is_active: product.is_active,
-      featured: product.featured,
-      fit_type: product.fit_type,
-      sizes: product.sizes && product.sizes.length > 0 ? product.sizes : DEFAULT_SIZES,
-      images: product.images ?? [],
-      badge: product.badge ?? "",
-      fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
-    });
-  }, [product]);
+    if (initialized) return;
+
+    if (!isNew && product) {
+      // Editing existing DB product
+      const ba = product.bad_advice as { title?: string; paragraphs?: string[] } | null;
+      setForm({
+        slug: product.slug ?? "",
+        name: product.name ?? "",
+        description: product.description ?? "",
+        humor: product.humor ?? "",
+        longDescription: (product.long_description as string[] | null) ?? [],
+        badAdviceTitle: ba?.title ?? "",
+        badAdviceParagraphs: ba?.paragraphs ?? [],
+        price_dollars: product.price_cents ? (product.price_cents / 100).toFixed(2) : "",
+        isLive: product.is_active && product.published,
+        featured: product.featured ?? false,
+        fit_type: product.fit_type ?? "unisex",
+        sizes: product.sizes?.length ? product.sizes : DEFAULT_SIZES,
+        images: product.images ?? [],
+        badge: product.badge ?? "",
+        fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
+      });
+      setInitialized(true);
+    } else if (isNew && fromSlug) {
+      // Pre-populate from static catalog product
+      const sp = staticProducts.find((p) => p.id === fromSlug);
+      if (sp) {
+        setForm({
+          slug: sp.id,
+          name: sp.name,
+          description: sp.description ?? "",
+          humor: sp.humor ?? "",
+          longDescription: sp.longDescription ?? [],
+          badAdviceTitle: sp.badAdvice?.title ?? "",
+          badAdviceParagraphs: sp.badAdvice?.paragraphs ?? [],
+          price_dollars: sp.price.toFixed(2),
+          isLive: sp.published === true,
+          featured: sp.featured === true,
+          fit_type: sp.variants ? "mens_womens" : "unisex",
+          sizes: sp.sizes ?? DEFAULT_SIZES,
+          images: sp.images ?? (sp.image ? [sp.image] : []),
+          badge: sp.badge ?? "",
+          fulfillment_route: "local_printer",
+        });
+        setInitialized(true);
+      }
+    } else if (isNew && !fromSlug) {
+      setInitialized(true);
+    }
+  }, [product, isNew, fromSlug, initialized]);
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${form.slug || crypto.randomUUID()}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("products").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-    if (error) {
-      toast.error(error.message);
-      setUploading(false);
-      return;
-    }
+    const { error } = await supabase.storage.from("products").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) { toast.error(error.message); setUploading(false); return; }
     const { data } = supabase.storage.from("products").getPublicUrl(path);
     setForm((f) => ({ ...f, images: [...f.images, data.publicUrl] }));
     setUploading(false);
@@ -109,47 +186,52 @@ const ProductEdit = () => {
       return toast.error("Valid price is required");
 
     setSaving(true);
+    const slug = form.slug || slugify(form.name);
+    const badAdvice = form.badAdviceTitle || form.badAdviceParagraphs.length > 0
+      ? { title: form.badAdviceTitle, paragraphs: form.badAdviceParagraphs.filter(Boolean) }
+      : null;
+
     const payload = {
-      slug: form.slug || slugify(form.name),
+      slug,
       name: form.name,
       description: form.description || null,
       humor: form.humor || null,
-      category: form.category || null,
+      long_description: form.longDescription.filter(Boolean).length > 0 ? form.longDescription.filter(Boolean) : null,
+      bad_advice: badAdvice,
       price_cents: Math.round(Number(form.price_dollars) * 100),
-      status: form.status,
-      is_active: form.is_active,
+      is_active: form.isLive,
+      published: form.isLive,
+      status: form.isLive ? "published" : "draft",
       featured: form.featured,
       fit_type: form.fit_type,
       sizes: form.sizes,
       images: form.images,
       image_url: form.images[0] ?? null,
       badge: form.badge || null,
-      published: form.status === "published",
       fulfillment_route: form.fulfillment_route,
     };
 
-    const { error } = isNew
-      ? await supabase.from("products").insert([payload])
-      : await supabase.from("products").update(payload).eq("id", id!);
+    let error;
+    if (!isNew && !fromSlug) {
+      // Update existing DB product
+      ({ error } = await supabase.from("products").update(payload).eq("id", id!));
+    } else {
+      // Insert new (either truly new or first-time save of static product)
+      ({ error } = await supabase.from("products").insert([payload]));
+    }
 
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success(isNew ? "Product created" : "Saved");
     qc.invalidateQueries({ queryKey: ["admin-products"] });
-    qc.invalidateQueries({ queryKey: ["public-products"] });
     navigate("/admin/products");
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (!isNew && isLoading) {
+    return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
+
+  const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -158,76 +240,109 @@ const ProductEdit = () => {
       </Button>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* ── Left column — content ── */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Basic details */}
           <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">DETAILS</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="font-display tracking-widest">DETAILS</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Name *</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+                <Input value={form.name} onChange={(e) => setF({ name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label>Slug (URL)</Label>
                 <Input
                   value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
-                  placeholder={slugify(form.name)}
+                  onChange={(e) => setF({ slug: slugify(e.target.value) })}
+                  placeholder={slugify(form.name) || "auto-generated"}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Auto-generated from name if blank.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Short description</Label>
-                <Textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Humor / tagline</Label>
-                <Input
-                  value={form.humor}
-                  onChange={(e) => setForm({ ...form, humor: e.target.value })}
-                  placeholder="Short one-liner shown on the card"
-                />
+                <p className="text-xs text-muted-foreground">Auto-generated from name if left blank.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Category</Label>
-                  <Input
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  />
+                  <Label>Price (USD) *</Label>
+                  <Input type="number" step="0.01" value={form.price_dollars} onChange={(e) => setF({ price_dollars: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Badge</Label>
-                  <Input
-                    value={form.badge}
-                    onChange={(e) => setForm({ ...form, badge: e.target.value })}
-                    placeholder="e.g. NEW"
-                  />
+                  <Input value={form.badge} onChange={(e) => setF({ badge: e.target.value })} placeholder="e.g. NEW, HOT" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Product copy */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display tracking-widest">IMAGES</CardTitle>
+              <CardTitle className="font-display tracking-widest">PRODUCT COPY</CardTitle>
+              <p className="text-xs text-muted-foreground">This is Opie's voice — keep it raw.</p>
             </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-1.5">
+                <Label>Main Description</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setF({ description: e.target.value })}
+                  rows={4}
+                  className="resize-none"
+                  placeholder="The main product copy shown on the product page."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Humor / Tagline</Label>
+                <Input
+                  value={form.humor}
+                  onChange={(e) => setF({ humor: e.target.value })}
+                  placeholder="Short one-liner shown on the card and as the pull-quote callout"
+                />
+              </div>
+              <ParagraphList
+                label="Extended Description (Long Copy)"
+                paragraphs={form.longDescription}
+                onChange={(p) => setF({ longDescription: p })}
+                placeholder="Additional context, extended story, or extra copy shown on the product page..."
+                rows={3}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Bad Bartender Advice */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">BAD BARTENDER ADVICE</CardTitle>
+              <p className="text-xs text-muted-foreground">Opie's story / dialogue block shown at the bottom of the product page.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Section Title</Label>
+                <Input
+                  value={form.badAdviceTitle}
+                  onChange={(e) => setF({ badAdviceTitle: e.target.value })}
+                  placeholder="e.g. My Name is Opie and I'll Be Your Bartender:"
+                />
+              </div>
+              <ParagraphList
+                label="Story / Advice Paragraphs"
+                paragraphs={form.badAdviceParagraphs}
+                onChange={(p) => setF({ badAdviceParagraphs: p })}
+                placeholder="Paragraph or dialogue line..."
+                rows={3}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Images */}
+          <Card>
+            <CardHeader><CardTitle className="font-display tracking-widest">IMAGES</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {form.images.map((url) => (
                   <div key={url} className="relative aspect-square group">
                     <img src={url} alt="" className="w-full h-full object-cover rounded-sm border border-border" />
                     <button
+                      type="button"
                       onClick={() => removeImage(url)}
                       className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-sm opacity-0 group-hover:opacity-100 transition"
                     >
@@ -236,145 +351,77 @@ const ProductEdit = () => {
                   </div>
                 ))}
                 <label className="aspect-square border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[#fde047] transition text-muted-foreground hover:text-[#fde047]">
-                  {uploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Upload className="h-5 w-5" />
-                      <span className="text-[10px] uppercase tracking-wider">Upload</span>
-                    </>
+                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                    <><Upload className="h-5 w-5" /><span className="text-[10px] uppercase tracking-wider">Upload</span></>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleImageUpload(f);
-                      e.target.value = "";
-                    }}
+                  <input type="file" accept="image/*" className="hidden" disabled={uploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
                   />
                 </label>
               </div>
-              <p className="text-xs text-muted-foreground">First image is used as the thumbnail.</p>
+              <p className="text-xs text-muted-foreground">First image is used as the thumbnail. Drag to reorder (coming soon).</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* ── Right column — settings ── */}
         <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">PRICING</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="font-display tracking-widest">VISIBILITY</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Price (USD) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.price_dollars}
-                  onChange={(e) => setForm({ ...form, price_dollars: e.target.value })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">VISIBILITY</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) => setForm({ ...form, status: v as typeof form.status })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRODUCT_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="active">Active</Label>
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <Label htmlFor="live" className="text-base">Live on Site</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Toggle to publish or unpublish</p>
+                </div>
                 <Switch
-                  id="active"
-                  checked={form.is_active}
-                  onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+                  id="live"
+                  checked={form.isLive}
+                  onCheckedChange={(v) => setF({ isLive: v })}
+                  className="data-[state=checked]:bg-[#fde047]"
                 />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="featured">Featured</Label>
-                <Switch
-                  id="featured"
-                  checked={form.featured}
-                  onCheckedChange={(v) => setForm({ ...form, featured: v })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Fit type</Label>
-                <Select
-                  value={form.fit_type}
-                  onValueChange={(v) => setForm({ ...form, fit_type: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unisex">Unisex</SelectItem>
-                    <SelectItem value="mens_womens">Men's & Women's</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Switch id="featured" checked={form.featured} onCheckedChange={(v) => setF({ featured: v })} />
               </div>
             </CardContent>
           </Card>
-
 
           <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest text-sm">FULFILLMENT</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Route orders to</Label>
-                <Select
-                  value={form.fulfillment_route}
-                  onValueChange={(v) => setForm({ ...form, fulfillment_route: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="local_printer">🖨️ Local Printer</SelectItem>
-                    <SelectItem value="printful">Printful</SelectItem>
-                    <SelectItem value="printify">Printify</SelectItem>
-                    <SelectItem value="manual">Manual / Self-fulfill</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {form.fulfillment_route === "local_printer" && (
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Orders email to your printer with artwork specs. Configure the printer address and print requirements in{" "}
-                  <a href="/admin/settings" className="text-[#fde047] hover:underline">Settings → Fulfillment</a>.
-                </p>
-              )}
-              {form.fulfillment_route === "printful" && (
-                <p className="text-[11px] text-muted-foreground">Premium — embroidery-capable. Wires via Printful API (Phase 2).</p>
-              )}
-              {form.fulfillment_route === "printify" && (
-                <p className="text-[11px] text-muted-foreground">Low-cost, large catalog. Wires via Printify API (Phase 2).</p>
-              )}
-              {form.fulfillment_route === "manual" && (
-                <p className="text-[11px] text-muted-foreground">You ship it yourself. No automatic fulfillment triggered.</p>
-              )}
+            <CardHeader><CardTitle className="font-display tracking-widest text-sm">FIT</CardTitle></CardHeader>
+            <CardContent>
+              <Select value={form.fit_type} onValueChange={(v) => setF({ fit_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unisex">Unisex</SelectItem>
+                  <SelectItem value="mens_womens">Men's &amp; Women's</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="font-display tracking-widest text-sm">FULFILLMENT</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Select value={form.fulfillment_route} onValueChange={(v) => setF({ fulfillment_route: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local_printer">Local Printer</SelectItem>
+                  <SelectItem value="printify">Printify</SelectItem>
+                  <SelectItem value="printful">Printful</SelectItem>
+                  <SelectItem value="manual">Manual / Self-fulfill</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
           <Button
             onClick={handleSave}
             disabled={saving}
             className="w-full h-12 bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isNew ? "CREATE" : "SAVE CHANGES"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isNew ? "CREATE PRODUCT" : "SAVE CHANGES"}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import SEO from "@/components/SEO";
+import { useSiteContent } from "@/context/SiteContentContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const Contact = () => {
+  const { getValue } = useSiteContent();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -47,7 +49,7 @@ const Contact = () => {
               We're listening
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-              CONTACT
+              {getValue("contact", "header", "heading", "CONTACT")}
             </h1>
             <p className="text-white/70 text-sm md:text-base mt-3 max-w-lg">
               Got a question, complaint, or a good bartender horror story? Slide it over.

@@ -45,6 +45,7 @@ const Index = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
+  const { getValue } = useSiteContent();
   const [heroPaused, setHeroPaused] = useState(false);
   // First-load only: show the bare logo background for 3s before the glass
   // headline stamps in, and freeze the auto-rotation timer until then. After
@@ -194,7 +195,7 @@ const Index = () => {
                       >
                         <Link to="/shop">
                           <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                            SHOP THE DROP <ArrowRight className="ml-2 h-5 w-5" />
+                            {getValue("home", "hero", "cta_text", "SHOP THE DROP")} <ArrowRight className="ml-2 h-5 w-5" />
                           </Button>
                         </Link>
                       </motion.div>

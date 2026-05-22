@@ -407,7 +407,7 @@ export const MerchDropBuilder = ({ open, onClose, editingDrop }: MerchDropBuilde
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">{p.category} · ${(p.price_cents / 100).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">${(p.price_cents / 100).toFixed(2)}</p>
                           </div>
                           <Badge variant="outline" className="text-[10px] shrink-0">{p.status}</Badge>
                         </button>

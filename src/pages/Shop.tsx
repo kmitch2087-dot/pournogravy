@@ -1,26 +1,21 @@
 import SEO from "@/components/SEO";
+import { useSiteContent } from "@/context/SiteContentContext";
 import { DropShopBanner } from "@/components/DropShopBanner";
 import ProductCard from "@/components/ProductCard";
-import { products, collections } from "@/data/products";
+import { products } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, X, ArrowUpDown } from "lucide-react";
 
 const Shop = () => {
+  const { getValue } = useSiteContent();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initial = searchParams.get("collection") || "all";
-  const [activeFilter, setActiveFilter] = useState(initial);
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "default");
 
-  // Keep URL in sync so filter + search state is shareable/back-button friendly
+  // Keep URL in sync so search + sort state is shareable/back-button friendly
   useEffect(() => {
-    if (activeFilter === "all") {
-      searchParams.delete("collection");
-    } else {
-      searchParams.set("collection", activeFilter);
-    }
     if (query.trim()) {
       searchParams.set("q", query.trim());
     } else {
@@ -33,11 +28,10 @@ const Shop = () => {
     }
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, query, sortBy]);
+  }, [query, sortBy]);
 
   // Only published products are visible to shoppers. Drafts (anything not
-  // explicitly `published: true`) are hidden from the catalog. This is the
-  // pre-launch staging gate the owner controls per-product.
+  // explicitly `published: true`) are hidden from the catalog.
   const visible = useMemo(
     () => products.filter((p) => p.published === true),
     []
@@ -46,17 +40,17 @@ const Shop = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = visible.filter((p) => {
-      const matchesCollection = activeFilter === "all" || p.category === activeFilter;
-      const matchesSearch = !q ||
+      return (
+        !q ||
         p.name.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q);
-      return matchesCollection && matchesSearch;
+        (p.description ?? "").toLowerCase().includes(q)
+      );
     });
     if (sortBy === "price-asc") return [...base].sort((a, b) => a.price - b.price);
     if (sortBy === "price-desc") return [...base].sort((a, b) => b.price - a.price);
     if (sortBy === "alpha") return [...base].sort((a, b) => a.name.localeCompare(b.name));
     return base;
-  }, [activeFilter, query, sortBy, visible]);
+  }, [query, sortBy, visible]);
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
@@ -94,10 +88,10 @@ const Shop = () => {
             The whole catalog
           </p>
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-            SHOP
+            {getValue("shop", "header", "heading", "SHOP")}
           </h1>
           <p className="text-white/70 text-sm md:text-base mt-3 max-w-md">
-            Wear your frustration. Literally.
+            {getValue("shop", "header", "subheading", "Wear your frustration. Literally.")}
           </p>
         </div>
       </section>
@@ -106,61 +100,41 @@ const Shop = () => {
       <div className="container mx-auto px-4">
         {/* Filters */}
         <div className="sticky top-16 md:top-20 z-30 -mx-4 px-4 bg-background/90 backdrop-blur-md border-b border-border">
-          <div className="flex flex-col gap-3 py-4">
-            <div className="flex items-center gap-3">
-              {/* Search input */}
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search products…"
-                  className="w-full pl-8 pr-8 py-2 text-xs bg-transparent border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#fde047] transition-colors"
-                />
-                {query && (
-                  <button
-                    onClick={() => setQuery("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="text-xs bg-transparent border border-border text-muted-foreground focus:outline-none focus:border-[#fde047] py-1.5 px-2 cursor-pointer"
+          <div className="flex items-center gap-3 py-4">
+            {/* Search input */}
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products…"
+                className="w-full pl-8 pr-8 py-2 text-xs bg-transparent border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#fde047] transition-colors"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <option value="default">Featured</option>
-                  <option value="price-asc">Price: Low → High</option>
-                  <option value="price-desc">Price: High → Low</option>
-                  <option value="alpha">A → Z</option>
-                </select>
-                <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap hidden sm:block">
-                  {filtered.length} item{filtered.length === 1 ? "" : "s"}
-                </p>
-              </div>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
-            {/* Collection filters */}
-            <div className="flex flex-wrap gap-2">
-              <FilterPill
-                active={activeFilter === "all"}
-                onClick={() => setActiveFilter("all")}
+            <div className="flex items-center gap-2 ml-auto">
+              <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="text-xs bg-transparent border border-border text-muted-foreground focus:outline-none focus:border-[#fde047] py-1.5 px-2 cursor-pointer"
               >
-                All
-              </FilterPill>
-              {collections.map((col) => (
-                <FilterPill
-                  key={col.id}
-                  active={activeFilter === col.id}
-                  onClick={() => setActiveFilter(col.id)}
-                >
-                  {col.name}
-                </FilterPill>
-              ))}
+                <option value="default">Featured</option>
+                <option value="price-asc">Price: Low → High</option>
+                <option value="price-desc">Price: High → Low</option>
+                <option value="alpha">A → Z</option>
+              </select>
+              <p className="font-marker text-xs tracking-widest text-muted-foreground uppercase whitespace-nowrap hidden sm:block">
+                {filtered.length} item{filtered.length === 1 ? "" : "s"}
+              </p>
             </div>
           </div>
         </div>
@@ -197,7 +171,9 @@ const Shop = () => {
               Nothing here yet.
             </p>
             <p className="text-sm text-muted-foreground mt-3">
-              {query ? `No results for "${query}" — try a different search.` : "Try another filter — or check back after our next shift."}
+              {query
+                ? `No results for "${query}" — try a different search.`
+                : "Check back after our next shift."}
             </p>
             {query && (
               <button onClick={() => setQuery("")} className="mt-4 text-xs text-[#fde047] hover:underline">
@@ -210,32 +186,5 @@ const Shop = () => {
     </div>
   );
 };
-
-const FilterPill = ({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) => (
-  <button
-    onClick={onClick}
-    aria-pressed={active}
-    className={`px-4 py-2 text-xs font-display tracking-widest uppercase border transition-all ${
-      active
-        ? "bg-[#fde047] text-black border-[#fde047]"
-        : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-    }`}
-    style={
-      active
-        ? { boxShadow: "0 0 16px rgba(253,224,71,0.4)" }
-        : undefined
-    }
-  >
-    {children}
-  </button>
-);
 
 export default Shop;

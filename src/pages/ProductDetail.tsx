@@ -120,7 +120,7 @@ const ProductDetail = () => {
   }
 
   const related = products
-    .filter((p) => p.id !== product.id && p.category === product.category)
+    .filter((p) => p.id !== product.id && p.published === true)
     .slice(0, 3);
 
   // Photo lookup chain — most specific match wins:
@@ -292,7 +292,7 @@ const ProductDetail = () => {
           >
             <div>
               <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3">
-                {product.category || "Bartender Apparel"}
+                "Bartender Apparel"
               </p>
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
