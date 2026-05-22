@@ -10,6 +10,7 @@ import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSiteContent } from "@/context/SiteContentContext";
 
 const TICKER_ITEMS = [
   "Offend a Karen without having to open your mouth.",
