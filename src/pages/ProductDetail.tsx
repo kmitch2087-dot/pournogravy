@@ -197,7 +197,7 @@ const ProductDetail = () => {
     <div className="min-h-screen pt-24 md:pt-28">
       <SEO
         title={product.name}
-        description={`${product.humor} — ${product.name} available in Men's and Women's fits. Shop Pournogravy.`}
+        description={`${product.humor} — ${product.name}. Unisex tee. Shop Pournogravy.`}
         image={product.images?.[0] ?? product.image}
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"

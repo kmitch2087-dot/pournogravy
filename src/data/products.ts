@@ -1,21 +1,21 @@
 export interface ProductVariant {
-  /** Stable id slug — used in URLs and cart key. Always "mens" or "womens" today. */
+  /** Stable id slug — used in URLs and cart key. "unisex" for all products. */
   id: string;
-  /** Display label — "Men's", "Women's" */
+  /** Display label — "Unisex" */
   label: string;
   /** Variant-specific images (first one is the gallery default when this variant is selected) */
   images: string[];
 }
 
 export interface ProductColor {
-  /** Stable id slug — used in cart key and storage. e.g. "black", "cream" */
+  /** Stable id slug — used in cart key and storage. e.g. "black", "white" */
   id: string;
   /** Display label — "Black", "Cream" */
   label: string;
   /** CSS color used to render the swatch chip */
   hex: string;
   /**
-   * Per-fit photo overrides for this color. Keys are variant ids ("mens", "womens").
+   * Per-fit photo overrides for this color. Keys are variant ids.
    * If a fit isn't represented here we fall back to `images` below, then to
    * the variant's own images, then to the product's top-level images.
    */
@@ -43,8 +43,7 @@ export interface Product {
     paragraphs: string[];
   };
   /**
-   * Fit variants. Today every product has Men's + Women's. The cart line item
-   * carries the selected variant id so Men's L and Women's L are distinct lines.
+   * Fit variants. All products use a single "unisex" variant.
    */
   variants?: ProductVariant[];
   /**
@@ -53,7 +52,6 @@ export interface Product {
    */
   colors?: ProductColor[];
   /** @deprecated — use `variants` instead */
-  womensVariantAvailable?: boolean;
   featured?: boolean;
   /** Public visibility flag. Only products with `published: true` appear in shop/featured/search. */
   published?: boolean;
@@ -74,16 +72,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.png",
-          "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.png",
           "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.png",
@@ -97,9 +87,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -131,16 +121,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/i-would-totally-tap-that-keg-tee-0.png",
-          "/products/i-would-totally-tap-that-keg-tee-1.jpg",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/i-would-totally-tap-that-keg-tee-0.png",
           "/products/i-would-totally-tap-that-keg-tee-1.jpg",
@@ -154,9 +136,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: ["Stop it!"],
@@ -192,16 +174,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.png",
-          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.png",
           "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.png",
@@ -215,9 +189,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -264,16 +238,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.png",
-          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.png",
           "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.png",
@@ -287,9 +253,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -316,16 +282,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/last-call-for-karen-tee-0.png",
-          "/products/last-call-for-karen-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/last-call-for-karen-tee-0.png",
           "/products/last-call-for-karen-tee-1.png",
@@ -339,9 +297,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -369,16 +327,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/service-bartender-do-not-approach-tee-0.png",
-          "/products/service-bartender-do-not-approach-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/service-bartender-do-not-approach-tee-0.png",
           "/products/service-bartender-do-not-approach-tee-1.png",
@@ -392,9 +342,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -434,26 +384,18 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/atheist-tee-0.png",
           "/products/atheist-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
-        images: [
-          "/products/atheist-tee-2.png",
-          "/products/atheist-tee-3.png",
         ],
       },
     ],
@@ -483,16 +425,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/atheist-with-text-only-0.png",
-          "/products/atheist-with-text-only-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/atheist-with-text-only-0.png",
           "/products/atheist-with-text-only-1.png",
@@ -506,9 +440,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -542,36 +476,22 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
-        imagesByFit: {
-          mens: [
-            "/products/the-finger-tee-2.png",
-            "/products/the-finger-tee-3.png",
-          ],
-          womens: [
-            "/products/the-finger-tee-2.png",
-            "/products/the-finger-tee-3.png",
-          ],
-        },
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
+        images: [
+          "/products/the-finger-tee-2.png",
+          "/products/the-finger-tee-3.png",
+        ],
       },
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/the-finger-tee-0.png",
           "/products/the-finger-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
-        images: [
-          "/products/the-finger-tee-4.png",
-          "/products/the-finger-tee-5.png",
         ],
       },
     ],
@@ -604,26 +524,18 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/pourn-hand-tee-0.png",
           "/products/pourn-hand-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
-        images: [
-          "/products/pourn-hand-tee-2.png",
-          "/products/pourn-hand-tee-3.png",
         ],
       },
     ],
@@ -664,26 +576,18 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/second-most-fun-job-tee-0.png",
           "/products/second-most-fun-job-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
-        images: [
-          "/products/second-most-fun-job-tee-2.png",
-          "/products/second-most-fun-job-tee-3.png",
         ],
       },
     ],
@@ -715,7 +619,7 @@ export const products: Product[] = [
     id: "introverted-bartender-tee",
     name: "Introverted Bartender",
     price: 27.99,
-    description: "(Women's design also available)",
+    description: "This design is for the bartender that loves the job but hates the public.",
     humor: "Jekyll and Hyde",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
     image: "/products/introverted-bartender-tee-0.jpg",
@@ -730,26 +634,18 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/introverted-bartender-tee-0.jpg",
           "/products/introverted-bartender-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
-        images: [
-          "/products/introverted-bartender-tee-2.png",
-          "/products/introverted-bartender-tee-3.png",
         ],
       },
     ],
@@ -783,16 +679,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/legally-fun-tee-text-only-0.png",
-          "/products/legally-fun-tee-text-only-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/legally-fun-tee-text-only-0.png",
           "/products/legally-fun-tee-text-only-1.png",
@@ -806,9 +694,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -849,16 +737,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/tip-your-therapist-tee-0.png",
-          "/products/tip-your-therapist-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/tip-your-therapist-tee-0.png",
           "/products/tip-your-therapist-tee-1.png",
@@ -872,9 +752,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -913,16 +793,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/strn-drink-tee-text-and-image-0.png",
-          "/products/strn-drink-tee-text-and-image-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/strn-drink-tee-text-and-image-0.png",
           "/products/strn-drink-tee-text-and-image-1.png",
@@ -936,9 +808,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -985,16 +857,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/well-it-ain-t-gonna-lick-itself-tee-0.png",
-          "/products/well-it-ain-t-gonna-lick-itself-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/well-it-ain-t-gonna-lick-itself-tee-0.png",
           "/products/well-it-ain-t-gonna-lick-itself-tee-1.png",
@@ -1008,9 +872,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -1039,16 +903,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/tea-toes-and-vodka-please-tee-0.png",
-          "/products/tea-toes-and-vodka-please-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/tea-toes-and-vodka-please-tee-0.png",
           "/products/tea-toes-and-vodka-please-tee-1.png",
@@ -1062,9 +918,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -1089,16 +945,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/dear-karen-you-stink-tee-0.png",
-          "/products/dear-karen-you-stink-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/dear-karen-you-stink-tee-0.png",
           "/products/dear-karen-you-stink-tee-1.png",
@@ -1112,9 +960,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -1141,16 +989,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.png",
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.png",
           "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.png",
@@ -1164,9 +1004,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -1206,16 +1046,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.png",
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.png",
           "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.png",
@@ -1229,9 +1061,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -1270,16 +1102,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.png",
-          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.png",
           "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.png",
@@ -1293,9 +1117,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     longDescription: [
@@ -1340,16 +1164,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.png",
-          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.jpg",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.png",
           "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.jpg",
@@ -1363,9 +1179,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -1391,16 +1207,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/f-off-karen-0.png",
-          "/products/f-off-karen-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/f-off-karen-0.png",
           "/products/f-off-karen-1.png",
@@ -1414,9 +1222,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
@@ -1440,16 +1248,8 @@ export const products: Product[] = [
     ],
     variants: [
       {
-        id: "mens",
-        label: "Men's",
-        images: [
-          "/products/cow-tipping-0.png",
-          "/products/cow-tipping-1.png",
-        ],
-      },
-      {
-        id: "womens",
-        label: "Women's",
+        id: "unisex",
+        label: "Unisex",
         images: [
           "/products/cow-tipping-0.png",
           "/products/cow-tipping-1.png",
@@ -1463,9 +1263,9 @@ export const products: Product[] = [
         hex: "#0a0a0a",
       },
       {
-        id: "cream",
-        label: "Cream",
-        hex: "#f5f0e1",
+        id: "white",
+        label: "White",
+        hex: "#ffffff",
       },
     ],
     badAdvice: {
