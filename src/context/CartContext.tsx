@@ -207,29 +207,39 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const currentUserIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Init: load localStorage, then merge any existing DB cart ──────────────
+  // ── Init: load localStorage only ─────────────────────────────────────────
+  // IMPORTANT: do NOT call supabase.auth.getSession() here.
+  // AuthContext owns the single authoritative getSession() call.
+  // Calling it here too causes concurrent lock contention in Supabase JS v2's
+  // Web Locks-based auth system → "lock was released because another request
+  // stole it" → fetchProfile timeout → infinite spinner.
+  // The initial user is picked up by INITIAL_SESSION in onAuthStateChange below.
   useEffect(() => {
     const local = loadCart();
     setItems(local);
     setSessionId(loadSessionId());
     hydrated.current = true;
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) return;
-      const userId = session.user.id;
-      currentUserIdRef.current = userId;
-      if (mergedForUser.current === userId) return;
-      mergedForUser.current = userId;
-      await doMerge(userId, local);
-    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Auth state changes: handle actual login / logout ──────────────────────
+  // ── Auth state changes: handles initial load AND subsequent events ────────
   useEffect(() => {
+    // Snapshot local cart at subscription time for INITIAL_SESSION merge
+    const localSnapshot = loadCart();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === "INITIAL_SESSION") return; // per auth race condition fix
+        // INITIAL_SESSION fires synchronously from localStorage — no lock contention.
+        // This replaces the old getSession() call in the init useEffect above.
+        if (event === "INITIAL_SESSION") {
+          if (!session?.user) return;
+          const userId = session.user.id;
+          currentUserIdRef.current = userId;
+          if (mergedForUser.current === userId) return;
+          mergedForUser.current = userId;
+          await doMerge(userId, localSnapshot);
+          return;
+        }
 
         if (event === "SIGNED_IN" && session?.user) {
           const userId = session.user.id;

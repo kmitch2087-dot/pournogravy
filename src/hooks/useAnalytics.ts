@@ -1,6 +1,8 @@
-// useAnalytics — fire-and-forget event tracking via navigator.sendBeacon
-// Non-blocking: sendBeacon queues the POST even if the page is being unloaded.
-// Falls back to fetch() if sendBeacon is unavailable.
+// useAnalytics — fire-and-forget event tracking
+// Uses fetch() with credentials: 'omit' so the browser does not send cookies.
+// This allows the edge function to return Access-Control-Allow-Origin: * without
+// triggering the CORS preflight rejection that sendBeacon() caused (sendBeacon
+// always sends credentials: include, which is incompatible with wildcard CORS).
 
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
@@ -34,19 +36,16 @@ function send(event_type: string, page: string, opts: TrackOptions = {}) {
     ...opts,
   });
 
-  // sendBeacon is preferred: works during page unload, never blocks
-  if (navigator.sendBeacon) {
-    const blob = new Blob([payload], { type: "application/json" });
-    navigator.sendBeacon(TRACK_URL, blob);
-  } else {
-    // Fallback for environments without sendBeacon (rare)
-    fetch(TRACK_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {/* swallow — analytics must never break the user experience */});
-  }
+  // fetch with credentials: 'omit' — analytics never need cookies.
+  // This is compatible with Access-Control-Allow-Origin: * in the edge function.
+  // keepalive: true preserves the request even if the page is navigating away.
+  fetch(TRACK_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: payload,
+    credentials: "omit",
+    keepalive: true,
+  }).catch(() => {/* swallow — analytics must never break the user experience */});
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────

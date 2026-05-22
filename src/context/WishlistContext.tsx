@@ -33,11 +33,19 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
+    // IMPORTANT: do NOT call supabase.auth.getSession() here.
+    // AuthContext owns the single authoritative getSession() call.
+    // Multiple concurrent getSession() calls cause Supabase JS v2 Web Lock
+    // contention → "lock was released because another request stole it" →
+    // fetchProfile timeout → infinite auth spinner.
+    // INITIAL_SESSION fires from localStorage synchronously — no lock needed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return;
+      // INITIAL_SESSION: synchronous from localStorage, replaces old getSession() call
+      if (event === "INITIAL_SESSION") {
+        setUserId(session?.user?.id ?? null);
+        return;
+      }
+      // All subsequent auth events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
       setUserId(session?.user?.id ?? null);
     });
     return () => subscription.unsubscribe();

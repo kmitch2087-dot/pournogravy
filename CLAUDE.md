@@ -162,6 +162,8 @@ blocking admin access. This recurred after every deploy because timing shifted s
 
 **Rule: `INITIAL_SESSION` is NEVER handled in `onAuthStateChange`. `getSession()` is the only init path.**
 
+**Rule (added 2026-05-22 — DO NOT REGRESS): Only ONE `getSession()` call is allowed in the entire frontend codebase — in `AuthContext.tsx`. `CartContext`, `WishlistContext`, and every other context/hook must use `onAuthStateChange` with `INITIAL_SESSION` handled to get the initial auth state. Multiple concurrent `getSession()` calls contend for the Supabase JS v2 Web Lock and cause the spinner/login bug. This was the root cause of 5+ sessions of failed auth fixes.**
+
 ```typescript
 // onAuthStateChange: post-init events ONLY
 supabase.auth.onAuthStateChange((event, newSession) => {
