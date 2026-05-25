@@ -37,6 +37,10 @@ const faqs = [
 
 const FAQ = () => {
   const { getValue } = useSiteContent();
+  const activeFaqs = faqs.map((fallback, i) => ({
+    q: getValue("faq", "items", `q${i + 1}_q`, fallback.q),
+    a: getValue("faq", "items", `q${i + 1}_a`, fallback.a),
+  }));
   return (
     <div className="min-h-screen pt-24 md:pt-28">
       <SEO
@@ -68,13 +72,13 @@ const FAQ = () => {
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              Asked more than "one more drink?"
+              {getValue("faq", "hero", "label", 'Asked more than "one more drink?"')}
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
               {getValue("faq", "header", "heading", "FAQ")}
             </h1>
             <p className="text-white/70 text-sm md:text-base mt-3 max-w-md">
-              The stuff everyone wants to know. Answered with minimal sarcasm.
+              {getValue("faq", "hero", "subheading", "The stuff everyone wants to know. Answered with minimal sarcasm.")}
             </p>
           </motion.div>
         </div>
@@ -83,7 +87,7 @@ const FAQ = () => {
       {/* Accordion */}
       <section className="container mx-auto px-4 max-w-2xl py-16 md:py-20">
         <Accordion type="single" collapsible className="space-y-3">
-          {faqs.map((faq, i) => (
+          {activeFaqs.map((faq, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 15 }}

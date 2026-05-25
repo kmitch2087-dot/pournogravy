@@ -38,7 +38,7 @@ const About = () => {
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-4"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              My Story
+              {getValue("about", "hero", "label", "My Story")}
             </p>
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl tracking-wider leading-[0.9]">
               BORN BEHIND<br />
@@ -93,7 +93,7 @@ const About = () => {
               />
               <blockquote className="relative border-l-4 border-[#fde047] pl-6 md:pl-8 py-2">
                 <p className="font-marker text-2xl md:text-3xl stamp-rotate text-foreground leading-tight">
-                  "If you've ever been stiffed on a $200 tab — these shirts are for you."
+                  "{getValue("about", "pullquote", "text", "If you've ever been stiffed on a $200 tab — these shirts are for you.")}"
                 </p>
               </blockquote>
             </motion.div>
@@ -141,12 +141,10 @@ const About = () => {
               className="relative font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-4"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              The manifesto
+              {getValue("about", "manifesto", "label", "The manifesto")}
             </p>
             <p className="relative font-display text-white text-2xl md:text-4xl tracking-wider leading-tight">
-              "WE DON'T JUST MAKE SHIRTS.<br />
-              WE MAKE UNIFORMS FOR<br />
-              THE UNDERAPPRECIATED."
+              {getValue("about", "manifesto", "text", '"WE DON\'T JUST MAKE SHIRTS. WE MAKE UNIFORMS FOR THE UNDERAPPRECIATED."')}
             </p>
           </motion.div>
 
@@ -154,7 +152,7 @@ const About = () => {
           <div className="mt-12 text-center">
             <Link to="/shop">
               <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                READ THE MENU <ArrowRight className="ml-2 h-5 w-5" />
+                {getValue("about", "cta", "button", "READ THE MENU")} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>

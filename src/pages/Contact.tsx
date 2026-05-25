@@ -46,13 +46,13 @@ const Contact = () => {
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              We're listening
+              {getValue("contact", "hero", "label", "We're listening")}
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
               {getValue("contact", "header", "heading", "CONTACT")}
             </h1>
             <p className="text-white/70 text-sm md:text-base mt-3 max-w-lg">
-              Got a question, complaint, or a good bartender horror story? Slide it over.
+              {getValue("contact", "hero", "subheading", "Got a question, complaint, or a good bartender horror story? Slide it over.")}
             </p>
           </motion.div>
         </div>
@@ -184,8 +184,8 @@ const Contact = () => {
                   <ContactCard
                     icon={<Mail className="h-4 w-4" />}
                     label="Email"
-                    value="Opie@pournogravy.com"
-                    href="mailto:Opie@pournogravy.com"
+                    value={getValue("contact", "sidebar", "email", "Opie@pournogravy.com")}
+                    href={`mailto:${getValue("contact", "sidebar", "email", "Opie@pournogravy.com")}`}
                   />
                   <ContactCard
                     icon={<Instagram className="h-4 w-4" />}
@@ -208,9 +208,9 @@ const Contact = () => {
                 <p className="font-marker text-xs tracking-[0.3em] text-muted-foreground uppercase mb-2">
                   Response time
                 </p>
-                <p className="text-sm text-foreground">24–48 hrs on weekdays.</p>
+                <p className="text-sm text-foreground">{getValue("contact", "sidebar", "response_time", "24–48 hrs on weekdays.")}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Weekends we're usually working doubles.
+                  {getValue("contact", "sidebar", "response_note", "Weekends we're usually working doubles.")}
                 </p>
               </div>
             </aside>

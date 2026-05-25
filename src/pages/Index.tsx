@@ -49,6 +49,7 @@ const Index = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
   const { getValue } = useSiteContent();
+  const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
   // First-load only: show the bare logo background for 3s before the glass
   // headline stamps in, and freeze the auto-rotation timer until then. After
@@ -85,7 +86,7 @@ const Index = () => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
     const id = setInterval(() => {
-      setQuoteIndex((i) => (i + 1) % quotes.length);
+      setQuoteIndex((i) => (i + 1) % activeQuotes.length);
     }, 6000);
     return () => clearInterval(id);
   }, []);
@@ -190,7 +191,7 @@ const Index = () => {
                           OFFENSIVE BARTENDER.
                         </h1>
                         <p className="font-marker text-base md:text-xl text-white/80 mt-4 tracking-wider italic">
-                          Use your sleeve to give them a piece of your mind.
+                          {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
                         </p>
                       </motion.div>
 
@@ -415,14 +416,14 @@ const Index = () => {
                 className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-5"
                 style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
               >
-                Super Powers include:
+                {getValue("home", "superpowers", "label", "Super Powers include:")}
               </p>
               <ul className="space-y-3">
-                {[
+                {([
                   "Offend a Karen without having to open your mouth.",
                   "Go out and show fellow bartenders that you're a bartender too without having to verbally announce it (You entitled freak!).",
                   "Call out the general public on certain undesirable behaviors.",
-                ].map((item, i) => (
+                ] as const).map((fallback, i) => (
                   <motion.li
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -432,7 +433,7 @@ const Index = () => {
                     className="flex items-start gap-3 text-base md:text-lg text-foreground leading-relaxed"
                   >
                     <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
-                    {item}
+                    {getValue("home", "superpowers", `item_${i + 1}`, fallback)}
                   </motion.li>
                 ))}
               </ul>
@@ -447,19 +448,19 @@ const Index = () => {
                 className="font-display text-xl md:text-2xl tracking-wider text-[#fde047] mb-1"
                 style={{ textShadow: "0 0 10px rgba(253,224,71,0.4)" }}
               >
-                BUT WAIT, THERE'S MORE:
+                {getValue("home", "extras", "heading", "BUT WAIT, THERE'S MORE:")}
               </p>
               <p
                 className="font-marker text-xs tracking-[0.3em] text-white/50 uppercase mb-5"
               >
-                Also included:
+                {getValue("home", "extras", "label", "Also included:")}
               </p>
               <ul className="space-y-3">
-                {[
+                {([
                   "Eye rolls.",
                   "Your parents refusing to be seen out with you while you're wearing that.",
                   "Receive looks of disgust from pretentious bartenders who still thinks the customer is always right (THEY'RE NOT CUSTOMERS! THEY'RE GUESTS!...OH, SHUT UP!!!).",
-                ].map((item, i) => (
+                ] as const).map((fallback, i) => (
                   <motion.li
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -469,7 +470,7 @@ const Index = () => {
                     className="flex items-start gap-3 text-base md:text-lg text-foreground/90 leading-relaxed"
                   >
                     <span className="text-[#ff1744] font-marker mt-0.5 shrink-0">★</span>
-                    {item}
+                    {getValue("home", "extras", `item_${i + 1}`, fallback)}
                   </motion.li>
                 ))}
               </ul>
@@ -482,19 +483,19 @@ const Index = () => {
               viewport={{ once: true }}
               className="font-marker text-lg md:text-xl text-center text-white/80 italic tracking-wider"
             >
-              Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!
+              {getValue("home", "manifesto", "text", "Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!")}
             </motion.p>
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-3 justify-center pt-2">
               <Link to="/shop">
                 <Button className="h-12 px-8 font-display tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                  ORDER A ROUND <ArrowRight className="ml-2 h-4 w-4" />
+                  {getValue("home", "cta", "primary_button", "ORDER A ROUND")} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/about">
                 <Button variant="outline" className="h-12 px-8 font-display tracking-widest">
-                  MY STORY
+                  {getValue("home", "cta", "secondary_button", "MY STORY")}
                 </Button>
               </Link>
             </div>
@@ -514,20 +515,20 @@ const Index = () => {
           <div className="flex items-end justify-between mb-10 md:mb-14">
             <div>
               <p className="font-marker text-xs md:text-sm tracking-widest text-[#fde047] mb-2 uppercase">
-                The lineup
+                {getValue("home", "featured", "label", "The lineup")}
               </p>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider leading-none">
-                FEATURED
+                {getValue("home", "featured", "heading", "FEATURED")}
               </h2>
               <p className="text-muted-foreground text-sm md:text-base mt-3 max-w-md">
-                The shirts that start conversations. And bar fights.
+                {getValue("home", "featured", "subheading", "The shirts that start conversations. And bar fights.")}
               </p>
             </div>
             <Link
               to="/shop"
               className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-display tracking-widest uppercase"
             >
-              See the full menu <ArrowRight className="h-4 w-4" />
+              {getValue("home", "featured", "link_text", "See the full menu")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
@@ -564,7 +565,7 @@ const Index = () => {
                 variant="outline"
                 className="h-14 px-12 font-display text-lg tracking-widest border-2 border-foreground/20 hover:bg-[#fde047] hover:text-black hover:border-[#fde047] transition-colors"
               >
-                THE FULL MENU <ArrowRight className="ml-2 h-5 w-5" />
+                {getValue("home", "featured", "button", "THE FULL MENU")} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
@@ -582,7 +583,7 @@ const Index = () => {
         />
         <div className="container mx-auto px-4 py-24 md:py-32 text-center relative">
           <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] mb-6 uppercase">
-            Bad Bartender Advice
+            {getValue("home", "quotes", "label", "Bad Bartender Advice")}
           </p>
           <div className="relative min-h-[140px] md:min-h-[200px] flex items-center justify-center">
             <AnimatePresence mode="wait">
@@ -594,17 +595,17 @@ const Index = () => {
                 transition={{ duration: 0.5 }}
                 className="font-marker text-2xl md:text-4xl lg:text-5xl tracking-wider leading-tight max-w-4xl mx-auto stamp-rotate"
               >
-                "{quotes[quoteIndex].toUpperCase()}"
+                "{activeQuotes[quoteIndex].toUpperCase()}"
               </motion.blockquote>
             </AnimatePresence>
           </div>
           <p className="text-muted-foreground text-xs md:text-sm mt-8 font-display tracking-widest uppercase">
-            — Every Bartender Ever
+            {getValue("home", "quotes", "attribution", "— Every Bartender Ever")}
           </p>
 
           {/* dot indicators */}
           <div className="flex justify-center gap-2 mt-6">
-            {quotes.map((_, i) => (
+            {activeQuotes.map((_, i) => (
               <button
                 key={i}
                 aria-label={`Show quote ${i + 1}`}
@@ -654,17 +655,17 @@ const Index = () => {
                 textShadow: "0 0 10px rgba(253,224,71,0.6)",
               }}
             >
-              No spam. Just shift notes.
+              {getValue("home", "newsletter", "disclaimer", "No spam. Just shift notes.")}
             </p>
             <h2 className="font-display text-4xl md:text-5xl tracking-wider mb-4">
-              JOIN THE SHIFT
+              {getValue("home", "newsletter", "heading", "JOIN THE SHIFT")}
             </h2>
             <p className="text-white/60 text-sm md:text-base mb-8">
-              Early drops, industry humor, and discounts that actually feel like ones.
+              {getValue("home", "newsletter", "subheading", "Early drops, industry humor, and discounts that actually feel like ones.")}
             </p>
             {subscribed ? (
               <p className="font-marker text-sm tracking-widest text-[#fde047] uppercase">
-                You're on the list. Don't embarrass us.
+                {getValue("home", "newsletter", "success", "You're on the list. Don't embarrass us.")}
               </p>
             ) : (
               <form

@@ -25,7 +25,7 @@ const PATH_TO_PAGE: Record<string, string> = {
 
 // ─── Field inputs ─────────────────────────────────────────────────────────────
 
-function FieldInput({
+export function FieldInput({
   row,
   onChange,
 }: {
@@ -126,7 +126,7 @@ function FieldInput({
 
 // ─── Section group ─────────────────────────────────────────────────────────────
 
-function SectionGroup({
+export function SectionGroup({
   page,
   section,
   rows,

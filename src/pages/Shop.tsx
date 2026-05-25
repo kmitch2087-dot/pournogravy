@@ -85,7 +85,7 @@ const Shop = () => {
             className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
             style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
           >
-            The whole catalog
+            {getValue("shop", "hero", "label", "The whole catalog")}
           </p>
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
             {getValue("shop", "header", "heading", "SHOP")}

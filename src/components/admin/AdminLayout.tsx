@@ -26,6 +26,7 @@ import {
   Coins,
   Users,
   Tag,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ const navItems: NavItem[] = [
   { to: "/admin/customers",     label: "Customer Lookup",      icon: Users,           end: false },
   { to: "/admin/subscribers",   label: "Email Subscribers",    icon: Mail,            end: false },
   { to: "/admin/discount-codes",label: "Discount Codes",       icon: Tag,             end: false },
+  { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
 ];
 
 const SidebarContent = ({
