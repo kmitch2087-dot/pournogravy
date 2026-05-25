@@ -40,7 +40,6 @@ const PrivacyPolicy  = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
-const AdminLogin     = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminLayout    = lazy(() => import("./components/admin/AdminLayout"));
 const Dashboard      = lazy(() => import("./pages/admin/Dashboard"));
 const Orders         = lazy(() => import("./pages/admin/Orders"));
@@ -118,7 +117,6 @@ const App = () => (
                     <Route path="/wishlist"        element={<Wishlist />} />
                     <Route path="/checkout"        element={<Checkout />} />
                     <Route path="/checkout/return" element={<CheckoutReturn />} />
-                    <Route path="/admin/login"     element={<AdminLogin />} />
                     <Route
                       path="/admin"
                       element={

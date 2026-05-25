@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
-      if (event === "SIGNED_IN" && newSession?.user) {
+      if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && newSession?.user) {
         setLoading(true);
         fetchProfile(newSession.user.id);
       } else if (event === "SIGNED_OUT") {

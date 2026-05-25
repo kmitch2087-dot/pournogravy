@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children, requireAdmin = true }: ProtectedRouteProps) 
   // loading stays true until both session AND profile are resolved (or timed out)
   if (loading) return <Spinner />;
 
-  if (!user) return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
 
   if (requireAdmin && !isAdmin) {
     return (
