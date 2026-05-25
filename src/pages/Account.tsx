@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useLoyalty } from "@/hooks/useLoyalty";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +23,6 @@ const Account = () => {
   const { user, profile, isAdmin, loading, signOut } = useAuth();
   const { account, transactions, loading: loyaltyLoading, redeem, rewardsAvailable, pointsToNextReward } = useLoyalty();
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
   const [redeeming, setRedeeming] = useState(false);
   const [redeemedCode, setRedeemedCode] = useState<string | null>(null);
 
@@ -33,25 +32,23 @@ const Account = () => {
     }
   }, [loading, user, navigate]);
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    (async () => {
+  const { data: orders = [], isLoading: ordersLoading } = useQuery<OrderRow[]>({
+    queryKey: ["account-orders", user?.id],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
         .select("id, created_at, status, total_cents, currency, tracking_number, tracking_carrier")
-        .eq("user_id", user.id)
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
-      if (cancelled) return;
       if (error) {
         toast.error("Couldn't load your orders");
-      } else {
-        setOrders(data ?? []);
+        return [];
       }
-      setOrdersLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [user]);
+      return data ?? [];
+    },
+  });
 
   const handleRedeem = async () => {
     setRedeeming(true);
