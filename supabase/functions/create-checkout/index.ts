@@ -6,11 +6,15 @@
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
 
 interface CartItem {
   slug: string;
@@ -24,7 +28,7 @@ interface CartItem {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
   try {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -44,7 +48,7 @@ Deno.serve(async (req) => {
     if (!email || !items?.length) {
       return new Response(JSON.stringify({ error: "Missing email or items" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -53,7 +57,7 @@ Deno.serve(async (req) => {
     if (slugs.length === 0) {
       return new Response(JSON.stringify({ error: "Items missing slug" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -77,13 +81,13 @@ Deno.serve(async (req) => {
       if (!productMap.has(i.slug)) {
         return new Response(
           JSON.stringify({ error: `Product not available: ${i.slug}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
         );
       }
       if (!Number.isInteger(i.quantity) || i.quantity < 1 || i.quantity > 100) {
         return new Response(
           JSON.stringify({ error: `Invalid quantity for ${i.slug}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
         );
       }
     }
@@ -171,14 +175,14 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ clientSecret: paymentIntent.client_secret, orderId: order.id }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[create-checkout]", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

@@ -11,10 +11,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
 
 interface Body {
   templateKey: string;
@@ -28,7 +33,7 @@ const render = (template: string, vars: Record<string, string>) =>
   template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => vars[k] ?? "");
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
   try {
     // AUTH: only admins (logged-in users with profiles.is_admin = true) or
@@ -64,7 +69,7 @@ Deno.serve(async (req) => {
     if (!authorized) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -74,7 +79,7 @@ Deno.serve(async (req) => {
     if (!templateKey || !recipient) {
       return new Response(JSON.stringify({ error: "templateKey and recipient required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -89,7 +94,7 @@ Deno.serve(async (req) => {
     if (tplError || !tpl) {
       return new Response(JSON.stringify({ error: `Unknown template: ${templateKey}` }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -126,7 +131,7 @@ Deno.serve(async (req) => {
         .eq("id", notification.id);
       return new Response(
         JSON.stringify({ ok: true, queued: true, notificationId: notification.id }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -163,7 +168,7 @@ Deno.serve(async (req) => {
         .eq("id", notification.id);
       return new Response(JSON.stringify({ ok: false, error: sendBody }), {
         status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -174,14 +179,14 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ ok: true, notificationId: notification.id }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[send-notification]", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

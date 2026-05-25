@@ -9,16 +9,21 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+  if (!authHeader) return new Response("Unauthorized", { status: 401, headers: corsHeaders(req) });
 
   // Verify calling user
   const userClient = createClient(
@@ -27,7 +32,7 @@ Deno.serve(async (req) => {
     { global: { headers: { Authorization: authHeader } } },
   );
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
-  if (authErr || !user) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+  if (authErr || !user) return new Response("Unauthorized", { status: 401, headers: corsHeaders(req) });
 
   // Service role client for writes
   const admin = createClient(
@@ -45,9 +50,9 @@ Deno.serve(async (req) => {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (acctErr) return json({ error: "Could not fetch account" }, 500);
+  if (acctErr) return json(req, { error: "Could not fetch account" }, 500);
   if (!account || account.points_balance < POINTS_PER_REDEMPTION) {
-    return json({ error: `Not enough points. You need ${POINTS_PER_REDEMPTION} to redeem.` }, 400);
+    return json(req, { error: `Not enough points. You need ${POINTS_PER_REDEMPTION} to redeem.` }, 400);
   }
 
   // Generate unique code
@@ -65,7 +70,7 @@ Deno.serve(async (req) => {
     is_active: true,
     expires_at: expiresAt,
   });
-  if (discountErr) return json({ error: "Failed to create discount code" }, 500);
+  if (discountErr) return json(req, { error: "Failed to create discount code" }, 500);
 
   // Deduct points atomically
   const { error: updateErr } = await admin
@@ -77,7 +82,7 @@ Deno.serve(async (req) => {
   if (updateErr) {
     // Roll back discount code
     await admin.from("discount_codes").delete().eq("code", code);
-    return json({ error: "Redemption failed — please try again" }, 500);
+    return json(req, { error: "Redemption failed — please try again" }, 500);
   }
 
   // Record transaction
@@ -88,11 +93,11 @@ Deno.serve(async (req) => {
     description: `Redeemed for $5 off — code ${code}`,
   });
 
-  return json({ code, discount_cents: DISCOUNT_CENTS, expires_at: expiresAt });
+  return json(req, { code, discount_cents: DISCOUNT_CENTS, expires_at: expiresAt });
 });
 
-const json = (body: unknown, status = 200) =>
+const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });

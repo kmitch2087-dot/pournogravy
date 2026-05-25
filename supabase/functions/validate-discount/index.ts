@@ -8,13 +8,18 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
   try {
     const supabase = createClient(
@@ -30,7 +35,7 @@ Deno.serve(async (req) => {
     if (!code || typeof cart_total_cents !== "number") {
       return new Response(
         JSON.stringify({ valid: false, discount_cents: 0, message: "Missing code or cart total" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -46,21 +51,21 @@ Deno.serve(async (req) => {
     if (!discount) {
       return new Response(
         JSON.stringify({ valid: false, discount_cents: 0, message: "Invalid promo code." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
     if (discount.expires_at && new Date(discount.expires_at) <= new Date()) {
       return new Response(
         JSON.stringify({ valid: false, discount_cents: 0, message: "This code has expired." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
     if (discount.max_uses !== null && discount.use_count >= discount.max_uses) {
       return new Response(
         JSON.stringify({ valid: false, discount_cents: 0, message: "This code has reached its usage limit." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -72,7 +77,7 @@ Deno.serve(async (req) => {
           discount_cents: 0,
           message: `Minimum order of $${min} required for this code.`,
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -88,14 +93,14 @@ Deno.serve(async (req) => {
           ? `${discount.discount_value}% off applied!`
           : `$${(discount_cents / 100).toFixed(2)} off applied!`,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[validate-discount]", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(
       JSON.stringify({ valid: false, discount_cents: 0, message: msg }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   }
 });

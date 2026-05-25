@@ -21,7 +21,7 @@ const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY")!;
 Deno.serve(async (req) => {
   // Allow CORS for manual invocation from admin dashboard
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders() });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -78,14 +78,14 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ ok: true, log }), {
-      headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
       status: 500,
-      headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });
@@ -267,9 +267,12 @@ function buildDropEmailHtml(drop: Record<string, unknown>): string {
 </html>`;
 }
 
-function corsHeaders() {
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
   return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
   };
 }

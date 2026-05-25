@@ -1,12 +1,16 @@
 // Public endpoint that validates an email address: syntax, disposable-domain
 // blocklist, common-typo suggestion, and a live MX lookup via Cloudflare DNS.
 // Called from the public custom-request form, so no JWT is required.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 const SYNTAX_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -92,13 +96,13 @@ async function hasMxRecord(domain: string): Promise<boolean> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, reason: "method" }), {
       status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -110,7 +114,7 @@ Deno.serve(async (req) => {
   if (rateLimited(ip)) {
     return new Response(JSON.stringify({ ok: false, reason: "rate_limited" }), {
       status: 429,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -120,7 +124,7 @@ Deno.serve(async (req) => {
   } catch {
     return new Response(JSON.stringify({ ok: false, reason: "bad_request" }), {
       status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -128,7 +132,7 @@ Deno.serve(async (req) => {
 
   if (!raw || raw.length > 255 || !SYNTAX_RE.test(raw)) {
     return new Response(JSON.stringify({ ok: false, reason: "syntax" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -142,24 +146,24 @@ Deno.serve(async (req) => {
         reason: "typo",
         suggestion: `${local}@${TYPO_FIXES[domain]}`,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   }
 
   if (DISPOSABLE_DOMAINS.has(domain)) {
     return new Response(JSON.stringify({ ok: false, reason: "disposable" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
   const mxOk = await hasMxRecord(domain);
   if (!mxOk) {
     return new Response(JSON.stringify({ ok: false, reason: "no_mx" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 });
