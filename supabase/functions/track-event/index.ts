@@ -5,10 +5,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "content-type, authorization",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
 
 interface EventBody {
   event_type: "page_view" | "add_to_cart" | "checkout_start" | "purchase";
@@ -30,7 +35,7 @@ const VALID_EVENTS = new Set([
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders(req) });
   }
 
   // Only POST accepted
@@ -45,7 +50,7 @@ Deno.serve(async (req) => {
     if (!body.event_type || !VALID_EVENTS.has(body.event_type)) {
       return new Response(
         JSON.stringify({ error: "Invalid event_type" }),
-        { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "content-type": "application/json" } },
       );
     }
 
@@ -84,14 +89,13 @@ Deno.serve(async (req) => {
       console.error("[track-event] insert error:", error.message);
       return new Response(
         JSON.stringify({ error: "Failed to record event" }),
-        { status: 500, headers: { ...corsHeaders, "content-type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders(req), "content-type": "application/json" } },
       );
     }
 
-    // Return minimal 204 — sendBeacon doesn't need a response body
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
   } catch (err) {
     console.error("[track-event] unexpected error:", err);
-    return new Response(null, { status: 204, headers: corsHeaders }); // still 204 — don't break the client
+    return new Response(null, { status: 204, headers: corsHeaders(req) }); // still 204 — don't break the client
   }
 });
