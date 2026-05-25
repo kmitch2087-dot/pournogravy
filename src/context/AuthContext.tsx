@@ -29,6 +29,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchingForRef = useRef<string | null>(null);
+  // Tracks the user ID whose profile is currently loaded.
+  // Used in the onAuthStateChange handler (which captures stale closure state)
+  // to skip setting loading=true when SIGNED_IN fires for an already-loaded session.
+  const loadedProfileIdRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
     if (fetchingForRef.current === userId) return;
@@ -50,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("[Auth] fetchProfile error:", result.error);
         } else {
           setProfile(result.data);
+          loadedProfileIdRef.current = result.data?.id ?? null;
         }
       }
     } catch (err) {
@@ -78,10 +83,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(newSession?.user ?? null);
 
       if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && newSession?.user) {
-        setLoading(true);
+        // Only show the loading spinner if this is actually a new sign-in (different user
+        // or no profile loaded yet). Supabase can fire SIGNED_IN during token auto-refresh
+        // for an already-authenticated session, which would otherwise cause a spurious
+        // spinner that drops the user out of the admin mid-navigation.
+        if (loadedProfileIdRef.current !== newSession.user.id) {
+          setLoading(true);
+        }
         fetchProfile(newSession.user.id);
       } else if (event === "SIGNED_OUT") {
         setProfile(null);
+        loadedProfileIdRef.current = null;
         fetchingForRef.current = null;
         setLoading(false);
       }
