@@ -684,11 +684,14 @@ const Index = () => {
                 className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
               >
                 <Input
+                  id="subscribe-email"
+                  name="email"
                   type="email"
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   className="h-12 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#fde047]"
                 />
                 <Button
