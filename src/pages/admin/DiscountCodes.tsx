@@ -11,8 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 interface DiscountCode {
   id: string;
   code: string;
-  type: "percentage" | "fixed";
-  value: number;
+  discount_type: "percent" | "fixed_cents";
+  discount_value: number;
   min_order_cents: number;
   max_uses: number | null;
   use_count: number;
@@ -22,7 +22,7 @@ interface DiscountCode {
 }
 
 const fmtValue = (type: string, value: number) =>
-  type === "percentage" ? `${value}%` : `$${(value / 100).toFixed(2)}`;
+  type === "percent" ? `${value}%` : `$${(value / 100).toFixed(2)}`;
 
 const isExpired = (expires_at: string | null) =>
   expires_at ? new Date(expires_at) < new Date() : false;
@@ -65,8 +65,8 @@ const DiscountCodes = () => {
 
       const { error } = await supabase.from("discount_codes").insert({
         code: form.code.trim().toUpperCase(),
-        type: form.type,
-        value,
+        discount_type: form.type === "percentage" ? "percent" : "fixed_cents",
+        discount_value: value,
         min_order_cents: form.min_order_cents ? Math.round(parseFloat(form.min_order_cents) * 100) : 0,
         max_uses: form.max_uses ? parseInt(form.max_uses) : null,
         expires_at: form.expires_at || null,
@@ -289,7 +289,7 @@ const DiscountCodes = () => {
                     </div>
 
                     {/* Value */}
-                    <span className="font-display text-lg tracking-wider">{fmtValue(c.type, c.value)}</span>
+                    <span className="font-display text-lg tracking-wider">{fmtValue(c.discount_type, c.discount_value)}</span>
 
                     {/* Status badge */}
                     <span className={`text-[10px] font-marker tracking-widest uppercase ${badgeColor}`}>

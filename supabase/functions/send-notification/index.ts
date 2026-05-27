@@ -21,12 +21,18 @@ function corsHeaders(req: Request) {
   };
 }
 
+interface Attachment {
+  filename: string;
+  content: string; // base64-encoded
+}
+
 interface Body {
   templateKey: string;
   recipient: string;
   relatedKind?: string;
   relatedId?: string;
   variables?: Record<string, string>;
+  attachments?: Attachment[];
 }
 
 const render = (template: string, vars: Record<string, string>) =>
@@ -73,7 +79,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { templateKey, recipient, relatedKind, relatedId, variables = {} } =
+    const { templateKey, recipient, relatedKind, relatedId, variables = {}, attachments } =
       (await req.json()) as Body;
 
     if (!templateKey || !recipient) {
@@ -150,6 +156,7 @@ Deno.serve(async (req) => {
         subject,
         html: bodyHtml,
         text: bodyText,
+        ...(attachments?.length ? { attachments } : {}),
       }),
     });
 

@@ -5,6 +5,8 @@ import { Heart, Star } from "lucide-react";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useProductRatings } from "@/hooks/useProductRatings";
 
+const NEW_BADGE_MS = 14 * 24 * 60 * 60 * 1000;
+
 const ProductCard = ({ product }: { product: Product }) => {
   const { isSaved, toggle } = useWishlist();
   const ratings = useProductRatings();
@@ -13,6 +15,10 @@ const ProductCard = ({ product }: { product: Product }) => {
 
   const cardImage =
     product.variants?.[0]?.images?.[0] ?? product.image ?? product.images?.[0];
+
+  const isNew = product.wentLiveAt
+    ? Date.now() - new Date(product.wentLiveAt).getTime() < NEW_BADGE_MS
+    : false;
 
   return (
     <motion.div
@@ -36,9 +42,16 @@ const ProductCard = ({ product }: { product: Product }) => {
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-          {/* Badge */}
+          {/* NEW badge — shown for 14 days after went_live_at */}
+          {isNew && (
+            <div className="absolute top-2 left-2 bg-[#fde047] text-black px-2 py-0.5 text-[10px] font-marker tracking-widest uppercase z-10">
+              NEW
+            </div>
+          )}
+
+          {/* Product badge (e.g. "LIMITED") — offset if NEW badge showing */}
           {product.badge && (
-            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-marker tracking-wider stamp-rotate">
+            <div className={`absolute left-2 bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-marker tracking-wider stamp-rotate ${isNew ? "top-8" : "top-2"}`}>
               {product.badge}
             </div>
           )}

@@ -38,6 +38,7 @@ interface DbProductRow {
   published: boolean;
   featured: boolean;
   drop_date: string | null;
+  went_live_at: string | null;
 }
 
 const dbRowToProduct = (r: DbProductRow): Product => ({
@@ -62,6 +63,7 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
     : undefined,
   featured: r.featured,
   published: r.published && r.status === "published",
+  wentLiveAt: r.went_live_at ?? undefined,
 });
 
 /**

@@ -142,15 +142,61 @@ Deno.serve(async (req) => {
 
     // 3) Printer notification (fulfillment)
     if (settings?.fulfillment_provider === "local_printer" && settings.printer_email) {
-      const addr = order.shipping_address
-        ? JSON.stringify(order.shipping_address, null, 2)
-        : "(no address)";
-
       await supabase.from("printer_queue").insert([{
         order_id: order.id,
         payload: { items, shipping: order.shipping_address, total: order.total_cents },
         status: "queued",
       }]);
+
+      // Fetch print_file_url for each product in this order
+      const productIds = (items ?? [])
+        .map((it: { product_id?: string }) => it.product_id)
+        .filter(Boolean) as string[];
+
+      const { data: productRows } = productIds.length > 0
+        ? await supabase
+            .from("products")
+            .select("id, image_url, print_file_url")
+            .in("id", productIds)
+        : { data: [] };
+
+      const printFileMap = new Map<string, string>();
+      for (const p of (productRows ?? []) as Array<{ id: string; image_url: string | null; print_file_url: string | null }>) {
+        printFileMap.set(p.id, p.print_file_url ?? p.image_url ?? "");
+      }
+
+      // Build fulfillment CSV
+      const ship = order.shipping_address as Record<string, unknown> | null;
+      const shipName = (ship?.name as string) ?? "";
+      const shipAddr = ship?.address as Record<string, unknown> | null;
+      const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Print File URL";
+      const csvRows = (items ?? []).map((it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
+        const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
+        const printUrl = it.product_id ? printFileMap.get(it.product_id) ?? "" : "";
+        const col = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        return [
+          col(order.id.slice(0, 8).toUpperCase()),
+          col(new Date().toISOString().slice(0, 10)),
+          col(s.name ?? ""),
+          col(s.slug ?? ""),
+          col(s.size ?? ""),
+          col(s.color ?? ""),
+          col(it.quantity),
+          col(shipName),
+          col(shipAddr?.line1 ?? ""),
+          col(shipAddr?.city ?? ""),
+          col(shipAddr?.state ?? ""),
+          col(shipAddr?.postal_code ?? ""),
+          col(shipAddr?.country ?? "US"),
+          col(printUrl),
+        ].join(",");
+      });
+
+      const csvContent = [csvHeader, ...csvRows].join("\n");
+      const csvBase64 = btoa(csvContent);
+      const shortId = order.id.slice(0, 8).toUpperCase();
+
+      const addr = ship ? `${shipAddr?.line1 ?? ""}, ${shipAddr?.city ?? ""}, ${shipAddr?.state ?? ""} ${shipAddr?.postal_code ?? ""}` : "(no address)";
 
       await supabase.functions.invoke("send-notification", {
         body: {
@@ -159,12 +205,13 @@ Deno.serve(async (req) => {
           relatedKind: "order",
           relatedId: order.id,
           variables: {
-            order_number: order.id.slice(0, 8),
+            order_number: shortId,
             customer_name: order.email.split("@")[0],
             customer_email: order.email,
             order_items: itemsList,
             shipping_address: addr,
           },
+          attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
       });
     }

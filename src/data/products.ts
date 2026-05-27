@@ -55,6 +55,8 @@ export interface Product {
   featured?: boolean;
   /** Public visibility flag. Only products with `published: true` appear in shop/featured/search. */
   published?: boolean;
+  /** ISO timestamp of when the product first went live — used for the 14-day NEW badge. */
+  wentLiveAt?: string;
 }
 
 export const products: Product[] = [

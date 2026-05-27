@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Upload, X, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 
@@ -34,13 +34,14 @@ interface FormState {
   images: string[];
   badge: string;
   fulfillment_route: string;
+  print_file_url: string;
 }
 
 const defaultForm = (): FormState => ({
   slug: "", name: "", description: "", humor: "",
   longDescription: [], badAdviceTitle: "", badAdviceParagraphs: [],
   price_dollars: "", isLive: false, featured: false, fit_type: "unisex",
-  sizes: DEFAULT_SIZES, images: [], badge: "", fulfillment_route: "local_printer",
+  sizes: DEFAULT_SIZES, images: [], badge: "", fulfillment_route: "local_printer", print_file_url: "",
 });
 
 // Dynamic paragraph list editor
@@ -135,6 +136,7 @@ const ProductEdit = () => {
         images: product.images ?? [],
         badge: product.badge ?? "",
         fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
+        print_file_url: (product as Record<string, unknown>).print_file_url as string ?? "",
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
@@ -157,6 +159,7 @@ const ProductEdit = () => {
           images: sp.images ?? (sp.image ? [sp.image] : []),
           badge: sp.badge ?? "",
           fulfillment_route: "local_printer",
+          print_file_url: "",
         });
         setInitialized(true);
       }
@@ -209,14 +212,28 @@ const ProductEdit = () => {
       image_url: form.images[0] ?? null,
       badge: form.badge || null,
       fulfillment_route: form.fulfillment_route,
+      print_file_url: form.print_file_url || null,
     };
 
     let error;
     if (!isNew && !fromSlug) {
-      // Update existing DB product
+      // Stamp went_live_at on first publish (only if not already set)
+      if (form.isLive) {
+        const { data: existing } = await supabase
+          .from("products")
+          .select("went_live_at")
+          .eq("id", id!)
+          .maybeSingle();
+        if (!existing?.went_live_at) {
+          (payload as Record<string, unknown>).went_live_at = new Date().toISOString();
+        }
+      }
       ({ error } = await supabase.from("products").update(payload).eq("id", id!));
     } else {
       // Insert new (either truly new or first-time save of static product)
+      if (form.isLive) {
+        (payload as Record<string, unknown>).went_live_at = new Date().toISOString();
+      }
       ({ error } = await supabase.from("products").insert([payload]));
     }
 
@@ -235,9 +252,18 @@ const ProductEdit = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
-        <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
+          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
+        </Button>
+        {form.slug && (
+          <a href={`/product/${form.slug}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" className="text-xs font-display tracking-widest">
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />View on Site
+            </Button>
+          </a>
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left column — content ── */}
@@ -360,6 +386,23 @@ const ProductEdit = () => {
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">First image is used as the thumbnail. Drag to reorder (coming soon).</p>
+            </CardContent>
+          </Card>
+
+          {/* Print File URL */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">PRINT FILE</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                value={form.print_file_url}
+                onChange={(e) => setF({ print_file_url: e.target.value })}
+                placeholder="https://drive.google.com/…"
+              />
+              <p className="text-xs text-muted-foreground">
+                Google Drive or Supabase Storage URL for the printer's high-res print-ready file (300 DPI+ PNG/PDF). Included in the fulfillment CSV emailed to the printer on each order.
+              </p>
             </CardContent>
           </Card>
         </div>

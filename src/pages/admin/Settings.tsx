@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Printer, Info, Eye, EyeOff, Send as SendIcon } from "lucide-react";
+import { Loader2, Save, Printer, Info, Eye, EyeOff, Send as SendIcon, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +66,9 @@ const Settings = () => {
     printer_dpi_custom: "",
     printer_file_formats: [] as string[],
     printer_notes: "",
+    // Shipping
+    shipping_fee: "5.99",
+    free_shipping_threshold: "",
   });
 
   useEffect(() => {
@@ -88,6 +91,10 @@ const Settings = () => {
       printer_dpi_custom:  knownDpi ? "" : dpiVal,
       printer_file_formats: rawFormats,
       printer_notes:       settings.printer_notes     ?? "",
+      shipping_fee:        settings.shipping_fee_cents != null ? (settings.shipping_fee_cents / 100).toFixed(2) : "5.99",
+      free_shipping_threshold: settings.free_shipping_threshold_cents != null
+        ? (settings.free_shipping_threshold_cents / 100).toFixed(0)
+        : "",
     });
   }, [settings]);
 
@@ -124,6 +131,10 @@ const Settings = () => {
           ? form.printer_file_formats
           : null,
         printer_notes:        form.printer_notes || null,
+        shipping_fee_cents:   Math.round(parseFloat(form.shipping_fee || "5.99") * 100),
+        free_shipping_threshold_cents: form.free_shipping_threshold
+          ? Math.round(parseFloat(form.free_shipping_threshold) * 100)
+          : null,
       })
       .eq("id", 1);
 
@@ -190,6 +201,7 @@ const Settings = () => {
     <Tabs defaultValue="business" className="space-y-6">
       <TabsList>
         <TabsTrigger value="business">Business</TabsTrigger>
+        <TabsTrigger value="shipping">Shipping</TabsTrigger>
         <TabsTrigger value="fulfillment">Fulfillment</TabsTrigger>
         <TabsTrigger value="emails">Email Templates</TabsTrigger>
       </TabsList>
@@ -205,6 +217,58 @@ const Settings = () => {
             <Field label="From name"      value={form.from_name}      onChange={(v) => setForm({ ...form, from_name: v })} />
             <Field label="From email"     value={form.from_email}     onChange={(v) => setForm({ ...form, from_email: v })} type="email" />
             <Field label="Support email"  value={form.support_email}  onChange={(v) => setForm({ ...form, support_email: v })} type="email" />
+            <SaveBtn onClick={saveSettings} />
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* ── Shipping ── */}
+      <TabsContent value="shipping">
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="font-display tracking-widest">SHIPPING</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Flat rate applied to every order at checkout. Set a free shipping threshold once you're ready to run that promotion.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-1.5">
+              <Label>Flat shipping fee ($)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.shipping_fee}
+                onChange={(e) => setForm({ ...form, shipping_fee: e.target.value })}
+                placeholder="5.99"
+                className="max-w-xs"
+              />
+              <p className="text-xs text-muted-foreground">Charged on every order unless the free shipping threshold is met.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Free shipping threshold ($) — optional</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={form.free_shipping_threshold}
+                onChange={(e) => setForm({ ...form, free_shipping_threshold: e.target.value })}
+                placeholder="Leave blank to always charge shipping"
+                className="max-w-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Orders at or above this amount get free shipping. Leave blank to disable.
+              </p>
+            </div>
+            {form.free_shipping_threshold && (
+              <div className="p-3 bg-[#fde047]/5 border border-[#fde047]/20 rounded-sm text-xs text-muted-foreground">
+                Orders under <strong className="text-foreground">${form.free_shipping_threshold}</strong> → ship for <strong className="text-foreground">${parseFloat(form.shipping_fee || "0").toFixed(2)}</strong>.
+                Orders <strong className="text-foreground">${form.free_shipping_threshold}+</strong> → free shipping.
+              </div>
+            )}
             <SaveBtn onClick={saveSettings} />
           </CardContent>
         </Card>

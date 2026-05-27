@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings2, X, Eye, EyeOff, ChevronDown, ChevronRight, Save } from "lucide-react";
+import { Settings2, X, Eye, EyeOff, ChevronDown, ChevronRight, Save, Upload, Loader2 } from "lucide-react";
 import { useSiteContent, SiteContentRow } from "@/context/SiteContentContext";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -22,6 +23,49 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/contact": "contact",
   "/faq":     "faq",
 };
+
+// ─── Image upload ─────────────────────────────────────────────────────────────
+
+function ImageUploadField({
+  current, onChange, row,
+}: { current: string; onChange: (v: string) => void; row: SiteContentRow }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${row.page}/${row.section}/${row.key}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("site-content")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("site-content").getPublicUrl(path);
+      onChange(data.publicUrl);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {current && (
+        <img src={current} alt="" className="w-full h-28 object-cover border border-border" />
+      )}
+      <label className={`cursor-pointer block border border-dashed border-border p-3 text-center text-xs text-muted-foreground hover:border-[#fde047] transition-colors ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+        {uploading
+          ? <Loader2 className="h-4 w-4 mx-auto mb-1 animate-spin" />
+          : <Upload className="h-4 w-4 mx-auto mb-1" />}
+        {uploading ? "Uploading…" : current ? "Replace image" : "Upload image"}
+        <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+      </label>
+    </div>
+  );
+}
 
 // ─── Field inputs ─────────────────────────────────────────────────────────────
 
@@ -104,7 +148,11 @@ export function FieldInput({
     );
   }
 
-  // text / image / default
+  if (row.value_type === "image") {
+    return <ImageUploadField current={current} onChange={onChange} row={row} />;
+  }
+
+  // text / default
   const isLong = row.value_type === "text" && (current.length > 60);
   return isLong ? (
     <textarea

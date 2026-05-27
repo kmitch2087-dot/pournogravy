@@ -88,7 +88,7 @@ const CartDrawer = () => {
       }
 
       closeCart();
-      navigate("/checkout", { state: { clientSecret: data.clientSecret, orderId: data.orderId, email } });
+      navigate("/checkout", { state: { clientSecret: data.clientSecret, orderId: data.orderId, email, shippingCents: data.shippingCents, totalCents: data.totalCents } });
     } catch (err) {
       setCheckoutError("Something went wrong. Please try again.");
     } finally {

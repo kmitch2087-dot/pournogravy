@@ -71,10 +71,9 @@ const Field = ({
   </div>
 );
 
-const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail: string }) => {
+const CheckoutForm = ({ orderId, initialEmail, serverTotal }: { orderId: string; initialEmail: string; serverTotal: number }) => {
   const stripe = useStripe();
   const elements = useElements();
-  const { items, totalPrice, appliedDiscount, discountedTotal } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [emailOptin, setEmailOptin] = useState(true);
@@ -93,8 +92,6 @@ const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail
   const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  const displayTotal = appliedDiscount ? discountedTotal : totalPrice;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
@@ -108,7 +105,7 @@ const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${displayTotal.toFixed(2)}`,
+        return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${serverTotal.toFixed(2)}`,
         shipping: {
           name: form.fullName,
           address: {
@@ -198,7 +195,7 @@ const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail
       >
         {submitting
           ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />PROCESSING…</>
-          : `PAY $${displayTotal.toFixed(2)}`}
+          : `PAY $${serverTotal.toFixed(2)}`}
       </Button>
     </form>
   );
@@ -206,7 +203,7 @@ const CheckoutForm = ({ orderId, initialEmail }: { orderId: string; initialEmail
 
 const Checkout = () => {
   const { state } = useLocation() as {
-    state: { clientSecret?: string; orderId?: string; email?: string } | null;
+    state: { clientSecret?: string; orderId?: string; email?: string; shippingCents?: number; totalCents?: number } | null;
   };
   const navigate = useNavigate();
   const { items, totalPrice, appliedDiscount, discountedTotal } = useCart();
@@ -224,7 +221,9 @@ const Checkout = () => {
     return null;
   }
 
-  const displayTotal = appliedDiscount ? discountedTotal : totalPrice;
+  const subtotalDisplay = appliedDiscount ? discountedTotal : totalPrice;
+  const shippingCents = state.shippingCents ?? 599;
+  const serverTotal = state.totalCents != null ? state.totalCents / 100 : subtotalDisplay + shippingCents / 100;
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,7 +245,7 @@ const Checkout = () => {
             stripe={stripePromise}
             options={{ clientSecret: state.clientSecret, appearance: stripeAppearance }}
           >
-            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} />
+            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} serverTotal={serverTotal} />
           </Elements>
         </div>
 
@@ -289,11 +288,16 @@ const Checkout = () => {
                   </div>
                 </>
               )}
-              <div className="flex justify-between font-display tracking-wider">
-                <span>Total</span>
-                <span className="text-lg">${displayTotal.toFixed(2)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Shipping</span>
+                <span className={shippingCents === 0 ? "text-green-400 font-display tracking-wider" : ""}>
+                  {shippingCents === 0 ? "FREE" : `$${(shippingCents / 100).toFixed(2)}`}
+                </span>
               </div>
-              <p className="text-[11px] text-muted-foreground">Shipping calculated at payment</p>
+              <div className="flex justify-between font-display tracking-wider border-t border-border pt-2">
+                <span>Total</span>
+                <span className="text-lg">${serverTotal.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </aside>

@@ -125,7 +125,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    const total = Math.max(0, subtotal - discountCents);
+    const subtotalAfterDiscount = Math.max(0, subtotal - discountCents);
+
+    // Fetch shipping config from settings (row id=1)
+    const { data: settingsRow } = await supabase
+      .from("settings")
+      .select("shipping_fee_cents, free_shipping_threshold_cents")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const shippingFeeCents = settingsRow?.shipping_fee_cents ?? 599;
+    const freeThreshold = settingsRow?.free_shipping_threshold_cents ?? null;
+    const shippingCents = (freeThreshold !== null && subtotalAfterDiscount >= freeThreshold) ? 0 : shippingFeeCents;
+    const total = subtotalAfterDiscount + shippingCents;
 
     // Create the pending order
     const { data: order, error: orderError } = await supabase
@@ -135,6 +147,7 @@ Deno.serve(async (req) => {
         status: "pending",
         subtotal_cents: subtotal,
         discount_cents: discountCents,
+        shipping_cents: shippingCents,
         total_cents: total,
         currency: "USD",
         ...(discountCodeId ? { discount_code_id: discountCodeId } : {}),
@@ -174,7 +187,7 @@ Deno.serve(async (req) => {
       .eq("id", order.id);
 
     return new Response(
-      JSON.stringify({ clientSecret: paymentIntent.client_secret, orderId: order.id }),
+      JSON.stringify({ clientSecret: paymentIntent.client_secret, orderId: order.id, shippingCents, totalCents: total }),
       { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {

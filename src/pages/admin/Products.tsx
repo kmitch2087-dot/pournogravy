@@ -83,7 +83,7 @@ const Products = () => {
         name: p.name,
         price_cents: p.price_cents,
         currency: p.currency,
-        is_active: p.is_active && p.published,
+        is_active: p.is_active,
         image_url: p.image_url,
         isStatic: false,
         inDrop: dropIdSet.has(p.id),
@@ -123,11 +123,17 @@ const Products = () => {
     setToggling(key);
     try {
       if (p.id) {
-        // DB product — update in place
+        // DB product — fetch current went_live_at to decide whether to stamp it
+        const { data: existing } = await supabase
+          .from("products")
+          .select("went_live_at")
+          .eq("id", p.id)
+          .maybeSingle();
         const { error } = await supabase.from("products").update({
           is_active: newVal,
           published: newVal,
           status: newVal ? "published" : "draft",
+          ...(newVal && !existing?.went_live_at ? { went_live_at: new Date().toISOString() } : {}),
         }).eq("id", p.id);
         if (error) throw error;
       } else {
@@ -149,6 +155,7 @@ const Products = () => {
           images: staticProd.images ?? [],
           image_url: staticProd.image ?? staticProd.images?.[0] ?? null,
           badge: staticProd.badge ?? null,
+          ...(newVal ? { went_live_at: new Date().toISOString() } : {}),
         });
         if (error) throw error;
       }
