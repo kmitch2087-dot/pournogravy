@@ -35,6 +35,8 @@ interface FormState {
   badge: string;
   fulfillment_route: string;
   print_file_url: string;
+  thumbnailFocalX: number;
+  thumbnailFocalY: number;
 }
 
 const defaultForm = (): FormState => ({
@@ -42,6 +44,7 @@ const defaultForm = (): FormState => ({
   longDescription: [], badAdviceTitle: "", badAdviceParagraphs: [],
   price_dollars: "", isLive: false, featured: false, fit_type: "unisex",
   sizes: DEFAULT_SIZES, images: [], badge: "", fulfillment_route: "local_printer", print_file_url: "",
+  thumbnailFocalX: 40, thumbnailFocalY: 40,
 });
 
 // Dynamic paragraph list editor
@@ -137,6 +140,8 @@ const ProductEdit = () => {
         badge: product.badge ?? "",
         fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
         print_file_url: (product as Record<string, unknown>).print_file_url as string ?? "",
+        thumbnailFocalX: (product as Record<string, unknown>).thumbnail_focal_x as number ?? 40,
+        thumbnailFocalY: (product as Record<string, unknown>).thumbnail_focal_y as number ?? 40,
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
@@ -213,6 +218,8 @@ const ProductEdit = () => {
       badge: form.badge || null,
       fulfillment_route: form.fulfillment_route,
       print_file_url: form.print_file_url || null,
+      thumbnail_focal_x: form.thumbnailFocalX,
+      thumbnail_focal_y: form.thumbnailFocalY,
     };
 
     let error;
@@ -386,6 +393,41 @@ const ProductEdit = () => {
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">First image is used as the thumbnail. Drag to reorder (coming soon).</p>
+
+              {/* Focal point picker */}
+              {form.images[0] && (
+                <div className="pt-2 border-t border-border space-y-2">
+                  <Label className="text-xs tracking-wider uppercase">Thumbnail Crop Center</Label>
+                  <p className="text-[11px] text-muted-foreground">Click anywhere on the preview to set where the zoom anchors. The crosshair shows the current center.</p>
+                  <div
+                    className="relative aspect-square overflow-hidden border border-border cursor-crosshair max-w-[180px]"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setF({
+                        thumbnailFocalX: Math.round(((e.clientX - rect.left) / rect.width) * 100),
+                        thumbnailFocalY: Math.round(((e.clientY - rect.top) / rect.height) * 100),
+                      });
+                    }}
+                  >
+                    <img
+                      src={form.images[0]}
+                      alt=""
+                      className="w-full h-full object-cover scale-[1.35] pointer-events-none"
+                      style={{ transformOrigin: `${form.thumbnailFocalX}% ${form.thumbnailFocalY}%` }}
+                    />
+                    {/* Crosshair */}
+                    <div
+                      className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: `${form.thumbnailFocalX}%`, top: `${form.thumbnailFocalY}%` }}
+                    >
+                      <div className="absolute inset-0 border-2 border-[#fde047] rounded-full opacity-90" />
+                      <div className="absolute top-1/2 left-0 right-0 h-px bg-[#fde047] -translate-y-1/2 opacity-90" />
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#fde047] -translate-x-1/2 opacity-90" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-mono">{form.thumbnailFocalX}% × {form.thumbnailFocalY}%</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -67,53 +67,99 @@ const navItems: NavItem[] = [
 const SidebarContent = ({
   onNavigate,
   badges,
+  compact,
 }: {
   onNavigate?: () => void;
   badges?: Record<string, number>;
+  compact?: boolean;
 }) => (
   <nav className="flex flex-col h-full">
-    <div className="p-6 border-b border-border">
+    <div className="p-4 border-b border-border">
       <NavLink to="/" className="block">
-        <h1 className="font-display text-2xl tracking-widest">POURnogravy</h1>
-        <p className="font-marker text-[10px] tracking-[0.3em] uppercase text-muted-foreground mt-1">
+        <h1 className="font-display text-xl tracking-widest">POURnogravy</h1>
+        <p className="font-marker text-[10px] tracking-[0.3em] uppercase text-muted-foreground mt-0.5">
           Back of house
         </p>
       </NavLink>
     </div>
-    <div className="flex-1 p-3 space-y-1">
-      {navItems.map((item) => {
-        const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onNavigate}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm hover:bg-muted/50 text-muted-foreground transition"
-            activeClassName="bg-[#fde047]/10 text-[#fde047] font-medium border-l-2 border-[#fde047]"
+
+    {compact ? (
+      /* ── Mobile: 2-column grid so all items fit without scrolling ── */
+      <div className="flex-1 p-2 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-1">
+          {navItems.map((item) => {
+            const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onNavigate}
+                className="relative flex flex-col items-center gap-1.5 py-3 px-2 text-[10px] rounded-sm hover:bg-muted/50 text-muted-foreground transition text-center leading-tight"
+                activeClassName="bg-[#fde047]/10 text-[#fde047] font-medium border border-[#fde047]/30"
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span>{item.label}</span>
+                {count > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#fde047] px-1 text-[9px] font-bold text-black">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+        <div className="mt-2 pt-2 border-t border-border">
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col items-center gap-1.5 py-3 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground transition text-center"
           >
-            <item.icon className="h-4 w-4 shrink-0" />
-            <span className="flex-1">{item.label}</span>
-            {count > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#fde047] px-1.5 text-[10px] font-bold text-black">
-                {count > 99 ? "99+" : count}
-              </span>
-            )}
-          </NavLink>
-        );
-      })}
-    </div>
-    <div className="p-3 border-t border-border">
-      <a
-        href="/"
-        target="_blank"
-        rel="noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition"
-      >
-        <ExternalLink className="h-4 w-4" />
-        <span>View public site</span>
-      </a>
-    </div>
+            <ExternalLink className="h-5 w-5" />
+            <span>View site</span>
+          </a>
+        </div>
+      </div>
+    ) : (
+      /* ── Desktop: vertical list ── */
+      <>
+        <div className="flex-1 p-3 space-y-1">
+          {navItems.map((item) => {
+            const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onNavigate}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm hover:bg-muted/50 text-muted-foreground transition"
+                activeClassName="bg-[#fde047]/10 text-[#fde047] font-medium border-l-2 border-[#fde047]"
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {count > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#fde047] px-1.5 text-[10px] font-bold text-black">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+        <div className="p-3 border-t border-border">
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>View public site</span>
+          </a>
+        </div>
+      </>
+    )}
   </nav>
 );
 
@@ -149,7 +195,7 @@ const AdminLayout = () => {
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-60 p-0 bg-card">
-          <SidebarContent onNavigate={() => setMobileOpen(false)} badges={badges} />
+          <SidebarContent onNavigate={() => setMobileOpen(false)} badges={badges} compact />
         </SheetContent>
       </Sheet>
 

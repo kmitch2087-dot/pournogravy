@@ -167,9 +167,9 @@ const Index = () => {
           initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
           animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
           transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
-          className="absolute top-4 left-3 md:top-6 md:left-8 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-8 md:py-6 max-w-[210px] sm:max-w-[260px] md:max-w-[340px]"
+          className="absolute top-4 left-3 md:top-6 md:left-6 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-5 md:py-4 max-w-[210px] sm:max-w-[240px] md:max-w-[240px]"
         >
-          <h1 className="font-display text-lg sm:text-xl md:text-3xl lg:text-4xl leading-[1] tracking-wider mb-0 text-primary-foreground">
+          <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-primary-foreground">
             MILDLY OFFENSIVE<br />
             BARTENDER APPAREL<br />
             FOR THE{" "}
@@ -222,7 +222,7 @@ const Index = () => {
               <div className="absolute inset-0 flex items-center z-10">
                 <div className="container mx-auto px-4 w-full">
                   <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-10 items-center">
-                    {/* Polaroid — smaller, offset right on mobile */}
+                    {/* Polaroid — on mobile: top; on desktop: right column (clear of glass) */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
                       animate={
@@ -231,7 +231,7 @@ const Index = () => {
                           : { opacity: 0, scale: 0.9, rotate: -3 }
                       }
                       transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="order-1 relative ml-auto sm:mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[260px] w-full"
+                      className="order-1 sm:order-2 relative ml-auto sm:mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[260px] w-full"
                     >
                       <div
                         className="relative aspect-square bg-muted border-[10px] border-white/90 shadow-2xl overflow-hidden"
@@ -265,7 +265,7 @@ const Index = () => {
                       initial={{ opacity: 0, x: 30 }}
                       animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
                       transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                      className="order-2 text-white text-center sm:text-left"
+                      className="order-2 sm:order-1 text-white text-center sm:text-left"
                     >
                       <p
                         className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-3"

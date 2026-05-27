@@ -39,6 +39,8 @@ interface DbProductRow {
   featured: boolean;
   drop_date: string | null;
   went_live_at: string | null;
+  thumbnail_focal_x: number | null;
+  thumbnail_focal_y: number | null;
 }
 
 const dbRowToProduct = (r: DbProductRow): Product => ({
@@ -64,6 +66,8 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   featured: r.featured,
   published: r.published && r.status === "published",
   wentLiveAt: r.went_live_at ?? undefined,
+  thumbnailFocalX: r.thumbnail_focal_x ?? 40,
+  thumbnailFocalY: r.thumbnail_focal_y ?? 40,
 });
 
 /**

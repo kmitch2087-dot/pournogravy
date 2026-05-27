@@ -57,6 +57,10 @@ export interface Product {
   published?: boolean;
   /** ISO timestamp of when the product first went live — used for the 14-day NEW badge. */
   wentLiveAt?: string;
+  /** Thumbnail zoom focal point X (0–100, default 40). */
+  thumbnailFocalX?: number;
+  /** Thumbnail zoom focal point Y (0–100, default 40). */
+  thumbnailFocalY?: number;
 }
 
 export const products: Product[] = [

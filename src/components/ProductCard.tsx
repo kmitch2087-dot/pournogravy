@@ -30,7 +30,12 @@ const ProductCard = ({ product }: { product: Product }) => {
       <Link to={`/product/${product.id}`} className="group block">
         <div className="relative aspect-square bg-muted overflow-hidden border-2 border-foreground/10 rough-border">
           {cardImage ? (
-            <img src={cardImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover scale-[1.35] group-hover:scale-[1.45] transition-transform duration-500 origin-[40%_40%]" />
+            <img
+              src={cardImage}
+              alt={product.name}
+              className="absolute inset-0 w-full h-full object-cover scale-[1.35] group-hover:scale-[1.45] transition-transform duration-500"
+              style={{ transformOrigin: `${product.thumbnailFocalX ?? 40}% ${product.thumbnailFocalY ?? 40}%` }}
+            />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-6">
               <span className="font-display text-center text-lg leading-tight tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
