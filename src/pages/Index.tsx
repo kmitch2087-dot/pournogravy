@@ -238,7 +238,7 @@ const Index = () => {
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover scale-[1.35]"
                             loading={slideIdx <= 3 ? "eager" : "lazy"}
                             decoding="async"
                           />
