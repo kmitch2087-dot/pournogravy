@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** May 15, 2026 (audit pass + homepage polish)  
+**Last Updated:** May 27, 2026 (CMS wiring + auth fix + migration sync)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -126,6 +126,7 @@ src/
 │       ├── Customers.tsx      # Customer lookup by email — stats, order history
 │       ├── Subscribers.tsx    # Email subscriber list, CSV export, 8-week sparkline
 │       ├── DiscountCodes.tsx  # Create/toggle/delete promo codes, usage tracking
+│       ├── Content.tsx        # CMS editor — Home/Shop/About/Contact/FAQ tabs; edits site_content rows
 │       ├── UserManual.tsx     # Full operational guide for Opie
 │       └── Settings.tsx       # Site config (requires settings row id=1)
 ├── components/
@@ -140,6 +141,7 @@ src/
 ├── context/
 │   ├── AuthContext.tsx        # Auth state — race condition fixed (see §5)
 │   ├── CartContext.tsx        # Cart: localStorage + debounced DB sync; merge on login
+│   ├── SiteContentContext.tsx # CMS — loads all site_content rows; provides getValue(page, section, key, fallback)
 │   └── WishlistContext.tsx    # Single shared wishlist instance — auth subscription + DB/localStorage
 ├── hooks/
 │   ├── useAnalytics.ts        # Page-view + event tracking; auto-fires on route change
@@ -199,6 +201,33 @@ supabase.auth.getSession().then(({ data: { session } }) => { /* init */ });
 
 `ProtectedRoute` must check `loading` BEFORE `isAdmin`. Hard failsafe: `setTimeout(() => setLoading(false), 8000)`.
 
+### SIGNED_IN Auto-Refresh Spinner — Fixed (commit 4456f80) — DO NOT REGRESS
+Supabase v2 fires `SIGNED_IN` during **automatic token refresh**, not just on explicit login. The original `onAuthStateChange` handler unconditionally called `setLoading(true)` on `SIGNED_IN`, causing a spurious spinner mid-session when navigating between admin and public pages.
+
+Fix: `loadedProfileIdRef` in `AuthContext` tracks the user ID whose profile is currently loaded. `setLoading(true)` is only called if the incoming `SIGNED_IN` user ID differs from the already-loaded user. Same-user token refreshes skip the spinner entirely.
+
+```typescript
+const loadedProfileIdRef = useRef<string | null>(null);
+
+// In fetchProfile — after setProfile():
+loadedProfileIdRef.current = result.data?.id ?? null;
+
+// In SIGNED_IN handler:
+if (loadedProfileIdRef.current !== newSession.user.id) {
+  setLoading(true);  // only for genuinely new sign-in
+}
+
+// In SIGNED_OUT handler:
+loadedProfileIdRef.current = null;
+```
+
+### SiteContent CMS — getValue() Pattern
+`site_content` table stores page copy as rows with a `(page, section, key)` composite unique key. `SiteContentProvider` loads all rows once on mount and provides a `getValue(page, section, key, fallback)` helper. Public pages call `getValue()` with their current hardcoded strings as the fallback, so pages render correctly with an empty or partial DB.
+
+Admin can edit live values at `/admin/content` (Home/Shop/About/Contact/FAQ tabs). The `FieldInput` and `SectionGroup` components in `src/components/admin/SiteEditor.tsx` are exported and reused by the Content admin page to avoid duplicating edit UI.
+
+**DO NOT** add hardcoded copy to public pages without also adding a corresponding `getValue()` call and a seed row in a migration file. The pattern requires both.
+
 ### Stripe — Embedded Payment Element (NOT Checkout Sessions)
 Flow: CartDrawer → `create-checkout` edge function → returns `clientSecret` (PaymentIntent) → `/checkout` renders Stripe Payment Element on-site → `/checkout/return` clears cart + shows confirmation.
 
@@ -245,6 +274,8 @@ The Contact page form inserts into `custom_requests` with `garment = 'contact-fo
 | `merch_drops` | Scheduled drop calendar — date, products, ads, flyers, marketing email |
 | `edit_requests` | Client edit notes (Opie) + Kristin replies — threaded, mark-done, archive |
 | `analytics_events` | Client-side event tracking (page views, add to cart, purchases) |
+| `site_content` | CMS page copy — `(page, section, key)` composite unique key + `value` + `default_value` + `value_type` + `sort_order`; ~60 rows seeded |
+| `client_edit_requests` | Edit request notes from Opie — base table (migration 20260508000001); enhanced with author/done/archived cols (migration 20260509000001) |
 | `wishlists` | User saved products — user_id + product_id (text slug), unique per pair |
 | `loyalty_accounts` | Pour Points — points_balance, lifetime_points per user |
 | `loyalty_transactions` | Point earn/redeem/adjustment history per user |
@@ -290,7 +321,8 @@ show_shop_banner, email_subject, email_body, status, created_at
 | discount_codes | ❌ | ❌ | full |
 | settings | ✅ | ✅ | admin write |
 | merch_drops | ✅ | ✅ | admin write |
-| edit_requests | ❌ | ❌ | admin full |
+| edit_requests / client_edit_requests | ❌ | ❌ | admin full |
+| site_content | ✅ read | ✅ read | admin write |
 | analytics_events | write | write | read |
 | wishlists | ❌ | own only | — |
 | loyalty_accounts | ❌ | own only | admin read/write |
@@ -465,6 +497,13 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 | May 15, 2026 | Star rating buttons: `p-0.5` → `p-2` touch targets + `aria-label` added |
 | May 15, 2026 | FilterPill buttons: `aria-pressed` added for screen reader active state |
 | May 15, 2026 | ProductDetail SEO image: `product.images[0]` → `product.images?.[0] ?? product.image` (null guard) |
+| May 22, 2026 | Auth fix: `loadedProfileIdRef` prevents spurious loading spinner on Supabase `SIGNED_IN` auto-refresh (token renewal fires SIGNED_IN — was causing mid-session spinner navigating admin ↔ public pages) — commit 4456f80 |
+| May 25, 2026 | Full CMS wiring — all 5 public pages (Index, About, Shop, Contact, FAQ) use `getValue()` from `SiteContentContext` for all meaningful copy (headlines, CTAs, FAQ Q&As, quotes, ticker items) with static fallbacks |
+| May 25, 2026 | `site_content` seed migration `20260525000001_site_content_expanded.sql` — ~60 rows seeded and applied to Supabase |
+| May 25, 2026 | New admin Content tab (`/admin/content`) — Home/Shop/About/Contact/FAQ tabs; edits `site_content` rows live; uses exported `SectionGroup`/`FieldInput` from `SiteEditor.tsx` |
+| May 26, 2026 | Docker Desktop installed; `supabase db pull` working; migration history synced via `supabase migration repair` |
+| May 26, 2026 | `client_edit_requests` base table backfilled as migration `20260508000001_client_edit_requests.sql` (was created directly in Supabase dashboard without a local file) |
+| May 26, 2026 | Remote schema drift captured as `20260526231648_remote_schema.sql` (1,631 lines — Stripe Postgres sync, pgmq, pg_cron, index_advisor extensions; updated RLS policies) |
 
 ---
 

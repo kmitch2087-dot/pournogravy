@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** May 15, 2026
+**Last Updated:** May 27, 2026
 
 ---
 
@@ -96,6 +96,7 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - **Edit requests** — split-view note system; Opie submits requests, Kristin replies with inline threads
 - **Project status** — real-time build pipeline with phase tracker and session log
 - **Direct contact to developer** — Opie can message Kristin directly from the dashboard
+- **Site copy editor** — all public page headlines, CTAs, FAQ answers, quotes, and ticker items editable live from the Content tab — no developer or deployment required
 
 ### Brand & Content
 - Humor-forward brand voice baked into every product page
@@ -106,9 +107,9 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (May 15, 2026)
+## 4. Current Status (May 27, 2026)
 
-**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, Privacy Policy, Terms of Service, and contact form are all fully operational. A full code audit was completed May 15 — 11 UX, accessibility, and performance issues resolved (including a bug where all custom garment request submissions were silently failing). The following items remain before a full marketing push:
+**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, Privacy Policy, Terms of Service, and contact form are all fully operational. All public page copy (headlines, CTAs, FAQ answers, quotes, ticker items) is now editable live from the admin dashboard — no developer required. The following items remain before a full marketing push:
 
 | Item | Status | Action Needed |
 |------|--------|--------------|
@@ -122,6 +123,7 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Analytics | ✅ Live | None |
 | Email subscribers | ✅ Live | None |
 | Contact form | ✅ Live | Messages appear in admin Custom Requests panel |
+| Site copy editing | ✅ Live | All public page copy editable from /admin/content — no deploy required |
 | Privacy Policy + Terms of Service | ✅ Live | Linked from footer |
 | Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend |
 | Fulfillment partner | ❌ Not selected | Choose Printful or Printify — wire API key into stripe-webhook |

@@ -1,7 +1,7 @@
 # Pournogravy — Owner's User Manual
 **Your quick-reference guide for running the site**
 **Prepared by:** Kristin Mitchell — Aethyx
-**Last Updated:** April 29, 2026
+**Last Updated:** May 27, 2026
 
 ---
 
@@ -14,11 +14,12 @@
 2. [Viewing Your Live Site](#2-viewing-your-live-site)
 3. [Logging Into Your Admin Dashboard](#3-admin-dashboard)
 4. [Managing Products](#4-managing-products)
-5. [Viewing Custom Garment Requests](#5-viewing-custom-garment-requests)
-6. [Viewing Orders](#6-viewing-orders)
-7. [What You Can Change vs. What Needs a Developer](#7-what-you-can-vs-cannot-change)
-8. [Who to Call When Things Break](#8-who-to-call)
-9. [Glossary — Terms You'll See](#9-glossary)
+5. [Editing Site Copy (Headlines, FAQs, CTAs)](#5-editing-site-copy)
+6. [Viewing Custom Garment Requests](#6-viewing-custom-garment-requests)
+7. [Viewing Orders](#7-viewing-orders)
+8. [What You Can Change vs. What Needs a Developer](#8-what-you-can-vs-cannot-change)
+9. [Who to Call When Things Break](#9-who-to-call)
+10. [Glossary — Terms You'll See](#10-glossary)
 
 ---
 
@@ -63,12 +64,20 @@ To log in:
 > **Can't log in?** Contact Kristin. Admin access is controlled by an allowlist — only your email and Kristin's emails are permitted. Nobody else can ever get in, even with the right password.
 
 ### What You'll See in the Dashboard
+- **Dashboard** — overview of recent orders and requests
 - **Orders** — all orders and their status (pending, paid, fulfilled, cancelled)
-- **Custom Requests** — all custom garment form submissions
 - **Products** — product management (edit, upload images)
+- **Custom Requests** — all custom garment form submissions
+- **Reviews** — approve or reject customer reviews before they go live
+- **Discount Codes** — create and manage promo codes
+- **Pour Points** — loyalty program — view member balances, transaction history, manual adjustments
+- **Customers** — look up any customer by email; see their order history, points balance, wishlist
+- **Subscribers** — email list, subscriber growth sparkline, CSV export
+- **Analytics** — page views, event funnel, top pages
+- **Content** — edit your site's headlines, CTAs, FAQ answers, and other copy live (see Section 5)
+- **Merch Drops** — schedule upcoming product drops with ad placement and marketing emails
+- **Edit Requests** — your notes to Kristin; she replies here with inline threads
 - **Settings** — site-wide configuration
-
-> **Note as of April 2026:** The dashboard is fully built. Payment processing (Stripe) is still being activated, so "paid" orders won't appear until that's complete.
 
 ---
 
@@ -97,9 +106,39 @@ Contact Kristin. Provide:
 
 ---
 
-## 5. Viewing Custom Garment Requests
+## 5. Editing Site Copy (Headlines, FAQs, CTAs)
 
-When a customer fills out the "Request a Custom Garment" form on any product page, their info appears in your admin dashboard.
+You can change the words on your public website pages — headlines, subheadings, call-to-action buttons, FAQ questions and answers, rotating quotes, and ticker items — directly from your admin dashboard. No developer needed. Changes go live immediately.
+
+### How to Edit Site Copy
+1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
+2. Click **Content** in the left sidebar
+3. You'll see tabs at the top: **Home | Shop | About | Contact | FAQ**
+4. Click the tab for the page you want to edit
+5. Find the section and field you want to change
+6. Click the text field, type your new copy, and click **Save**
+
+That's it. The change goes live on the public site immediately — no deploy, no code change, no waiting.
+
+### What You Can Edit
+| Tab | What's Editable |
+|-----|----------------|
+| **Home** | Hero headline, hero subheading, CTA buttons, featured section label, manifesto text, newsletter heading/subheading, the 10 rotating bartender quotes, the 6 ticker items in the announcement scroll |
+| **Shop** | Shop page hero label |
+| **About** | Hero headline and label, pull quote, manifesto label and body text, CTA button |
+| **Contact** | Hero label and subheading, sidebar email + response time note |
+| **FAQ** | Hero label and subheading, all 7 FAQ questions and answers |
+
+### Tips
+- Changes save one field at a time — you don't need to save the whole page at once
+- If you mess something up, contact Kristin and she can reset the field to the original text
+- If a field is empty, the site falls back to the original hardcoded text — so you can always "blank it out" to revert
+
+---
+
+## 6. Viewing Custom Garment Requests
+
+When a customer fills out the "Request a Custom Garment" form on any product page (or the Contact page), their info appears in your admin dashboard.
 
 ### Via Admin Dashboard (Preferred)
 1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
@@ -129,9 +168,7 @@ When you've followed up with a customer, change the `status` field:
 
 ---
 
-## 6. Viewing Orders
-
-> **Note:** Payment processing (Stripe) is built but not yet fully activated as of April 2026. Once it's live, paid orders will appear here automatically.
+## 7. Viewing Orders
 
 ### Via Admin Dashboard
 1. Go to [pournogravy.com/admin](https://pournogravy.com/admin)
@@ -153,32 +190,38 @@ Order statuses:
 
 ---
 
-## 7. What You Can vs. Cannot Change
+## 8. What You Can vs. Cannot Change
 
 ### ✅ You Can Do These Yourself (via Admin Dashboard)
+- Edit site copy — headlines, CTAs, FAQ answers, quotes, ticker items (Content tab)
 - View and manage custom garment requests (update status)
-- View orders (once payment is active)
+- View and track orders
+- Create, activate/deactivate, and delete discount codes
+- View loyalty member balances and transaction history; manually adjust points
+- Look up customers by email — order history, loyalty, wishlist stats
+- View and export email subscriber list
+- Schedule merch drops with ad placement and marketing emails
 - Edit product details and upload product images
+- Approve or reject customer reviews
 
 ### 🛑 These Need a Developer (Contact Kristin)
 - Adding brand new products to the catalog
-- Changing prices (until DB-backed products are live)
-- Changing the site design or layout
+- Changing prices
+- Changing the site design, layout, or color scheme
 - Adding new pages
-- Activating Stripe payment processing (technical configuration)
 - Connecting to a fulfillment partner (Printful/Printify)
+- Email marketing integration (Klaviyo/Mailchimp)
 - Changing the domain or hosting
 - Anything where something stopped working
 
-### 📝 These Are Coming Soon (Roadmap)
-- Fully DB-backed product management (add products without a code deploy)
-- Discount codes / promo codes
-- Email marketing integration
-- Automatic order fulfillment via Printful/Printify
+### 📝 These Are on the Roadmap
+- Fully self-service product management (add products without any developer involvement)
+- Automatic order fulfillment via Printful/Printify (once partner is selected)
+- Email marketing integration (Klaviyo/Mailchimp) to activate the subscriber list
 
 ---
 
-## 8. Who to Call When Things Break
+## 9. Who to Call When Things Break
 
 **Kristin Mitchell — Aethyx**
 - For: anything related to the code, the site going down, a feature not working, adding products
@@ -200,7 +243,7 @@ Order statuses:
 
 ---
 
-## 9. Glossary — Terms You'll See
+## 10. Glossary — Terms You'll See
 
 | Term | Plain English |
 |------|--------------|
@@ -220,6 +263,8 @@ Order statuses:
 | **featured** | Product flag that puts it on the homepage |
 | **custom_requests** | Where custom garment form submissions are stored |
 | **Admin Dashboard** | Your private management area at pournogravy.com/admin |
+| **Content tab** | The admin section where you edit live site copy (headlines, FAQs, quotes, etc.) |
+| **site_content** | The database table that stores your editable page copy |
 
 ---
 
