@@ -59,6 +59,7 @@ const navItems: NavItem[] = [
   { to: "/admin/subscribers",   label: "Email Subscribers",    icon: Mail,            end: false },
   { to: "/admin/discount-codes",label: "Discount Codes",       icon: Tag,             end: false },
   { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
+  { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
 ];
 
 const SidebarContent = ({

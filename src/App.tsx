@@ -38,6 +38,8 @@ const CheckoutReturn= lazy(() => import("./pages/CheckoutReturn"));
 const NotFound      = lazy(() => import("./pages/NotFound"));
 const PrivacyPolicy  = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const Blog           = lazy(() => import("./pages/Blog"));
+const BlogPost       = lazy(() => import("./pages/BlogPost"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
 const AdminLayout    = lazy(() => import("./components/admin/AdminLayout"));
@@ -59,6 +61,7 @@ const Customers      = lazy(() => import("./pages/admin/Customers"));
 const Subscribers    = lazy(() => import("./pages/admin/Subscribers"));
 const DiscountCodes  = lazy(() => import("./pages/admin/DiscountCodes"));
 const Content        = lazy(() => import("./pages/admin/Content"));
+const BlogAdmin      = lazy(() => import("./pages/admin/BlogAdmin"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -145,7 +148,10 @@ const App = () => (
                       <Route path="subscribers"       element={<Subscribers />} />
                       <Route path="discount-codes"    element={<DiscountCodes />} />
                       <Route path="content"           element={<Content />} />
+                      <Route path="blog"              element={<BlogAdmin />} />
                     </Route>
+                    <Route path="/blog"        element={<Blog />} />
+                    <Route path="/blog/:slug"  element={<BlogPost />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/terms"   element={<TermsOfService />} />
                     <Route path="*" element={<NotFound />} />

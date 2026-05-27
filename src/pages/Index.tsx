@@ -42,9 +42,9 @@ const Index = () => {
   const { getValue } = useSiteContent();
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
-  // 3s hold before the glass headline stamps in on first load.
+  // 1.5s hold before the glass + carousel appear, so the logo background reads first.
   const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
-  const INTRO_HOLD_MS = 3000;
+  const INTRO_HOLD_MS = 1500;
 
   // Fetch products from the most recent active/scheduled merch drop.
   const { data: dropProductRows } = useQuery({
@@ -181,12 +181,18 @@ const Index = () => {
           </p>
           <Link to="/shop" className="mt-3 inline-block">
             <Button className="h-9 px-5 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-              {getValue("home", "hero", "cta_text", "SHOP THE DROP")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
+              {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
             </Button>
           </Link>
         </motion.div>
 
-        {/* ---- Product slides ---- */}
+        {/* ---- Product slides — fade in together with the glass after hold ---- */}
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={introHoldElapsed ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+        >
         {heroSlides.map((slide, slideIdx) => {
           const active = heroIndex === slideIdx;
           const { product } = slide;
@@ -238,7 +244,7 @@ const Index = () => {
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="w-full h-full object-cover scale-[1.35]"
+                            className="w-full h-full object-cover scale-[1.35] origin-[40%_40%]"
                             loading={slideIdx <= 3 ? "eager" : "lazy"}
                             decoding="async"
                           />
@@ -275,9 +281,6 @@ const Index = () => {
                           "{product.humor}"
                         </p>
                       )}
-                      <p className="font-display text-lg md:text-2xl tracking-wider mb-3 md:mb-5">
-                        ${product.price.toFixed(2)}
-                      </p>
                       <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                         <Link to={`/product/${product.id}`}>
                           <Button
@@ -285,14 +288,6 @@ const Index = () => {
                             style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
                           >
                             <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
-                          </Button>
-                        </Link>
-                        <Link to="/shop">
-                          <Button
-                            variant="outline"
-                            className="h-11 px-6 font-display tracking-widest bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-[#fde047] hover:border-[#fde047]/50"
-                          >
-                            ALL DESIGNS
                           </Button>
                         </Link>
                       </div>
@@ -303,6 +298,8 @@ const Index = () => {
             </div>
           );
         })}
+
+        </motion.div>
 
         {/* Dot indicators */}
         <div
@@ -344,7 +341,7 @@ const Index = () => {
       >
         <div
           className="flex whitespace-nowrap"
-          style={{ animation: "marquee-scroll 22s linear infinite" }}
+          style={{ animation: "marquee-scroll 14s linear infinite" }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >

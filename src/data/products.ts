@@ -846,7 +846,6 @@ export const products: Product[] = [
   {
     id: "well-it-ain-t-gonna-lick-itself-tee",
     published: true,
-    badge: "CINCO DE MAYO",
     name: "Well, It Ain't Gonna Lick Itself",
     price: 27.99,
     description: "Also, if you're one of those freaks that add a splash of OJ to your margarita, you're diabolical and need to go back to work for a TGI Fridays.  Stop being so salty and stubborn and make the drink correctly.  This is not the hill that you should want to die on.  I said what I said!  Oh, and one more thing!  Tell your friends to buy this shirt for Cinco de Mayo! Thanks!",
