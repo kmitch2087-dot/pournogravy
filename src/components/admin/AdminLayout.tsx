@@ -27,6 +27,7 @@ import {
   Users,
   Tag,
   FileText,
+  Receipt,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { to: "/admin/discount-codes",label: "Discount Codes",       icon: Tag,             end: false },
   { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
+  { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
 ];
 
 const SidebarContent = ({
