@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import { products, quotes } from "@/data/products";
 import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
@@ -22,25 +23,15 @@ const TICKER_ITEMS = [
   ...quotes,
 ];
 
-// Hero carousel config — slide 0 is the glass headline, the rest feature shirts.
-// Product IDs are pulled from products.ts at runtime so name/price/humor stay
-// in sync with your data; if a product isn't found OR isn't published it's
-// silently skipped (so the hero never tries to feature a draft).
+// Fallback product IDs when no active merch drop has products assigned.
 const HERO_PRODUCT_IDS = [
-  "well-it-ain-t-gonna-lick-itself-tee",   // Cinco de Mayo / Grand Opening drop — anchor
+  "well-it-ain-t-gonna-lick-itself-tee",
   "last-call-for-karen-tee",
   "the-finger-tee",
   "service-bartender-do-not-approach-tee",
 ];
 
-// Per-slide duration. Slide 0 (the glass headline) flashes by quickly so visitors
-// land on the actual product carousel fast; product slides linger long enough
-// to read the name + zinger + price.
-const HERO_DURATIONS_MS = {
-  intro: 3500,
-  product: 5000,
-};
-// (slide duration is computed inline below using the heroSlides array)
+const HERO_SLIDE_DURATION_MS = 5000;
 
 const Index = () => {
   const [email, setEmail] = useState("");
@@ -51,34 +42,56 @@ const Index = () => {
   const { getValue } = useSiteContent();
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
-  // First-load only: show the bare logo background for 3s before the glass
-  // headline stamps in, and freeze the auto-rotation timer until then. After
-  // the carousel cycles back to the intro slide later, the glass appears
-  // immediately like it does on every other slide.
+  // 3s hold before the glass headline stamps in on first load.
   const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
   const INTRO_HOLD_MS = 3000;
-  // Featured row only shows published products. During pre-launch this is the
-  // 5–6 launch lineup; new drafts the owner adds later won't appear until he
-  // toggles them on from the dashboard.
+
+  // Fetch products from the most recent active/scheduled merch drop.
+  const { data: dropProductRows } = useQuery({
+    queryKey: ["hero-drop-products"],
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      const { data: drops } = await supabase
+        .from("merch_drops")
+        .select("id")
+        .in("status", ["active", "scheduled"])
+        .lte("ad_launch_at", now)
+        .order("scheduled_drop_at", { ascending: true })
+        .limit(1);
+      if (!drops?.length) return [];
+      const { data: rows } = await supabase
+        .from("merch_drop_products")
+        .select("display_order, products(id, slug, is_active)")
+        .eq("drop_id", drops[0].id)
+        .order("display_order", { ascending: true });
+      return ((rows ?? []) as Array<{ display_order: number; products: { id: string; slug: string; is_active: boolean } | null }>)
+        .filter(r => r.products?.is_active);
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Featured row only shows published products.
   const featured = products
     .filter((p) => p.published === true && p.featured)
     .slice(0, 6);
 
-  // Build hero slides: headline first, then product slides (only published & resolved).
-  // The intro headline is re-inserted between every product slide so it acts as a
-  // recurring "anchor" between drops.
-  const heroProducts = HERO_PRODUCT_IDS
-    .map((id) => products.find((p) => p.id === id))
+  // Hero products: use active drop's product slugs mapped to static products, else fall back.
+  const dropProducts = (dropProductRows ?? [])
+    .map(r => products.find(p => p.id === r.products?.slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
-  // slides: 'intro' | { type: 'product', product }
-  type HeroSlide = { type: "intro" } | { type: "product"; product: typeof heroProducts[number] };
-  const heroSlides: HeroSlide[] = [];
-  heroProducts.forEach((p) => {
-    heroSlides.push({ type: "intro" });
-    heroSlides.push({ type: "product", product: p });
-  });
-  if (heroSlides.length === 0) heroSlides.push({ type: "intro" });
+  const heroProducts = dropProducts.length > 0
+    ? dropProducts
+    : HERO_PRODUCT_IDS
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
+
+  type HeroSlide = { type: "product"; product: typeof heroProducts[number] };
+  const heroSlides: HeroSlide[] = heroProducts.map((p) => ({ type: "product" as const, product: p }));
+  if (heroSlides.length === 0) {
+    const first = products.find(p => p.published);
+    if (first) heroSlides.push({ type: "product", product: first });
+  }
   const totalSlides = heroSlides.length;
 
   // Rotate quote every 6s, respect prefers-reduced-motion
@@ -102,19 +115,15 @@ const Index = () => {
     return () => clearTimeout(id);
   }, []);
 
-  // Hero auto-rotation — reset whenever index changes (so manual clicks
-  // restart the timer) or pause state flips. Per-slide duration so the
-  // intro slide moves faster than the product slides. The very first intro
-  // slide also waits for the bare-background hold to elapse before counting.
+  // Hero auto-rotation.
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce || heroPaused || totalSlides <= 1) return;
-    if (!introHoldElapsed && heroIndex === 0) return;
     const id = setTimeout(() => {
       setHeroIndex((i) => (i + 1) % totalSlides);
-    }, heroSlides[heroIndex]?.type === "intro" ? HERO_DURATIONS_MS.intro : HERO_DURATIONS_MS.product);
+    }, HERO_SLIDE_DURATION_MS);
     return () => clearTimeout(id);
-  }, [heroIndex, heroPaused, totalSlides, introHoldElapsed]);
+  }, [heroIndex, heroPaused, totalSlides]);
 
   return (
     <div className="min-h-screen pt-16 md:pt-20">
@@ -135,84 +144,51 @@ const Index = () => {
       {/* Drop Hero Banner — shown above carousel when a drop is live */}
       <DropHeroBanner />
 
-      {/* Hero carousel — slide 0 is the glass headline, rest are shirts.
-          Section-wide hover pause was removed by request — only hovering the
-          dot indicators below pauses the rotation, so a customer reading a
-          shirt blurb still moves on without having to look away. */}
+      {/* Hero carousel — product slides only. Glass headline lives as a
+          persistent top-left overlay so it never competes with the logo. */}
       <section
-        className="relative min-h-[90vh] overflow-hidden noise-overlay bg-black"
+        className="relative min-h-[70vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
-        {/* ---- Slides: intro headline interleaved between product slides ---- */}
+        {/* Persistent dimmed logo background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <img
+            src="/hero-bg.jpg"
+            alt=""
+            className="w-full h-full object-contain object-center opacity-20 md:opacity-25"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+
+        {/* Glass headline — top-left, stamps in after 3s, stays up */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
+          animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
+          transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
+          className="absolute top-4 left-3 md:top-6 md:left-8 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-8 md:py-6 max-w-[210px] sm:max-w-[260px] md:max-w-[340px]"
+        >
+          <h1 className="font-display text-lg sm:text-xl md:text-3xl lg:text-4xl leading-[1] tracking-wider mb-0 text-primary-foreground">
+            MILDLY OFFENSIVE<br />
+            BARTENDER APPAREL<br />
+            FOR THE{" "}
+            <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
+            OFFENSIVE BARTENDER.
+          </h1>
+          <p className="font-marker text-[11px] md:text-sm text-white/80 mt-2 tracking-wider italic">
+            {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
+          </p>
+          <Link to="/shop" className="mt-3 inline-block">
+            <Button className="h-9 px-5 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
+              {getValue("home", "hero", "cta_text", "SHOP THE DROP")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </motion.div>
+
+        {/* ---- Product slides ---- */}
         {heroSlides.map((slide, slideIdx) => {
           const active = heroIndex === slideIdx;
-
-          if (slide.type === "intro") {
-            return (
-              <div
-                key={`intro-${slideIdx}`}
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${
-                  active ? "opacity-100" : "opacity-0 pointer-events-none"
-                }`}
-                role="group"
-                aria-roledescription="slide"
-                aria-label={`${slideIdx + 1} of ${totalSlides}: intro`}
-                aria-hidden={!active}
-              >
-                <div className="absolute inset-x-0 bottom-0 top-6 md:top-10">
-                  <img
-                    src="/hero-bg.jpg"
-                    alt=""
-                    className="w-full h-full object-contain object-top"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </div>
-
-                <div className="relative z-10 container mx-auto px-4 text-center">
-                  {/* On the very first visit, hold the bare logo background for
-                      INTRO_HOLD_MS, then stamp the glass container in. After
-                      the carousel cycles back here, the content shows
-                      immediately like every other slide. */}
-                  {(introHoldElapsed || slideIdx > 0) && (
-                    <>
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
-                        animate={active ? { opacity: 1, scale: 1, rotate: -2 } : { opacity: 0, scale: 0.4, rotate: -18 }}
-                        transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: 0.4 }}
-                        className="inline-block bg-primary/20 backdrop-blur-md rounded-2xl px-8 py-6 md:px-14 md:py-10"
-                      >
-                        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1] tracking-wider mb-0 text-primary-foreground">
-                          MILDLY OFFENSIVE<br />
-                          BARTENDER APPAREL<br />
-                          FOR THE{" "}
-                          <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
-                          OFFENSIVE BARTENDER.
-                        </h1>
-                        <p className="font-marker text-base md:text-xl text-white/80 mt-4 tracking-wider italic">
-                          {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
-                        </p>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-                        transition={{ delay: 0.9, duration: 0.5 }}
-                      >
-                        <Link to="/shop">
-                          <Button className="h-14 px-10 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                            {getValue("home", "hero", "cta_text", "SHOP THE DROP")} <ArrowRight className="ml-2 h-5 w-5" />
-                          </Button>
-                        </Link>
-                      </motion.div>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          }
-
           const { product } = slide;
           return (
             <div
@@ -225,8 +201,8 @@ const Index = () => {
               aria-label={`${slideIdx + 1} of ${totalSlides}: ${product.name}`}
               aria-hidden={!active}
             >
-              {/* Backdrop: dark with layered neon glows */}
-              <div className="absolute inset-0 bg-black" />
+              {/* Semi-transparent backdrop so logo bleeds through slightly */}
+              <div className="absolute inset-0 bg-black/75" />
               <div
                 aria-hidden="true"
                 className="absolute inset-0 opacity-70"
@@ -236,107 +212,101 @@ const Index = () => {
                 }}
               />
 
-              {/* Content: image-first on mobile so the photo sits just below the
-                  navbar and the text naturally falls below it.
-                  sm:items-center restores vertical centering on tablet+. */}
-              <div className="absolute inset-0 flex items-start sm:items-center pt-3 sm:pt-0 z-10">
-              <div className="container mx-auto px-4 w-full">
-                <div className="grid md:grid-cols-2 gap-3 md:gap-12 items-center">
-                  {/* Product image — taped polaroid vibe. order-1 keeps it
-                      first on mobile so it clears the navbar for the text. */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-                    animate={
-                      active
-                        ? { opacity: 1, scale: 1, rotate: -2 }
-                        : { opacity: 0, scale: 0.9, rotate: -3 }
-                    }
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="order-1 relative mx-auto max-w-[180px] sm:max-w-sm md:max-w-md w-full"
-                  >
-                    <div
-                      className="relative aspect-square bg-muted border-[12px] border-white/90 shadow-2xl overflow-hidden"
-                      style={{
-                        boxShadow:
-                          "0 20px 60px rgba(0,0,0,0.5), 0 0 60px rgba(253,224,71,0.15)",
-                      }}
+              {/* Content — polaroid pushed right on mobile so it clears the glass */}
+              <div className="absolute inset-0 flex items-center z-10">
+                <div className="container mx-auto px-4 w-full">
+                  <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-10 items-center">
+                    {/* Polaroid — smaller, offset right on mobile */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
+                      animate={
+                        active
+                          ? { opacity: 1, scale: 1, rotate: -2 }
+                          : { opacity: 0, scale: 0.9, rotate: -3 }
+                      }
+                      transition={{ duration: 0.7, ease: "easeOut" }}
+                      className="order-1 relative ml-auto sm:mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[260px] w-full"
                     >
-                      {product.image && (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          loading={slideIdx <= 3 ? "eager" : "lazy"}
-                          decoding="async"
-                        />
-                      )}
-                    </div>
-                    {/* Stamp badge */}
-                    {product.badge && (
                       <div
-                        className="absolute -top-3 -right-3 bg-[#fde047] text-black px-4 py-1.5 font-marker text-xs tracking-widest uppercase stamp-rotate"
-                        style={{ boxShadow: "0 0 20px rgba(253,224,71,0.5)" }}
+                        className="relative aspect-square bg-muted border-[10px] border-white/90 shadow-2xl overflow-hidden"
+                        style={{
+                          boxShadow:
+                            "0 20px 60px rgba(0,0,0,0.5), 0 0 60px rgba(253,224,71,0.15)",
+                        }}
                       >
-                        {product.badge}
+                        {product.image && (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            loading={slideIdx <= 3 ? "eager" : "lazy"}
+                            decoding="async"
+                          />
+                        )}
                       </div>
-                    )}
-                  </motion.div>
+                      {product.badge && (
+                        <div
+                          className="absolute -top-3 -right-3 bg-[#fde047] text-black px-3 py-1 font-marker text-xs tracking-widest uppercase stamp-rotate"
+                          style={{ boxShadow: "0 0 20px rgba(253,224,71,0.5)" }}
+                        >
+                          {product.badge}
+                        </div>
+                      )}
+                    </motion.div>
 
-                  {/* Copy */}
-                  <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-                    transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                    className="order-2 text-white text-center md:text-left"
-                  >
-                    <p
-                      className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-4"
-                      style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
+                    {/* Copy */}
+                    <motion.div
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+                      transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+                      className="order-2 text-white text-center sm:text-left"
                     >
-                      ☠ Featured drop
-                    </p>
-                    <h2 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider leading-[0.95] mb-2 md:mb-4">
-                      {product.name.toUpperCase()}
-                    </h2>
-                    {product.humor && (
-                      <p className="font-marker text-sm md:text-lg text-white/80 italic mb-2 md:mb-6 max-w-md mx-auto md:mx-0">
-                        "{product.humor}"
+                      <p
+                        className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-3"
+                        style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
+                      >
+                        ☠ Featured drop
                       </p>
-                    )}
-                    <p className="font-display text-xl md:text-3xl tracking-wider mb-3 md:mb-6">
-                      ${product.price.toFixed(2)}
-                    </p>
-                    <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                      <Link to={`/product/${product.id}`}>
-                        <Button
-                          className="h-12 px-8 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
-                          style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
-                        >
-                          <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
-                        </Button>
-                      </Link>
-                      <Link to="/shop">
-                        <Button
-                          variant="outline"
-                          className="h-12 px-8 font-display tracking-widest bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-[#fde047] hover:border-[#fde047]/50"
-                        >
-                          ALL DESIGNS
-                        </Button>
-                      </Link>
-                    </div>
-                  </motion.div>
+                      <h2 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl tracking-wider leading-[0.95] mb-2 md:mb-3">
+                        {product.name.toUpperCase()}
+                      </h2>
+                      {product.humor && (
+                        <p className="font-marker text-sm md:text-base text-white/80 italic mb-2 md:mb-4 max-w-md mx-auto sm:mx-0">
+                          "{product.humor}"
+                        </p>
+                      )}
+                      <p className="font-display text-lg md:text-2xl tracking-wider mb-3 md:mb-5">
+                        ${product.price.toFixed(2)}
+                      </p>
+                      <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                        <Link to={`/product/${product.id}`}>
+                          <Button
+                            className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
+                            style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
+                          >
+                            <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                          </Button>
+                        </Link>
+                        <Link to="/shop">
+                          <Button
+                            variant="outline"
+                            className="h-11 px-6 font-display tracking-widest bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-[#fde047] hover:border-[#fde047]/50"
+                          >
+                            ALL DESIGNS
+                          </Button>
+                        </Link>
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           );
         })}
 
-        {/* ---- Dot indicators ----
-            Hovering the dots pauses the rotation so a visitor can pick the
-            slide they actually want to look at. Moving away resumes auto-play. */}
+        {/* Dot indicators */}
         <div
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 px-3 py-2"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 px-3 py-2"
           onMouseEnter={() => setHeroPaused(true)}
           onMouseLeave={() => setHeroPaused(false)}
           onFocus={() => setHeroPaused(true)}
