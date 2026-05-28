@@ -220,7 +220,7 @@ const Index = () => {
 
               {/* Content — polaroid pushed right on mobile so it clears the glass */}
               <div className="absolute inset-0 flex items-center z-10">
-                <div className="container mx-auto px-4 md:pl-[260px] w-full">
+                <div className="container mx-auto px-4 md:pl-[220px] w-full">
                   <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-6 items-center">
                     {/* Polaroid — on mobile: top; on desktop: right column (clear of glass) */}
                     <motion.div
