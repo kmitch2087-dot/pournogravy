@@ -220,8 +220,8 @@ const Index = () => {
 
               {/* Content — polaroid pushed right on mobile so it clears the glass */}
               <div className="absolute inset-0 flex items-center z-10">
-                <div className="container mx-auto px-4 w-full">
-                  <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-10 items-center">
+                <div className="container mx-auto px-4 md:pl-[260px] w-full">
+                  <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-6 items-center">
                     {/* Polaroid — on mobile: top; on desktop: right column (clear of glass) */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
@@ -244,7 +244,8 @@ const Index = () => {
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="w-full h-full object-cover scale-[1.35] origin-[40%_40%]"
+                            className="w-full h-full object-cover scale-[1.35]"
+                            style={{ transformOrigin: `${product.thumbnailFocalX ?? 40}% ${product.thumbnailFocalY ?? 40}%` }}
                             loading={slideIdx <= 3 ? "eager" : "lazy"}
                             decoding="async"
                           />
