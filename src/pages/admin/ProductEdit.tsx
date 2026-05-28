@@ -136,8 +136,13 @@ const ProductEdit = () => {
         featured: product.featured ?? false,
         fit_type: product.fit_type ?? "unisex",
         sizes: product.sizes?.length ? product.sizes : DEFAULT_SIZES,
-        images: product.images ?? [],
         badge: product.badge ?? "",
+        images: (() => {
+          if (product.images?.length) return product.images as string[];
+          if ((product as Record<string, unknown>).image_url) return [(product as Record<string, unknown>).image_url as string];
+          const sp = staticProducts.find((s) => s.id === product.slug);
+          return sp?.images?.length ? sp.images : (sp?.image ? [sp.image] : []);
+        })(),
         fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
         print_file_url: (product as Record<string, unknown>).print_file_url as string ?? "",
         thumbnailFocalX: (product as Record<string, unknown>).thumbnail_focal_x as number ?? 40,
@@ -161,7 +166,7 @@ const ProductEdit = () => {
           featured: sp.featured === true,
           fit_type: sp.variants ? "mens_womens" : "unisex",
           sizes: sp.sizes ?? DEFAULT_SIZES,
-          images: sp.images ?? (sp.image ? [sp.image] : []),
+          images: sp.images?.length ? sp.images : (sp.image ? [sp.image] : []),
           badge: sp.badge ?? "",
           fulfillment_route: "local_printer",
           print_file_url: "",

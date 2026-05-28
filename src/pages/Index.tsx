@@ -220,9 +220,11 @@ const Index = () => {
 
               {/* Content — polaroid pushed right on mobile so it clears the glass */}
               <div className="absolute inset-0 flex items-center z-10">
-                <div className="container mx-auto px-4 md:pl-[220px] w-full">
-                  <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 md:gap-6 items-center">
-                    {/* Polaroid — on mobile: top; on desktop: right column (clear of glass) */}
+                <div className="container mx-auto px-4 w-full">
+                  <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 items-center">
+                    {/* Glass spacer — invisible on mobile/sm, takes col 1 on md so photo+copy live in cols 2–3 */}
+                    <div className="hidden md:block" aria-hidden="true" />
+                    {/* Polaroid — mobile: top; sm: col 1; md: col 2 */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
                       animate={
@@ -231,7 +233,7 @@ const Index = () => {
                           : { opacity: 0, scale: 0.9, rotate: -3 }
                       }
                       transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="order-1 sm:order-2 relative ml-auto sm:mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[260px] w-full"
+                      className="order-1 relative mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[240px] w-full"
                     >
                       <div
                         className="relative aspect-square bg-muted border-[10px] border-white/90 shadow-2xl overflow-hidden"
@@ -266,7 +268,7 @@ const Index = () => {
                       initial={{ opacity: 0, x: 30 }}
                       animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
                       transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                      className="order-2 sm:order-1 text-white text-center sm:text-left"
+                      className="order-2 text-white text-center sm:text-left"
                     >
                       <p
                         className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-3"
