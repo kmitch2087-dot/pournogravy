@@ -6,12 +6,24 @@
 // SECRETS REQUIRED:
 //   STRIPE_SECRET_KEY
 //   STRIPE_WEBHOOK_SIGNING_SECRET
+//   FULFILLMENT_SECRET  (signs the printer tracking link)
 //
 // In Stripe dashboard: add webhook endpoint pointing to this function URL
 // and select the `checkout.session.completed` event.
 
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+// Generate HMAC-SHA256 token for printer tracking link
+async function generateFulfillmentToken(orderId: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(orderId));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,7 +208,16 @@ Deno.serve(async (req) => {
       const csvBase64 = btoa(csvContent);
       const shortId = order.id.slice(0, 8).toUpperCase();
 
-      const addr = ship ? `${shipAddr?.line1 ?? ""}, ${shipAddr?.city ?? ""}, ${shipAddr?.state ?? ""} ${shipAddr?.postal_code ?? ""}` : "(no address)";
+            const addr = ship ? `${shipAddr?.line1 ?? ""}, ${shipAddr?.city ?? ""}, ${shipAddr?.state ?? ""} ${shipAddr?.postal_code ?? ""}` : "(no address)";
+
+      // Generate fulfillment token for printer tracking link
+      const fulfillmentSecret = Deno.env.get("FULFILLMENT_SECRET");
+      const siteUrl = Deno.env.get("SITE_URL") ?? "https://pournogravy.com";
+      let trackingSubmitUrl = "";
+      if (fulfillmentSecret) {
+        const tok = await generateFulfillmentToken(order.id, fulfillmentSecret);
+        trackingSubmitUrl = `${siteUrl}/ship/${order.id}?token=${tok}`;
+      }
 
       await supabase.functions.invoke("send-notification", {
         body: {
@@ -210,6 +231,7 @@ Deno.serve(async (req) => {
             customer_email: order.email,
             order_items: itemsList,
             shipping_address: addr,
+            tracking_submit_url: trackingSubmitUrl,
           },
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },

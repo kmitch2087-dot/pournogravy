@@ -40,6 +40,7 @@ const PrivacyPolicy  = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
+const ShipOrder      = lazy(() => import("./pages/ShipOrder"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
 const AdminLayout    = lazy(() => import("./components/admin/AdminLayout"));
@@ -156,6 +157,7 @@ const App = () => (
                     <Route path="/blog/:slug"  element={<BlogPost />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/terms"   element={<TermsOfService />} />
+                    <Route path="/ship/:orderId"  element={<ShipOrder />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
