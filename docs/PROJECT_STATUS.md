@@ -9,7 +9,7 @@
 
 ## Current Phase
 **Phase:** Post-launch (soft) — Active Build  
-**Status:** Site is live. Real payment processing active. Admin dashboard fully operational with user manual, orders, reviews, discount codes, and direct contact to Kristin. Fulfillment partner selection pending.
+**Status:** Site is live. Real payment processing active. Admin dashboard fully operational. Rich Email Templates editor built and deployed. CF Email Worker built + Supabase wired — pending CF re-auth to deploy worker.
 
 ---
 
@@ -17,6 +17,7 @@
 
 | Date | Summary | Completed | Next Up |
 |------|---------|-----------|---------|
+| June 8–9, 2026 | **Rich Email Templates page + CF Email Worker + send-notification param fixes.** Built `src/pages/admin/EmailTemplates.tsx` (~600 lines) — full-featured admin email editor replacing the old Settings tab. Features: left sidebar with template list + hover actions (duplicate/delete), editable template name, subject input, 4-tab editor (Visual/HTML/Preview/Plain Text), rich text toolbar (undo/redo, bold/italic/underline/strike, headings, text+bg color picker, align, lists, link, image, HR, remove format), click-to-insert `{{variable}}` chips, live sandboxed iframe preview with desktop/mobile toggle and per-variable fill inputs, auto-generate plain text from HTML, test email send via `send-notification` edge fn. All using `contenteditable` + `document.execCommand()` — no new npm packages. Fixed `send-notification` param mismatch (3 files: `Contact.tsx`, `CustomGarmentRequestModal.tsx`, `EmailTemplates.tsx` — changed `to`/`template_key` → `recipient`/`templateKey`). Built CF Email Worker in `cloudflare-workers/receive-email/` (postal-mime + HMAC auth + posts to Supabase `receive-email` fn). Redeployed `receive-email` Supabase edge fn with `verify_jwt: false` (was incorrectly `true` — would reject CF worker calls). Set `RECEIVE_EMAIL_SECRET` in Supabase secrets. Committed + pushed all changes (commit `dafb7a0..1429fd4`). **BLOCKER:** CF Worker deploy requires `npx wrangler login` re-auth — wrangler session is for a different CF account. | Rich Email Templates page, send-notification param fixes, CF Worker files created, receive-email edge fn redeployed (verify_jwt: false), RECEIVE_EMAIL_SECRET set in Supabase, all committed + pushed to GitHub | **[Manual]** `npx wrangler login` → deploy CF Worker → set Email Routing rule in CF Dashboard |
 | June 8, 2026 | **Fulfillment email pipeline — fully wired.** Rotated + set all Supabase edge function secrets: `STRIPE_SECRET_KEY` (was truncated from prior session), `STRIPE_WEBHOOK_SIGNING_SECRET` (fixed doubled `whsec_` prefix), `RESEND_API_KEY`, `FULFILLMENT_SECRET` (new — signs printer tracking magic links). Confirmed Resend domain for pournogravy.com is verified for outbound sending (DKIM+SPF ✅; inbound MX fails due to GoDaddy conflict — non-blocking). Created `print-files` Supabase Storage bucket with public SELECT policy; uploaded 74 print-ready PNGs to `print-files/black/` and `print-files/white/` via supabase CLI retry loop. Updated `stripe-webhook` (v29): removed DB lookup for print_file_url, replaced with slug-based Supabase Storage URLs (`print-files/{color}/{slug}_{color}.png`); added `design_links` variable per order item in printer email; added CC copy of printer notification to `kmitch2087@gmail.com` for test review. Updated `printer_notification` email template with 🎨 Print Files section (pre-formatted with black+white URLs). Confirmed `submit-tracking` edge function already deployed (v2). Removed temp anon INSERT RLS policy from `print-files` bucket. Cleaned up 18 doubled-path files (`black/black/`). Created `products` Storage bucket (public read) for admin product image uploads. **Lovable disconnected** — Claude (Cowork) is now the exclusive builder. Updated CLAUDE.md. | Stripe/Resend/Fulfillment secrets set, print-files Storage bucket + 74 PNGs, stripe-webhook design URLs + CC, printer_notification template updated, submit-tracking confirmed, Lovable removed | Place test order; move opie@pournogravy.com off GoDaddy |
 | May 22–27, 2026 | **CMS wiring + /admin/content + auth spinner fix + migration sync.** Wired all 5 public pages (Index, About, Shop, Contact, FAQ) to `site_content` DB table — headlines, CTAs, FAQ Q&As, rotating quotes, and ticker items are now editable live with static hardcoded fallbacks guaranteeing zero visual change on empty DB. ~60 rows seeded via `20260525000001_site_content_expanded.sql`. New `/admin/content` admin tab added with Home/Shop/About/Contact/FAQ page tabs so Opie can edit site copy from the dashboard without developer involvement. **Auth fix:** Added `loadedProfileIdRef` to `AuthContext` so Supabase's `SIGNED_IN` auto-refresh event (which fires on token renewal, not just explicit login) no longer triggers a spurious loading spinner when navigating between the admin and public pages. **Migration sync:** Docker Desktop installed; `supabase db pull` working; migration history fully synced via `supabase migration repair`; missing `client_edit_requests` base table backfilled as `20260508000001`; all remote schema drift (Stripe Postgres sync, pgmq, pg_cron extensions) captured in `20260526231648_remote_schema.sql`. Account page orders/loyalty data now cached via React Query (no spinner on re-visit). | CMS wiring, `/admin/content` tab, auth spinner fix, Docker, db pull, migration backfill | Fulfillment partner; Resend domain verify |
 | May 15, 2026 | **Homepage polish + full code audit.** Applied updated `Index.tsx` from Claude Desktop: `TICKER_ITEMS` constant with Opie's 4 Shopify marketing lines + existing quotes; marquee switched from Tailwind `animate-marquee` class to `marquee-scroll` CSS keyframe at 40s with pause-on-hover; marquee respects `prefers-reduced-motion` via CSS media query; hero slide top padding bumped to `pt-28 sm:pt-24 md:pt-28` so headline clears the fixed navbar on mobile. Created `.claude/shared/` communication bridge folder (Index, Footer, Navbar, DropAnnouncementBar, PATCH_INSTRUCTIONS.md) — committed to git. **Code audit pass (11 issues fixed):** `useWishlist` lifted to `WishlistContext` (was creating N auth subscriptions — one per card; now 1 shared instance for the whole app); Contact form wired to Supabase (was fake — submitted nothing); `CustomGarmentRequestModal` fixed dead import path (`@/lib/supabase` → correct client — all custom garment submissions were silently failing); Contact page Instagram + DMs links fixed from `"#"` to real Instagram URL; ProductCard wishlist heart always visible on mobile (was hover-only — touch users couldn't wishlist); cart thumbnail "PNG" text replaced with ShoppingBag icon; DropAnnouncementBar `truncate` → `line-clamp-2` on mobile; star rating touch targets enlarged; `FilterPill` `aria-pressed` added; `ProductDetail` SEO image null-guarded (`product.images?.[0] ?? product.image`); Privacy Policy + Terms of Service pages added to site and Footer. | Index.tsx marquee upgrade, mobile hero nav fix, `.claude/shared/` bridge, Privacy Policy, Terms of Service, Footer links, full audit pass (11 fixes across UX/a11y/perf/bugs) | Fulfillment partner selection; Resend domain verify; CF Email Worker routing rule; npm audit fix |
@@ -36,159 +37,69 @@
 - [x] GitHub repo (`kmitch2087-dot/pournogravy`, master branch)
 - [x] Cloudflare Pages connected to GitHub (project: `pournogravydev`)
 - [x] `pournogravy.com` domain + SSL active
-- [x] SPA routing via `wrangler.toml` (`not_found_handling = "single-page-application"`)
+- [x] SPA routing via `404.html` (copy of `index.html`; CF Pages "Pretty URLs" enabled)
 - [x] `.env.production` committed — Vite bakes Supabase vars into CF Pages build at compile time
-- [x] All Supabase Edge Function secrets set (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`, `RESEND_API_KEY`)
-- [x] `VITE_STRIPE_PUBLISHABLE_KEY` added to `.env.production`
+- [x] All Supabase Edge Function secrets set (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`, `RESEND_API_KEY`, `FULFILLMENT_SECRET`, `RECEIVE_EMAIL_SECRET`)
 
 ### Database (Supabase)
-- [x] `products` table + RLS
-- [x] `cart_items` table + RLS (guest session_id + auth user_id)
-- [x] `orders` + `order_items` tables + RLS
-- [x] `custom_requests` table + RLS
-- [x] `profiles` table + `is_admin` flag
-- [x] `admin_allowlist` — seeded with kmitch2087@gmail.com, kristinmitchell@aethyx.space, aopie91@gmail.com
-- [x] `settings` table — seeded with `id=1` row
-- [x] `email_templates` table
-- [x] `printer_queue` table (written by stripe-webhook on payment)
-- [x] `product_reviews` table + RLS (migration 20260504000001)
-- [x] `discount_codes` table + RLS (migration 20260504000002)
-- [x] Products seeded into DB (all 24 products, migration 20260504000003)
-- [x] `is_admin()` SECURITY DEFINER function + GRANT EXECUTE fix applied
-- [x] `handle_new_user` trigger — auto-creates profile, checks allowlist for is_admin
-- [x] `set_updated_at` trigger on all relevant tables
-- [x] Row-Level Security on every table
-- [x] `wishlists` table + RLS — migration 20260514000001
-- [x] `loyalty_accounts` + `loyalty_transactions` tables + `increment_loyalty_points()` SECURITY DEFINER fn — migration 20260514000002
-- [x] `email_subscribers` table + RLS — migration 20260514000003
-- [x] `analytics_events` table + RLS — migration 20260511000001
-- [x] `site_content` table — CMS page copy; `(page, section, key)` composite unique key + `value` + `default_value` + `value_type` + `sort_order`; ~60 rows seeded across all public pages — migrations 20260522000001 + 20260525000001
-- [x] `client_edit_requests` base table — backfilled migration 20260508000001 (was created directly in Supabase dashboard; now tracked locally)
+- [x] `products`, `cart_items`, `orders`, `order_items`, `custom_requests` tables + RLS
+- [x] `profiles` + `admin_allowlist` + `settings` + `email_templates` + `printer_queue`
+- [x] `product_reviews`, `discount_codes`, `wishlists`, `loyalty_accounts`, `loyalty_transactions`
+- [x] `email_subscribers`, `analytics_events`, `site_content`, `client_edit_requests`
+- [x] `inbox_messages` — inbound email storage (thread_id, kind, status, message_id uniqueness)
+- [x] All SECURITY DEFINER functions + triggers + RLS policies
+- [x] Products seeded (24 products, migration 20260504000003)
+- [x] `site_content` seeded (~60 rows, migrations 20260522000001 + 20260525000001)
 
 ### Edge Functions (Supabase)
-- [x] `create-checkout` — creates Stripe PaymentIntent, server-side price + discount validation, returns `clientSecret`
-- [x] `stripe-webhook` — handles `payment_intent.succeeded` + `checkout.session.completed`, marks order paid, queues printer_queue entry, **awards Pour Points**, sends customer confirmation + printer fulfillment email (design file URLs + CSV + HMAC tracking link + CC to Kristin)
-- [x] `submit-tracking` — printer submits tracking number via HMAC-signed magic link; updates order + notifies customer
-- [x] `send-notification` — Resend-backed email dispatch with template system
-- [x] `verify-email` — syntax check, disposable domain blocklist, MX lookup via Cloudflare DNS
-- [x] `validate-discount` — validates promo codes against cart total (does NOT increment use_count until checkout)
-- [x] `admin-contact` — admin-only; Opie sends a message to Kristin directly from the dashboard; branded email with reply-to
-- [x] `notify-project-status` — sends project update email to Opie (aopie91@gmail.com); once-a-day rate limit
-- [x] `redeem-points` — exchanges 100 Pour Points for single-use $5 discount code; atomic deduction with optimistic concurrency
-- [x] `track-event` — analytics event ingestion (page_view, add_to_cart, purchase, etc.)
+- [x] `create-checkout`, `stripe-webhook`, `submit-tracking`, `send-notification`, `verify-email`
+- [x] `validate-discount`, `admin-contact`, `notify-project-status`, `redeem-points`, `track-event`
+- [x] `receive-email` (v11) — inbound email webhook; `verify_jwt: false`; stores in `inbox_messages`; alerts aopie91@gmail.com via Resend
 
 ### Frontend — Public Pages
-- [x] Homepage (hero carousel, INTRO_HOLD_MS intro image, glass card overlay, featured products, email capture now DB-backed, rotating quotes, Organization JSON-LD, TICKER_ITEMS marquee with pause-on-hover + `prefers-reduced-motion`)
-- [x] Shop (full catalog, published filter, URL-synced search `?q=`, sort: Featured/Price/A→Z `?sort=`)
-- [x] Product detail (variants, colors, gallery, cart add, custom request modal, reviews display)
-- [x] Collections
-- [x] About
-- [x] Contact (wired to Supabase — submits to `custom_requests` with `garment='contact-form'`; Instagram link live)
-- [x] FAQ
-- [x] 404
-- [x] `/proposal` — Founding Client Offer page (wholesale/partnership pitch)
-- [x] `/wishlist` — saved products page (auth = DB, guest = localStorage)
-- [x] `/privacy` — Privacy Policy page
-- [x] `/terms` — Terms of Service page
+- [x] Homepage, Shop, Product detail, Collections, About, Contact, FAQ, 404, `/proposal`, `/wishlist`, `/privacy`, `/terms`
 
 ### Frontend — Admin Dashboard (`/admin`)
-- [x] Admin Login
-- [x] Dashboard (overview)
-- [x] Products (list + edit)
-- [x] Orders (real DB data, status management)
-- [x] Custom Requests
-- [x] Reviews (approval queue)
-- [x] Settings
-- [x] User Manual (`/admin/manual` — full operational guide for Opie)
-- [x] **Project Status (`/admin/project-status` — Notify Opie button)**
-- [x] HelpPanel (? button in header — quick-reference slide-out)
-- [x] ContactKristinModal — Opie can message Kristin directly; sends branded email
-- [x] **EditRequests (`/admin/edit-requests`)** — split-view notes system (Opie left / Kristin right), mark done, archive, inline reply threads, author-attributed messages, DB-backed with RLS
-- [x] **Analytics (`/admin/analytics`)** — page views, events, top pages table
-- [x] **Pour Points Loyalty (`/admin/loyalty`)** — member table, transaction history, manual adjustment modal
-- [x] **Customer Lookup (`/admin/customers`)** — email search, stats grid (orders/spend/loyalty/wishlist), expandable order history
-- [x] **Email Subscribers (`/admin/subscribers`)** — list, CSV export, 8-week sparkline
-- [x] **Discount Codes (`/admin/discount-codes`)** — create/toggle/delete, usage progress bar, status badges (Active/Inactive/Expired/Exhausted)
-- [x] **Content (`/admin/content`)** — Home/Shop/About/Contact/FAQ tabs; edit all public page copy live via `site_content` DB table (no deploy required)
+- [x] Login, Dashboard, Products, Orders, Custom Requests, Reviews, Settings
+- [x] User Manual, Project Status, HelpPanel, ContactKristinModal
+- [x] EditRequests, Analytics, Pour Points Loyalty, Customer Lookup, Email Subscribers, Discount Codes, Content
+- [x] **Inbox (`/admin/inbox`)** — full inbox UI for `inbox_messages` (built in prior session)
+- [x] **Email Templates (`/admin/email-templates`)** — rich contenteditable editor, Visual/HTML/Preview/Plain Text tabs, toolbar, variable palette, live preview, test send
 
-### Frontend — Components
-- [x] Navbar (cart icon + count, wishlist heart badge, responsive)
-- [x] Cart drawer (right slide-out, guest + auth, discount code field)
-- [x] Product card (wishlist heart toggle, star rating display)
-- [x] Custom garment request modal
-- [x] Footer
-- [x] ProtectedRoute (admin gate with loading wait)
-- [x] AdminLayout with mobile sidebar
-- [x] SEO component (`react-helmet-async`) — applied to all public pages + JSON-LD support
-- [x] `og-default.jpg` Open Graph image
-- [x] `sitemap.xml` + `robots.txt` in `public/`
-
-### Auth & Cart
-- [x] AuthContext — onAuthStateChange listener + race condition fix
-- [x] Guest cart (session_id) + Auth cart (user_id)
-- [x] Cart context (add / remove / update quantity / apply discount)
-- [x] `useMergedProducts()` — merges static + DB products; DB takes precedence by slug
-- [x] `WishlistContext` — single shared auth subscription for entire app; `useWishlist` re-exports from context
-
-### Payments
-- [x] Stripe embedded Payment Element (stays on site, no redirect)
-- [x] `Checkout.tsx` — branded dark/yellow page with Stripe Payment Element
-- [x] `CheckoutReturn.tsx` — order confirmed screen, clears cart
-- [x] Guest email capture at checkout
-- [x] Discount code validation at checkout (server-side via `validate-discount`)
-
-### SEO & Discoverability
-- [x] Page titles, meta descriptions, Open Graph tags on all public pages
-- [x] `sitemap.xml` (all public routes)
-- [x] `robots.txt` with sitemap reference
-
-### Documentation
-- [x] `CLAUDE.md` — session instructions (project + global)
-- [x] `docs/EXECUTIVE_SUMMARY.md` — client/investor-facing overview
-- [x] `docs/USER_MANUAL.md` — Opie's operational guide
-- [x] `docs/HANDOFF.md` — full technical dev handoff
-- [x] `docs/PROJECT_STATUS.md` — this file
-- [x] `docs/COST_ANALYSIS.md` — market rate vs. actual cost
-- [x] `docs/LOVABLE_PHASE2_PHASE3.md` — Phase 2/3 Lovable prompt scripts
-- [x] 3-day developer curriculum (`~/Desktop/PG_Dev_Curriculum/`) — Day 1 (Web/DNS/Vite), Day 2 (Auth/DB/Security), Day 3 (Payments/Email/Deploy) + Quiz
+### CF Email Worker
+- [x] `cloudflare-workers/receive-email/src/index.ts` — postal-mime parser → posts to `receive-email` Supabase fn
+- [x] `RECEIVE_EMAIL_SECRET` set in Supabase
+- [ ] **⚠️ DEPLOY BLOCKER:** CF Worker not yet deployed — wrangler session needs re-auth (see Manual Steps below)
 
 ---
 
 ## 📋 Remaining Backlog
 
-### 🔴 Before Real Customer Orders
+### 🔴 Needs Manual Action
 
-- [ ] Select fulfillment partner (Printful or Printify) and wire API key into `stripe-webhook` — currently using local printer (`Up2ournecksinfabric@gmail.com`) via email+CSV
-- [x] Verify `opie@pournogravy.com` sender domain in Resend — DKIM+SPF ✅; inbound MX fails (GoDaddy conflict, non-blocking for outbound)
-- [x] Seed `email_templates` — `order_confirmation`, `printer_notification`, `custom_request` all seeded
-- [x] Create Supabase Storage `products` bucket with public read (ProductEdit image upload)
-- [x] Create Supabase Storage `print-files` bucket — 74 PNGs uploaded (black/ + white/)
+- [ ] **CF Worker deploy** — run `npx wrangler login` in `cloudflare-workers/receive-email/`, then:
+  ```bash
+  echo '806ce219702ba9b9b0f5a2a74da816b0654fdc4e9c3c428323ae5eac29368f28' | npx wrangler secret put RECEIVE_EMAIL_SECRET
+  echo 'https://emtjkawcmsfgjyimnncf.supabase.co' | npx wrangler secret put SUPABASE_URL
+  npx wrangler deploy
+  ```
+  Then: CF Dashboard → Email → Email Routing → Routes → add `opie@pournogravy.com → Worker → pournogravy-receive-email`
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly
 - [ ] Move `opie@pournogravy.com` off GoDaddy → Resend inbound (non-urgent, outbound works)
 
-### 🟡 Code Hygiene (Won't Break Anything, But Should Be Done)
+### 🟡 Code Hygiene
 
-- [ ] Delete `src/utils/supabase/` — dead second Supabase client, never used (confirmed still present)
-- [x] Delete `src/lib/fulfillment.ts` — DELETED ✓
-- [x] Delete `wrangler.jsonc` — DELETED ✓
-- [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY` for local dev
+- [ ] Delete `src/utils/supabase/` — dead second Supabase client
+- [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY`
 - [ ] Delete deprecated `main` branch from GitHub
-- [ ] Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)
 - [ ] `npm audit fix` — 19 vulnerabilities (none critical)
 
-### 🟢 Phase 3 Features
+### 🟢 Phase 3
 
-- [ ] Cloudflare Workers — proxy Supabase calls server-side (security hardening)
-- [x] Analytics — `track-event` edge fn + `analytics_events` table + Admin Analytics page
-- [x] CMS content editing — all public page copy editable from `/admin/content` via `site_content` table
-- [ ] Cart merge on login (guest → auth cart merge)
-- [x] Bundle size optimization — all non-critical routes lazy-loaded via React.lazy() + Suspense
-- [ ] Email marketing integration (Klaviyo or Mailchimp) for captured emails
-- [x] Pour Points loyalty program (earn on purchase, redeem for $5 discount codes)
-- [x] Wishlist / Save for later (heart toggle on cards, `/wishlist` page)
-- [x] Product search + filter (URL-synced `?q=` + `?sort=` in Shop)
+- [ ] Cart merge on login (guest → auth)
+- [ ] Email marketing integration (Klaviyo or Mailchimp)
 - [ ] International shipping config
-- [ ] Wholesale portal (foundation exists at `/proposal`)
+- [ ] Wholesale portal (foundation at `/proposal`)
 
 ---
 
@@ -196,29 +107,22 @@
 
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
-| Fulfillment not wired to POD | 🟡 Medium | Partial | Local printer email flow active (Up2ournecksinfabric@gmail.com via stripe-webhook). POD (Printful/Printify) still unselected — not blocking for current volume |
-| Email templates not seeded | ✅ Resolved | Done | All templates seeded: order_confirmation, printer_notification, custom_request |
-| Storage buckets missing | ✅ Resolved | Done | `products` bucket (admin image upload) + `print-files` bucket (74 PNGs) both created |
-| Test order not placed | 🔴 High | Open | Need to place a real test order to verify customer confirmation + printer email flow end-to-end |
+| CF Worker not deployed | 🟡 Medium | Blocked | `npx wrangler login` + deploy (see above) |
+| Test order not placed | 🔴 High | Open | Place test order end-to-end |
 | `src/utils/supabase/` dead code | 🟡 Medium | Open | Delete folder |
-| `src/lib/fulfillment.ts` dead code | 🟡 Medium | ✅ Resolved | Deleted |
-| `wrangler.jsonc` duplicate | 🟡 Medium | ✅ Resolved | Deleted |
 | Local dev env var mismatch | 🟡 Medium | Open | Rename key in `.env.local` |
-| 5 npm vulnerabilities | 🟡 Low | Needs Terminal | Run `npm audit fix` from Terminal in project root. Note: esbuild/Vite moderate vuln requires `--force` (Vite 8 upgrade) — dev-server-only risk, safe to defer. |
-| Bundle ~972KB | 🟡 Low | ✅ Resolved | Lazy-loaded 28 routes via React.lazy() + Suspense |
-| Auth spinner on Supabase token refresh | 🟡 Medium | ✅ Resolved | `loadedProfileIdRef` in AuthContext guards `setLoading(true)` — only sets loading on SIGNED_IN if it's a different user than the already-loaded profile (commit 4456f80) |
+| npm vulnerabilities | 🟡 Low | Open | `npm audit fix` |
 
 ---
 
 ## Cloudflare Notes
 
-⚠️ Active CF Pages project is **`pournogravydev`** — NOT `pournogravy` (that project has no git connection and is abandoned).
+⚠️ Active CF Pages project is **`pournogravydev`** — NOT `pournogravy` (abandoned).
 
 - Build command: `npm run build`
 - Output dir: `dist`
 - Repo: `kmitch2087-dot/pournogravy` → master branch
-- Deploy time: ~2 min after push
 
 ---
 
-*This document is updated at the end of each development session. Dates reflect system-recognized milestones across multiple AI development tools, not calendar hours worked.*
+*Updated end of session June 8–9, 2026.*

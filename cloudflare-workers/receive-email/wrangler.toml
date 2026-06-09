@@ -9,8 +9,15 @@ account_id = "caba1ba69a8d9542e5ec6ec0f480bbcc"
 # After deploying, go to:
 #   Cloudflare Dashboard → Email → Email Routing → Routes
 # Add a rule: opie@pournogravy.com → Worker → pournogravy-receive-email
+#
+# ⚠️ DEPLOY BLOCKER: wrangler OAuth session is not authorized for account caba1ba69a8d9542e5ec6ec0f480bbcc.
+# Fix: cd cloudflare-workers/receive-email && npx wrangler login
+#   → Authenticate with the Pournogravy Cloudflare account (not the Aethyx account if separate)
+# Then set secrets and deploy:
+#   echo 'SECRET_VALUE' | npx wrangler secret put RECEIVE_EMAIL_SECRET
+#   echo 'https://emtjkawcmsfgjyimnncf.supabase.co' | npx wrangler secret put SUPABASE_URL
+#   npx wrangler deploy
+# RECEIVE_EMAIL_SECRET value: 806ce219702ba9b9b0f5a2a74da816b0654fdc4e9c3c428323ae5eac29368f28
 
 [vars]
-# Set these as secrets via wrangler secret put, NOT here:
-#   npx wrangler secret put SUPABASE_URL
-#   npx wrangler secret put RECEIVE_EMAIL_SECRET
+# Secrets are set via wrangler secret put (see above)
