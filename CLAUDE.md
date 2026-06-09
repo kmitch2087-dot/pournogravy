@@ -4,7 +4,7 @@
 - **Client:** Adam "Opie" Oppenheimer — Pournogravy (bartender-themed apparel brand)
 - **Developer/Agency:** Kristin Mitchell — Aethyx (Founder & Developer)
 - **Live Site:** pournogravy.com (Cloudflare Pages project: `pournogravydev`, connected to kmitch2087-dot/pournogravy on GitHub)
-- **Stage:** Launched soft; active build in progress; payment processing pending activation
+- **Stage:** Launched soft; active build in progress; Stripe + Resend + fulfillment email wired
 
 ## Tech Stack
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS + shadcn/ui + Framer Motion
@@ -12,7 +12,7 @@
 - **Payments:** Stripe (Checkout Sessions + Webhooks — edge functions built, secrets not yet set)
 - **Email:** Resend (via send-notification Edge Function — API key not yet set)
 - **Deployment:** Cloudflare Pages (`pournogravydev` project) → GitHub (master branch)
-- **AI Builder:** Lovable (bidirectional GitHub sync to master branch)
+- **AI Builder:** Claude (Cowork mode) — Lovable disconnected 2026-06-08, Claude is now exclusive builder
 - **Build command:** `npm run build` → output dir: `dist`
 
 ## ⚠️ CLOUDFLARE PROJECT NAME
@@ -37,10 +37,8 @@ The local `.env.local` file uses `VITE_SUPABASE_PUBLISHABLE_KEY`. The integratio
 ## Branch Notes
 - Active branch: `master`
 - Old branch: `main` (should be deleted)
-- Lovable syncs to whichever branch is set as GitHub default — keep `master` as default
-
-## Duplicate Repos (Safe to Ignore/Delete)
-Lovable created several private repos with hash suffixes (pournogravy-6d00a2bf, pournogravy-95895ac2, pournogravy-c537ba60, pournogravy-c8c50645). These are abandoned Lovable sessions. Only `kmitch2087-dot/pournogravy` is the real repo.
+## Duplicate Repos (Safe to Delete)
+Abandoned Lovable session repos with hash suffixes (pournogravy-6d00a2bf, pournogravy-95895ac2, pournogravy-c537ba60, pournogravy-c8c50645). Only `kmitch2087-dot/pournogravy` is the real repo.
 
 ---
 
@@ -66,8 +64,6 @@ At the start of each new Cowork session on this project:
 | `docs/HANDOFF.md` | Full technical dev handoff | Every session (add schema changes, new services, decisions) |
 | `docs/PROJECT_STATUS.md` | Kristin's internal tracker | Every session |
 | `docs/COST_ANALYSIS.md` | Market rate vs. actual cost | When scope changes significantly |
-| `docs/LOVABLE_PHASE2_PHASE3.md` | Phase 2 + 3 Lovable prompts + safe execution guide | When phases execute |
-
 ---
 
 ## Key Files to Know
@@ -104,19 +100,23 @@ At the start of each new Cowork session on this project:
 ## Supabase Edge Functions
 | Function | Purpose | Required Secrets |
 |----------|---------|-----------------|
-| `create-checkout` | Stripe Checkout session creator | STRIPE_SECRET_KEY |
-| `stripe-webhook` | Handles payment.completed, marks order paid | STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET |
-| `send-notification` | Resend email dispatch with template system | RESEND_API_KEY |
+| `create-checkout` | Stripe Checkout session creator | STRIPE_SECRET_KEY ✅ |
+| `stripe-webhook` | Handles payment.completed, marks order paid, sends printer + customer emails, awards Pour Points | STRIPE_SECRET_KEY ✅, STRIPE_WEBHOOK_SIGNING_SECRET ✅, FULFILLMENT_SECRET ✅ |
+| `send-notification` | Resend email dispatch with template system | RESEND_API_KEY ✅ |
 | `verify-email` | Email validation (syntax, disposable, MX lookup) | None |
+| `submit-tracking` | Printer submits tracking number via magic link (HMAC verified) | FULFILLMENT_SECRET ✅ |
 
 ## Things Still Needing Configuration (Before Marketing)
-1. Stripe secrets in Supabase Edge Function secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-2. Resend API key in Supabase Edge Function secrets: `RESEND_API_KEY`
-3. Verify `opie@pournogravy.com` as sender domain in Resend
-4. Select fulfillment partner (Printful or Printify) and wire API key into stripe-webhook
-5. Seed settings table: `INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING;`
-6. Seed email_templates with 'order_confirmation' and 'custom_request' rows
-7. Create Supabase Storage `products` bucket with public read access
+1. ✅ Stripe secrets set: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`
+2. ✅ Resend API key set: `RESEND_API_KEY`
+3. ✅ `FULFILLMENT_SECRET` set for printer tracking magic links
+4. ⚠️ Verify `opie@pournogravy.com` as sender in Resend (DKIM/SPF done; move email off GoDaddy when ready)
+5. ✅ Settings table seeded with id=1; fulfillment_provider='local_printer'; printer_email set
+6. ✅ email_templates seeded: order_confirmation, printer_notification, custom_request
+7. ✅ Supabase Storage `products` bucket created (public read)
+8. ✅ Supabase Storage `print-files` bucket created; 74 PNGs uploading (black/ + white/)
+9. ⚠️ Move opie@pournogravy.com email off GoDaddy (inbound MX conflicts — non-urgent)
+10. ⚠️ Place test order to verify full fulfillment email flow
 
 ## Style Preferences
 - Always look for the most credit-efficient approach

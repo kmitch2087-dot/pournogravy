@@ -160,22 +160,23 @@ Deno.serve(async (req) => {
         status: "queued",
       }]);
 
-      // Fetch print_file_url for each product in this order
-      const productIds = (items ?? [])
-        .map((it: { product_id?: string }) => it.product_id)
-        .filter(Boolean) as string[];
+      // Design file URLs are stored in Supabase Storage keyed by product slug
+      const STORAGE_BASE = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object/public/print-files";
 
-      const { data: productRows } = productIds.length > 0
-        ? await supabase
-            .from("products")
-            .select("id, image_url, print_file_url")
-            .in("id", productIds)
-        : { data: [] };
-
-      const printFileMap = new Map<string, string>();
-      for (const p of (productRows ?? []) as Array<{ id: string; image_url: string | null; print_file_url: string | null }>) {
-        printFileMap.set(p.id, p.print_file_url ?? p.image_url ?? "");
+      // Build design links list (one per unique slug) for printer email
+      const seenSlugs = new Set<string>();
+      const designLinkLines: string[] = [];
+      for (const it of (items ?? [])) {
+        const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
+        const slug = String(s.slug ?? "");
+        if (slug && !seenSlugs.has(slug)) {
+          seenSlugs.add(slug);
+          designLinkLines.push(
+            `${slug}:\n  Black: ${STORAGE_BASE}/black/${slug}_black.png\n  White: ${STORAGE_BASE}/white/${slug}_white.png`
+          );
+        }
       }
+      const designLinks = designLinkLines.join("\n\n");
 
       // Build fulfillment CSV
       const ship = order.shipping_address as Record<string, unknown> | null;
@@ -184,7 +185,8 @@ Deno.serve(async (req) => {
       const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Print File URL";
       const csvRows = (items ?? []).map((it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
         const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
-        const printUrl = it.product_id ? printFileMap.get(it.product_id) ?? "" : "";
+        const slug = String(s.slug ?? "");
+        const printUrl = slug ? `${STORAGE_BASE}/black/${slug}_black.png` : "";
         const col = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
         return [
           col(order.id.slice(0, 8).toUpperCase()),
@@ -232,6 +234,27 @@ Deno.serve(async (req) => {
             order_items: itemsList,
             shipping_address: addr,
             tracking_submit_url: trackingSubmitUrl,
+            design_links: designLinks,
+          },
+          attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
+        },
+      });
+
+      // CC: send same printer notification to Kristin for test review
+      await supabase.functions.invoke("send-notification", {
+        body: {
+          templateKey: "printer_notification",
+          recipient: "kmitch2087@gmail.com",
+          relatedKind: "order",
+          relatedId: order.id,
+          variables: {
+            order_number: shortId,
+            customer_name: order.email.split("@")[0],
+            customer_email: order.email,
+            order_items: itemsList,
+            shipping_address: addr,
+            tracking_submit_url: trackingSubmitUrl,
+            design_links: designLinks,
           },
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
