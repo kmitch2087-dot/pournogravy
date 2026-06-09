@@ -230,6 +230,22 @@ const CustomGarmentRequestModal = ({
       return;
     }
 
+    // Notify Opie — fire-and-forget so a slow email never blocks the success state
+    supabase.functions.invoke("send-notification", {
+      body: {
+        to: "opie@pournogravy.com",
+        template_key: "custom_request_notification",
+        variables: {
+          customer_name: form.name.trim(),
+          customer_email: trimmedEmail,
+          customer_phone: form.phone.trim(),
+          garment: form.garment.trim(),
+          design_name: designName ?? "None",
+          notes: form.notes.trim() || "None",
+        },
+      },
+    }).catch((err) => console.warn("[send-notification] custom request notify failed", err));
+
     setSubmitted(true);
   };
 

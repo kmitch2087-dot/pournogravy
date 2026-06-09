@@ -105,6 +105,21 @@ const Contact = () => {
                     if (error) {
                       toast.error("Couldn't send your message — try again.");
                     } else {
+                      // Notify Opie — fire-and-forget
+                      supabase.functions.invoke("send-notification", {
+                        body: {
+                          to: "opie@pournogravy.com",
+                          template_key: "custom_request_notification",
+                          variables: {
+                            customer_name: name,
+                            customer_email: email,
+                            customer_phone: "N/A",
+                            garment: "Contact Form",
+                            design_name: "N/A",
+                            notes: message,
+                          },
+                        },
+                      }).catch((err) => console.warn("[send-notification] contact notify failed", err));
                       setSubmitted(true);
                     }
                   }}
