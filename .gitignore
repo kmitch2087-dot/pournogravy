@@ -26,3 +26,11 @@ dist-ssr
 # Environment
 .env
 .env.local
+
+# Print-source PNGs that live in Supabase Storage (not frontend assets)
+# These land here accidentally from the CLI upload workflow
+public/products/*_black.png
+public/products/*_white.png
+
+# Supabase CLI temp files
+supabase/.temp/
