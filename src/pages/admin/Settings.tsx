@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Printer, Info, Eye, EyeOff, Send as SendIcon, Truck } from "lucide-react";
+import { Loader2, Save, Printer, Info, Eye, EyeOff, Send as SendIcon, Truck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const DPI_OPTIONS = ["72", "150", "300", "600"];
 
 const Settings = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [activeTpl, setActiveTpl] = useState<string | null>(null);
 
   const { data: settings, isLoading } = useQuery({
@@ -178,7 +180,7 @@ const Settings = () => {
     setSendingTest(true);
     try {
       const { error } = await supabase.functions.invoke("send-notification", {
-        body: { template: tpl.key, to: tplForm.to_email, variables: tplForm.variables },
+        body: { templateKey: tpl.key, recipient: tplForm.to_email, variables: tplForm.variables },
       });
       if (error) throw error;
       toast.success(`Test email sent to ${tplForm.to_email}`);
@@ -449,119 +451,26 @@ const Settings = () => {
         </div>
       </TabsContent>
 
-      {/* ── Email Templates ── */}
+      {/* ── Email Templates ── moved to dedicated page ── */}
       <TabsContent value="emails">
-        <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
-          <div className="space-y-1">
-            {templates?.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => { setActiveTpl(t.key); setShowHtml(false); }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-sm border transition ${
-                  activeTpl === t.key
-                    ? "border-[#fde047] bg-[#fde047]/10 text-[#fde047]"
-                    : "border-transparent hover:bg-muted/50"
-                }`}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-          {tpl && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display tracking-widest">{tpl.name.toUpperCase()}</CardTitle>
-                <p className="text-xs text-muted-foreground">{tpl.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* Subject */}
-                <Field label="Subject" value={tplForm.subject} onChange={(v) => setTplForm({ ...tplForm, subject: v })} />
-
-                {/* Template variables as individual labeled inputs */}
-                {(tpl.variables ?? []).length > 0 && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-sm font-semibold">Template Variables</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Fill these in to preview or send a test email. They replace the <code className="text-[#fde047]">{"{{variable}}"}</code> placeholders in the template.
-                      </p>
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {(tpl.variables as string[]).map((varName) => {
-                        const label = varName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-                        return (
-                          <div key={varName} className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">{label} <code className="text-[10px] text-[#fde047]/70">{`{{${varName}}}`}</code></Label>
-                            <Input
-                              value={tplForm.variables[varName] ?? ""}
-                              onChange={(e) => setTplForm((f) => ({ ...f, variables: { ...f.variables, [varName]: e.target.value } }))}
-                              placeholder={`e.g. ${label}`}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Send test */}
-                <div className="flex gap-2 items-end p-3 rounded-sm bg-muted/30 border border-border/50">
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Send test to</Label>
-                    <Input
-                      type="email"
-                      value={tplForm.to_email}
-                      onChange={(e) => setTplForm({ ...tplForm, to_email: e.target.value })}
-                      placeholder="you@example.com"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <Button size="sm" onClick={sendTestEmail} disabled={sendingTest || !tplForm.to_email}
-                    variant="outline" className="h-8 shrink-0">
-                    {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendIcon className="h-3.5 w-3.5" />}
-                    <span className="ml-1.5">Send Test</span>
-                  </Button>
-                </div>
-
-                {/* HTML preview toggle (advanced) */}
-                <div>
-                  <button
-                    onClick={() => setShowHtml(!showHtml)}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
-                  >
-                    {showHtml ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    {showHtml ? "Hide HTML" : "View / Edit Raw HTML"}
-                  </button>
-                  {showHtml && (
-                    <div className="mt-3 space-y-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">HTML body</Label>
-                        <Textarea
-                          value={tplForm.body_html}
-                          onChange={(e) => setTplForm({ ...tplForm, body_html: e.target.value })}
-                          rows={12}
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Plain text body</Label>
-                        <Textarea
-                          value={tplForm.body_text}
-                          onChange={(e) => setTplForm({ ...tplForm, body_text: e.target.value })}
-                          rows={5}
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <SaveBtn onClick={saveTemplate} label="SAVE TEMPLATE" />
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        <Card className="max-w-lg">
+          <CardHeader>
+            <CardTitle className="font-display tracking-widest">EMAIL TEMPLATES</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Templates have been moved to their own full-featured editor page — rich visual editing,
+              live preview, variable palette, and test sends, all in one place.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => navigate("/admin/email-templates")}
+              className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              OPEN EMAIL TEMPLATES
+            </Button>
+          </CardContent>
+        </Card>
       </TabsContent>
     </Tabs>
   );

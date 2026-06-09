@@ -1,0 +1,17 @@
+{
+  "name": "pournogravy-receive-email",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "postal-mime": "^2.2.8"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.0",
+    "@cloudflare/workers-types": "^4.20250605.0"
+  }
+}

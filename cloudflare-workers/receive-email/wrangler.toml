@@ -1,0 +1,16 @@
+name = "pournogravy-receive-email"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "caba1ba69a8d9542e5ec6ec0f480bbcc"
+
+# This worker handles inbound email for opie@pournogravy.com.
+# Deploy with: cd cloudflare-workers/receive-email && npx wrangler deploy
+#
+# After deploying, go to:
+#   Cloudflare Dashboard → Email → Email Routing → Routes
+# Add a rule: opie@pournogravy.com → Worker → pournogravy-receive-email
+
+[vars]
+# Set these as secrets via wrangler secret put, NOT here:
+#   npx wrangler secret put SUPABASE_URL
+#   npx wrangler secret put RECEIVE_EMAIL_SECRET

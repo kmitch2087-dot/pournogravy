@@ -63,7 +63,8 @@ const Subscribers    = lazy(() => import("./pages/admin/Subscribers"));
 const DiscountCodes  = lazy(() => import("./pages/admin/DiscountCodes"));
 const Content        = lazy(() => import("./pages/admin/Content"));
 const BlogAdmin      = lazy(() => import("./pages/admin/BlogAdmin"));
-const InvoiceTracker = lazy(() => import("./pages/admin/InvoiceTracker"));
+const InvoiceTracker  = lazy(() => import("./pages/admin/InvoiceTracker"));
+const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -152,6 +153,7 @@ const App = () => (
                       <Route path="content"           element={<Content />} />
                       <Route path="blog"              element={<BlogAdmin />} />
                       <Route path="invoices"          element={<InvoiceTracker />} />
+                      <Route path="email-templates"   element={<EmailTemplates />} />
                     </Route>
                     <Route path="/blog"        element={<Blog />} />
                     <Route path="/blog/:slug"  element={<BlogPost />} />

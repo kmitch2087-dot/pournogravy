@@ -108,8 +108,8 @@ const Contact = () => {
                       // Notify Opie — fire-and-forget
                       supabase.functions.invoke("send-notification", {
                         body: {
-                          to: "opie@pournogravy.com",
-                          template_key: "custom_request_notification",
+                          recipient: "opie@pournogravy.com",
+                          templateKey: "custom_request_notification",
                           variables: {
                             customer_name: name,
                             customer_email: email,

@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
   { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
+  { to: "/admin/email-templates", label: "Email Templates",       icon: Mail,            end: false },
 ];
 
 const SidebarContent = ({
