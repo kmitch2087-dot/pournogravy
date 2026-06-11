@@ -32,7 +32,7 @@ interface DbProductRow {
   badge: string | null;
   humor: string | null;
   bad_advice: unknown;
-  description_long: unknown;
+  long_description: string[] | null;
   fit_type: string;
   status: string;
   published: boolean;
@@ -48,14 +48,14 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   name: r.name,
   price: r.price_cents / 100,
   description: r.description ?? "",
-  longDescription: Array.isArray(r.description_long) ? (r.description_long as string[]) : undefined,
+  longDescription: r.long_description?.length ? r.long_description : undefined,
   sizes: r.sizes ?? [],
   image: r.image_url ?? r.images?.[0],
   images: r.images ?? [],
   badge: r.badge ?? undefined,
   humor: r.humor ?? "",
-  badAdvice: r.bad_advice && typeof r.bad_advice === "object"
-    ? (r.bad_advice as { title: string; paragraphs: string[] })
+  badAdvice: Array.isArray(r.bad_advice) && (r.bad_advice as unknown[]).length
+    ? { title: "", paragraphs: r.bad_advice as string[] }
     : undefined,
   variants: Array.isArray(r.variants) && r.variants.length > 0
     ? (r.variants as Product["variants"])

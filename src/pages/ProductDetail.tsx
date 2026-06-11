@@ -1,6 +1,7 @@
 import SEO from "@/components/SEO";
 import { useParams, Link } from "react-router-dom";
-import { products, type ProductVariant, type ProductColor } from "@/data/products";
+import { type ProductVariant, type ProductColor } from "@/data/products";
+import { useMergedProducts } from "@/lib/productSource";
 import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,8 @@ import { format } from "date-fns";
 
 const ProductDetail = () => {
   const { id } = useParams();
-  // Only show published products on direct URL access. Drafts 404
-  // (matches the behavior of the shop grid + featured row hiding them).
-  const product = products.find((p) => p.id === id && p.published === true);
+  const { data: mergedProducts, isLoading: productsLoading } = useMergedProducts();
+  const product = mergedProducts?.find((p) => p.id === id && p.published === true);
   const { addItem } = useCart();
   const { trackAddToCart } = useAnalytics();
   const [selectedSize, setSelectedSize] = useState("");
@@ -97,6 +97,16 @@ const ProductDetail = () => {
     setActiveImage(0);
   }, [selectedVariant?.id, selectedColor?.id]);
 
+  if (productsLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center">
+        <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase animate-pulse">
+          ☠ Pouring...
+        </p>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="min-h-screen pt-32 text-center">
@@ -119,7 +129,7 @@ const ProductDetail = () => {
     );
   }
 
-  const related = products
+  const related = (mergedProducts ?? [])
     .filter((p) => p.id !== product.id && p.published === true)
     .slice(0, 3);
 
@@ -305,6 +315,25 @@ const ProductDetail = () => {
                   </span>
                 </div>
               )}
+
+              {/* "My name is Opie..." conversation — above price (8a + 8c) */}
+              {product.humor && (
+                <div
+                  className="relative border-2 border-[#fde047]/60 bg-black/40 p-5 mt-4 rough-border"
+                  style={{ boxShadow: "0 0 20px rgba(253,224,71,0.12), inset 0 0 24px rgba(253,224,71,0.05)" }}
+                >
+                  <p
+                    className="font-marker text-sm tracking-[0.2em] text-[#fde047] uppercase mb-3"
+                    style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
+                  >
+                    ☠ My name is Opie...
+                  </p>
+                  <p className="text-sm md:text-base text-foreground/90 leading-relaxed whitespace-pre-line">
+                    {product.humor}
+                  </p>
+                </div>
+              )}
+
               <p className="text-2xl md:text-3xl font-display tracking-wider mt-4">
                 ${product.price.toFixed(2)}
               </p>
@@ -323,38 +352,23 @@ const ProductDetail = () => {
               </p>
             ))}
 
-            {/* Short zinger callout */}
-            {product.humor && (
-              <div
-                className="relative border-l-2 border-[#fde047] bg-muted/40 p-5"
-                style={{ boxShadow: "inset 0 0 20px rgba(253,224,71,0.05)" }}
-              >
-                <p className="font-marker text-sm md:text-base italic text-foreground/90 leading-relaxed">
-                  "{product.humor}"
-                </p>
-              </div>
-            )}
-
-            {/* Bad Bartender Advice — multi-paragraph featured story */}
-            {product.badAdvice && (
+            {/* Bad Bartender Advice — yellow box only, no white duplicate (8b) */}
+            {product.badAdvice && product.badAdvice.paragraphs.length > 0 && (
               <div
                 className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
                 style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
               >
                 <p
-                  className="font-marker text-[10px] tracking-[0.3em] text-[#fde047] uppercase mb-2"
+                  className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
                   style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
                 >
                   ☠ Bad Bartender Advice
                 </p>
-                <h3 className="font-display text-xl md:text-2xl tracking-wider uppercase mb-4 leading-tight">
-                  {product.badAdvice.title}
-                </h3>
                 <div className="space-y-3">
                   {product.badAdvice.paragraphs.map((para, i) => (
                     <p
                       key={i}
-                      className="text-sm md:text-base text-foreground/80 leading-relaxed"
+                      className="text-lg text-foreground/80 leading-relaxed"
                     >
                       {para}
                     </p>

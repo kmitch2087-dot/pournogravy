@@ -13,15 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
 
-const TICKER_ITEMS = [
-  "Offend a Karen without having to open your mouth.",
-  "Go out and show fellow bartenders that you're a bartender too without having to verbally announce it (You entitled freak!).",
-  "Call out the general public on certain undesirable behaviors.",
-  "THEY'RE NOT CUSTOMERS! THEY'RE GUESTS!...OH, SHUT UP!!!",
-  "Eye rolls.",
-  "Your parents refusing to be seen out with you while you're wearing that.",
-  ...quotes,
-];
+const TICKER_ITEMS = Array(10).fill("Drink more, Bitch less, Tip big, Stay moist!");
 
 // Fallback product IDs when no active merch drop has products assigned.
 const HERO_PRODUCT_IDS = [
@@ -44,7 +36,7 @@ const Index = () => {
   const [heroPaused, setHeroPaused] = useState(false);
   // 1.5s hold before the glass + carousel appear, so the logo background reads first.
   const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
-  const INTRO_HOLD_MS = 1500;
+  const INTRO_HOLD_MS = 800;
 
   // Fetch products from the most recent active/scheduled merch drop.
   const { data: dropProductRows } = useQuery({
@@ -147,7 +139,7 @@ const Index = () => {
       {/* Hero carousel — product slides only. Glass headline lives as a
           persistent top-left overlay so it never competes with the logo. */}
       <section
-        className="relative min-h-[70vh] overflow-hidden noise-overlay bg-black"
+        className="relative min-h-[55vh] sm:min-h-[65vh] md:min-h-[70vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -167,7 +159,7 @@ const Index = () => {
           initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
           animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
           transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
-          className="absolute top-4 left-3 md:top-6 md:left-6 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-5 md:py-4 max-w-[210px] sm:max-w-[240px] md:max-w-[240px]"
+          className="absolute top-16 left-3 sm:top-20 md:top-6 md:left-6 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-5 md:py-4 max-w-[210px] sm:max-w-[240px] md:max-w-[240px]"
         >
           <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-primary-foreground">
             MILDLY OFFENSIVE<br />
@@ -246,8 +238,7 @@ const Index = () => {
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="w-full h-full object-cover scale-[1.35]"
-                            style={{ transformOrigin: `${product.thumbnailFocalX ?? 40}% ${product.thumbnailFocalY ?? 40}%` }}
+                            className="w-full h-full object-contain"
                             loading={slideIdx <= 3 ? "eager" : "lazy"}
                             decoding="async"
                           />

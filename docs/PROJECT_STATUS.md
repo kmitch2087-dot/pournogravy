@@ -9,15 +9,17 @@
 
 ## Current Phase
 **Phase:** Post-launch (soft) — Active Build  
-**Status:** Site is live. Real payment processing active. Admin dashboard fully operational. Rich Email Templates editor built and deployed. CF Email Worker built + Supabase wired — pending CF re-auth to deploy worker.
+**Status:** Site is live. Real payment processing active. Admin dashboard fully operational. CF Email Worker **deployed** (via CF REST API) + both secrets set. Print files **74/74** uploaded to Supabase Storage. One manual step remaining: update CF email routing rule to point `opie@pournogravy.com → pournogravy-receive-email` worker.
 
 ---
 
 ## Session Log (Latest First)
 
 | Date | Summary | Completed | Next Up |
-|------|---------|-----------|---------|
-| June 8–9, 2026 | **Rich Email Templates page + CF Email Worker + send-notification param fixes.** Built `src/pages/admin/EmailTemplates.tsx` (~600 lines) — full-featured admin email editor replacing the old Settings tab. Features: left sidebar with template list + hover actions (duplicate/delete), editable template name, subject input, 4-tab editor (Visual/HTML/Preview/Plain Text), rich text toolbar (undo/redo, bold/italic/underline/strike, headings, text+bg color picker, align, lists, link, image, HR, remove format), click-to-insert `{{variable}}` chips, live sandboxed iframe preview with desktop/mobile toggle and per-variable fill inputs, auto-generate plain text from HTML, test email send via `send-notification` edge fn. All using `contenteditable` + `document.execCommand()` — no new npm packages. Fixed `send-notification` param mismatch (3 files: `Contact.tsx`, `CustomGarmentRequestModal.tsx`, `EmailTemplates.tsx` — changed `to`/`template_key` → `recipient`/`templateKey`). Built CF Email Worker in `cloudflare-workers/receive-email/` (postal-mime + HMAC auth + posts to Supabase `receive-email` fn). Redeployed `receive-email` Supabase edge fn with `verify_jwt: false` (was incorrectly `true` — would reject CF worker calls). Set `RECEIVE_EMAIL_SECRET` in Supabase secrets. Committed + pushed all changes (commit `dafb7a0..1429fd4`). **BLOCKER:** CF Worker deploy requires `npx wrangler login` re-auth — wrangler session is for a different CF account. | Rich Email Templates page, send-notification param fixes, CF Worker files created, receive-email edge fn redeployed (verify_jwt: false), RECEIVE_EMAIL_SECRET set in Supabase, all committed + pushed to GitHub | **[Manual]** `npx wrangler login` → deploy CF Worker → set Email Routing rule in CF Dashboard |
+|------|---------|-----------|---------| 
+| June 11, 2026 | **Opie's full copy pass + product page overhaul.** DB: Updated all 24 products with Opie's exact `description`, `long_description`, `humor`, and `bad_advice` copy. Removed 3XL from all product sizes. Updated `site_content` — hero heading, CTA text ("OUR FULL MENU"), shop page heading/label; confirmed manifesto + superpowers + extras already matched spec. Marquee replaced with "Drink more, Bitch less, Tip big, Stay moist!" (repeated, seamless loop). Marked 29 `client_edit_requests` done + archived. Code: Fixed `productSource.ts` to read `long_description` (text[]) instead of `description_long` (Stripe jsonb); mapped `bad_advice` JSON array to `{ title: "", paragraphs }`. `ProductDetail.tsx` now uses `useMergedProducts()` — DB data overrides static. Layout: moved "My Name is Opie..." humor block above price; replaced old italic callout with yellow bordered box + `whitespace-pre-line` conversation rendering; removed white h3 title from Bad Bartender Advice box, enlarged paragraphs to `text-lg`. Index.tsx: badge delay reduced 1500ms → 800ms; glass headline top position fixed for mobile navbar clearance (`top-16`); hero section height reduced (`min-h-55vh` mobile); carousel images switched to `object-contain`; marquee copy updated. | All 9 spec parts complete; TypeScript clean | Push to GitHub; verify product pages show Opie's copy on live site; test marquee on mobile Safari |
+| June 9, 2026 | **CF Worker deployed + print files completed.** Deployed `pournogravy-receive-email` CF Worker via CF REST API (bypassed broken wrangler auth entirely — used `PUT /accounts/{id}/workers/scripts/pournogravy-receive-email` multipart upload with esbuild-bundled ESM). Set both Worker secrets (`RECEIVE_EMAIL_SECRET`, `SUPABASE_URL`) via CF secrets API. Completed print file uploads: 74/74 PNGs in Supabase Storage `print-files` bucket (37 black + 37 white). Cleaned up: dropped temp anon upload + delete RLS policies, deleted 18 duplicate `black/black/` files, deleted test file. | CF Worker deployed, 74 print PNGs confirmed, temp policies dropped, dupes cleaned | **[Manual]** CF Dashboard → Email → Email Routing → update rule for `opie@pournogravy.com` → `pournogravy-receive-email`; place test order |
+| June 8–9, 2026 | **Rich Email Templates page + CF Email Worker + send-notification param fixes.** Built `src/pages/admin/EmailTemplates.tsx` (~600 lines) — full-featured admin email editor replacing the old Settings tab. Features: left sidebar with template list + hover actions (duplicate/delete), editable template name, subject input, 4-tab editor (Visual/HTML/Preview/Plain Text), rich text toolbar (undo/redo, bold/italic/underline/strike, headings, text+bg color picker, align, lists, link, image, HR, remove format), click-to-insert `{{variable}}` chips, live sandboxed iframe preview with desktop/mobile toggle and per-variable fill inputs, auto-generate plain text from HTML, test email send via `send-notification` edge fn. All using `contenteditable` + `document.execCommand()` — no new npm packages. Fixed `send-notification` param mismatch (3 files: `Contact.tsx`, `CustomGarmentRequestModal.tsx`, `EmailTemplates.tsx` — changed `to`/`template_key` → `recipient`/`templateKey`). Built CF Email Worker in `cloudflare-workers/receive-email/` (postal-mime + HMAC auth + posts to Supabase `receive-email` fn). Redeployed `receive-email` Supabase edge fn with `verify_jwt: false` (was incorrectly `true` — would reject CF worker calls). Set `RECEIVE_EMAIL_SECRET` in Supabase secrets. Committed + pushed all changes (commit `dafb7a0..1429fd4`). | Rich Email Templates page, send-notification param fixes, CF Worker files created, receive-email edge fn redeployed (verify_jwt: false), RECEIVE_EMAIL_SECRET set in Supabase, all committed + pushed to GitHub | Deploy CF Worker, set Email Routing rule in CF Dashboard |
 | June 8, 2026 | **Fulfillment email pipeline — fully wired.** Rotated + set all Supabase edge function secrets: `STRIPE_SECRET_KEY` (was truncated from prior session), `STRIPE_WEBHOOK_SIGNING_SECRET` (fixed doubled `whsec_` prefix), `RESEND_API_KEY`, `FULFILLMENT_SECRET` (new — signs printer tracking magic links). Confirmed Resend domain for pournogravy.com is verified for outbound sending (DKIM+SPF ✅; inbound MX fails due to GoDaddy conflict — non-blocking). Created `print-files` Supabase Storage bucket with public SELECT policy; uploaded 74 print-ready PNGs to `print-files/black/` and `print-files/white/` via supabase CLI retry loop. Updated `stripe-webhook` (v29): removed DB lookup for print_file_url, replaced with slug-based Supabase Storage URLs (`print-files/{color}/{slug}_{color}.png`); added `design_links` variable per order item in printer email; added CC copy of printer notification to `kmitch2087@gmail.com` for test review. Updated `printer_notification` email template with 🎨 Print Files section (pre-formatted with black+white URLs). Confirmed `submit-tracking` edge function already deployed (v2). Removed temp anon INSERT RLS policy from `print-files` bucket. Cleaned up 18 doubled-path files (`black/black/`). Created `products` Storage bucket (public read) for admin product image uploads. **Lovable disconnected** — Claude (Cowork) is now the exclusive builder. Updated CLAUDE.md. | Stripe/Resend/Fulfillment secrets set, print-files Storage bucket + 74 PNGs, stripe-webhook design URLs + CC, printer_notification template updated, submit-tracking confirmed, Lovable removed | Place test order; move opie@pournogravy.com off GoDaddy |
 | May 22–27, 2026 | **CMS wiring + /admin/content + auth spinner fix + migration sync.** Wired all 5 public pages (Index, About, Shop, Contact, FAQ) to `site_content` DB table — headlines, CTAs, FAQ Q&As, rotating quotes, and ticker items are now editable live with static hardcoded fallbacks guaranteeing zero visual change on empty DB. ~60 rows seeded via `20260525000001_site_content_expanded.sql`. New `/admin/content` admin tab added with Home/Shop/About/Contact/FAQ page tabs so Opie can edit site copy from the dashboard without developer involvement. **Auth fix:** Added `loadedProfileIdRef` to `AuthContext` so Supabase's `SIGNED_IN` auto-refresh event (which fires on token renewal, not just explicit login) no longer triggers a spurious loading spinner when navigating between the admin and public pages. **Migration sync:** Docker Desktop installed; `supabase db pull` working; migration history fully synced via `supabase migration repair`; missing `client_edit_requests` base table backfilled as `20260508000001`; all remote schema drift (Stripe Postgres sync, pgmq, pg_cron extensions) captured in `20260526231648_remote_schema.sql`. Account page orders/loyalty data now cached via React Query (no spinner on re-visit). | CMS wiring, `/admin/content` tab, auth spinner fix, Docker, db pull, migration backfill | Fulfillment partner; Resend domain verify |
 | May 15, 2026 | **Homepage polish + full code audit.** Applied updated `Index.tsx` from Claude Desktop: `TICKER_ITEMS` constant with Opie's 4 Shopify marketing lines + existing quotes; marquee switched from Tailwind `animate-marquee` class to `marquee-scroll` CSS keyframe at 40s with pause-on-hover; marquee respects `prefers-reduced-motion` via CSS media query; hero slide top padding bumped to `pt-28 sm:pt-24 md:pt-28` so headline clears the fixed navbar on mobile. Created `.claude/shared/` communication bridge folder (Index, Footer, Navbar, DropAnnouncementBar, PATCH_INSTRUCTIONS.md) — committed to git. **Code audit pass (11 issues fixed):** `useWishlist` lifted to `WishlistContext` (was creating N auth subscriptions — one per card; now 1 shared instance for the whole app); Contact form wired to Supabase (was fake — submitted nothing); `CustomGarmentRequestModal` fixed dead import path (`@/lib/supabase` → correct client — all custom garment submissions were silently failing); Contact page Instagram + DMs links fixed from `"#"` to real Instagram URL; ProductCard wishlist heart always visible on mobile (was hover-only — touch users couldn't wishlist); cart thumbnail "PNG" text replaced with ShoppingBag icon; DropAnnouncementBar `truncate` → `line-clamp-2` on mobile; star rating touch targets enlarged; `FilterPill` `aria-pressed` added; `ProductDetail` SEO image null-guarded (`product.images?.[0] ?? product.image`); Privacy Policy + Terms of Service pages added to site and Footer. | Index.tsx marquee upgrade, mobile hero nav fix, `.claude/shared/` bridge, Privacy Policy, Terms of Service, Footer links, full audit pass (11 fixes across UX/a11y/perf/bugs) | Fulfillment partner selection; Resend domain verify; CF Email Worker routing rule; npm audit fix |
@@ -51,6 +53,11 @@
 - [x] Products seeded (24 products, migration 20260504000003)
 - [x] `site_content` seeded (~60 rows, migrations 20260522000001 + 20260525000001)
 
+### Supabase Storage
+- [x] `print-files` bucket — **74 PNGs** (37 black + 37 white), public read, temp policies cleaned up
+- [x] `products` bucket — public read, for admin product image uploads
+- [x] `drops` bucket — for merch drop flyer uploads
+
 ### Edge Functions (Supabase)
 - [x] `create-checkout`, `stripe-webhook`, `submit-tracking`, `send-notification`, `verify-email`
 - [x] `validate-discount`, `admin-contact`, `notify-project-status`, `redeem-points`, `track-event`
@@ -63,13 +70,14 @@
 - [x] Login, Dashboard, Products, Orders, Custom Requests, Reviews, Settings
 - [x] User Manual, Project Status, HelpPanel, ContactKristinModal
 - [x] EditRequests, Analytics, Pour Points Loyalty, Customer Lookup, Email Subscribers, Discount Codes, Content
-- [x] **Inbox (`/admin/inbox`)** — full inbox UI for `inbox_messages` (built in prior session)
+- [x] **Inbox (`/admin/inbox`)** — full inbox UI for `inbox_messages`
 - [x] **Email Templates (`/admin/email-templates`)** — rich contenteditable editor, Visual/HTML/Preview/Plain Text tabs, toolbar, variable palette, live preview, test send
 
 ### CF Email Worker
 - [x] `cloudflare-workers/receive-email/src/index.ts` — postal-mime parser → posts to `receive-email` Supabase fn
-- [x] `RECEIVE_EMAIL_SECRET` set in Supabase
-- [ ] **⚠️ DEPLOY BLOCKER:** CF Worker not yet deployed — wrangler session needs re-auth (see Manual Steps below)
+- [x] Worker **deployed** as `pournogravy-receive-email` via CF REST API
+- [x] `RECEIVE_EMAIL_SECRET` + `SUPABASE_URL` set as Worker secrets
+- [ ] **⚠️ ONE MANUAL STEP:** CF Dashboard → pournogravy.com → Email → Email Routing → Routing Rules → edit `opie@pournogravy.com` rule → change destination from `wild-mouse-2b64` → `pournogravy-receive-email`
 
 ---
 
@@ -77,13 +85,7 @@
 
 ### 🔴 Needs Manual Action
 
-- [ ] **CF Worker deploy** — run `npx wrangler login` in `cloudflare-workers/receive-email/`, then:
-  ```bash
-  echo '806ce219702ba9b9b0f5a2a74da816b0654fdc4e9c3c428323ae5eac29368f28' | npx wrangler secret put RECEIVE_EMAIL_SECRET
-  echo 'https://emtjkawcmsfgjyimnncf.supabase.co' | npx wrangler secret put SUPABASE_URL
-  npx wrangler deploy
-  ```
-  Then: CF Dashboard → Email → Email Routing → Routes → add `opie@pournogravy.com → Worker → pournogravy-receive-email`
+- [ ] **CF Email routing rule** — CF Dashboard → pournogravy.com → Email → Email Routing → Routing Rules → edit `opie@pournogravy.com` → change Worker from `wild-mouse-2b64` → `pournogravy-receive-email`
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly
 - [ ] Move `opie@pournogravy.com` off GoDaddy → Resend inbound (non-urgent, outbound works)
 
@@ -107,7 +109,7 @@
 
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
-| CF Worker not deployed | 🟡 Medium | Blocked | `npx wrangler login` + deploy (see above) |
+| CF email routing rule not updated | 🟡 Medium | Open | CF Dashboard → Email Routing → update rule (manual, 30 seconds) |
 | Test order not placed | 🔴 High | Open | Place test order end-to-end |
 | `src/utils/supabase/` dead code | 🟡 Medium | Open | Delete folder |
 | Local dev env var mismatch | 🟡 Medium | Open | Rename key in `.env.local` |
@@ -125,4 +127,4 @@
 
 ---
 
-*Updated end of session June 8–9, 2026.*
+*Updated end of session June 9, 2026.*
