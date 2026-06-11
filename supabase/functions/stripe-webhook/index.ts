@@ -206,6 +206,10 @@ Deno.serve(async (req) => {
         ].join(",");
       });
 
+      const totalItemCount = (items ?? []).reduce((sum, it) => sum + (it.quantity ?? 1), 0);
+      const printerCostCents = totalItemCount * 1200;
+      const printerCostSummary = `$12/item × ${totalItemCount} item${totalItemCount !== 1 ? "s" : ""} = $${(printerCostCents / 100).toFixed(2)} — please invoice us for this amount when shipped.`;
+
       const csvContent = [csvHeader, ...csvRows].join("\n");
       const csvBase64 = btoa(csvContent);
       const shortId = order.id.slice(0, 8).toUpperCase();
@@ -235,6 +239,7 @@ Deno.serve(async (req) => {
             shipping_address: addr,
             tracking_submit_url: trackingSubmitUrl,
             design_links: designLinks,
+            printer_cost_summary: printerCostSummary,
           },
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
@@ -255,6 +260,7 @@ Deno.serve(async (req) => {
             shipping_address: addr,
             tracking_submit_url: trackingSubmitUrl,
             design_links: designLinks,
+            printer_cost_summary: printerCostSummary,
           },
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
