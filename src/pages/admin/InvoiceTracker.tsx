@@ -29,6 +29,7 @@ interface OrderFinancial {
   total_cents: number;
   subtotal_cents: number;
   shipping_cents: number;
+  revenue_cents: number;
   item_count: number;
   printer_cost_cents: number;
   printer_paid_at: string | null;
@@ -43,7 +44,7 @@ const downloadCSV = (rows: OrderFinancial[], filename: string) => {
       o.item_count,
       (o.printer_cost_cents / 100).toFixed(2),
       (o.shipping_cents / 100).toFixed(2),
-      (o.subtotal_cents / 100).toFixed(2),
+      (o.revenue_cents / 100).toFixed(2),
       o.printer_paid_at ? fmtDate(o.printer_paid_at) : "UNPAID",
     ]
       .map((v) => `"${v}"`)
@@ -54,7 +55,9 @@ const downloadCSV = (rows: OrderFinancial[], filename: string) => {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
 
@@ -268,6 +271,7 @@ const InvoiceTracker = () => {
           total_cents: o.total_cents ?? 0,
           subtotal_cents: o.subtotal_cents ?? 0,
           shipping_cents: o.shipping_cents ?? 0,
+          revenue_cents: (o.total_cents ?? 0) - (o.shipping_cents ?? 0),
           item_count: itemCount,
           printer_cost_cents: itemCount * PRINT_COST_PER_ITEM_CENTS,
           printer_paid_at: paidAt.get(o.id) ?? null,
@@ -277,14 +281,14 @@ const InvoiceTracker = () => {
     staleTime: 30_000,
   });
 
-  const totalRevenue = orders.reduce((s, o) => s + o.subtotal_cents, 0);
+  const totalRevenue = orders.reduce((s, o) => s + o.revenue_cents, 0);
   const totalPrinterCost = orders.reduce((s, o) => s + o.printer_cost_cents, 0);
   const totalShipping = orders.reduce((s, o) => s + o.shipping_cents, 0);
   const totalProfit = totalRevenue - totalPrinterCost;
   const marginPct = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : "—";
 
   const thisWeekOrders = orders.filter((o) => isThisWeek(o.created_at));
-  const thisWeekRevenue = thisWeekOrders.reduce((s, o) => s + o.subtotal_cents, 0);
+  const thisWeekRevenue = thisWeekOrders.reduce((s, o) => s + o.revenue_cents, 0);
   const thisWeekPrinterCost = thisWeekOrders.reduce((s, o) => s + o.printer_cost_cents, 0);
   const thisWeekShipping = thisWeekOrders.reduce((s, o) => s + o.shipping_cents, 0);
   const thisWeekProfit = thisWeekRevenue - thisWeekPrinterCost;
