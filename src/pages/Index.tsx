@@ -169,11 +169,11 @@ const Index = () => {
           transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
           className="relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[240px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-5 md:py-4 z-20"
         >
-          <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-primary-foreground">
+          <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-white md:text-primary-foreground">
             MILDLY OFFENSIVE<br />
             BARTENDER APPAREL<br />
             FOR THE{" "}
-            <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
+            <span className="font-marker stamp-rotate inline-block text-[#CDDC39] md:text-[#ff1744] md:drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] md:drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
             OFFENSIVE BARTENDER.
           </h1>
           <p className="font-marker text-[11px] md:text-sm text-white/80 mt-2 tracking-wider italic">
