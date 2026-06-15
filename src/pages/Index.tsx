@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
 import { products, quotes } from "@/data/products";
 import { DropHeroBanner } from "@/components/DropHeroBanner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ const Index = () => {
   const { getValue } = useSiteContent();
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
+  const heroPauseResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 1.5s hold before the glass + carousel appear, so the logo background reads first.
   const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
   const INTRO_HOLD_MS = 800;
@@ -117,6 +118,13 @@ const Index = () => {
     return () => clearTimeout(id);
   }, [heroIndex, heroPaused, totalSlides]);
 
+  const handleDotClick = (i: number) => {
+    setHeroIndex(i);
+    setHeroPaused(true);
+    if (heroPauseResumeTimer.current) clearTimeout(heroPauseResumeTimer.current);
+    heroPauseResumeTimer.current = setTimeout(() => setHeroPaused(false), 8000);
+  };
+
   return (
     <div className="min-h-screen pt-16 md:pt-20">
       <SEO
@@ -139,7 +147,7 @@ const Index = () => {
       {/* Hero carousel — product slides only. Glass headline lives as a
           persistent top-left overlay so it never competes with the logo. */}
       <section
-        className="relative min-h-[55vh] sm:min-h-[65vh] md:min-h-[70vh] overflow-hidden noise-overlay bg-black"
+        className="relative flex flex-col md:block md:min-h-[70vh] overflow-hidden noise-overlay bg-black"
         aria-roledescription="carousel"
         aria-label="Pournogravy hero"
       >
@@ -154,12 +162,12 @@ const Index = () => {
           />
         </div>
 
-        {/* Glass headline — top-left, stamps in after 3s, stays up */}
+        {/* Glass headline — mobile: stacks below image (order-2, no glass card); desktop: absolute top-left overlay */}
         <motion.div
           initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
           animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
           transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
-          className="absolute top-16 left-3 sm:top-20 md:top-6 md:left-6 z-20 bg-primary/20 backdrop-blur-md rounded-2xl px-5 py-4 md:px-5 md:py-4 max-w-[210px] sm:max-w-[240px] md:max-w-[240px]"
+          className="relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[240px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-5 md:py-4 z-20"
         >
           <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-primary-foreground">
             MILDLY OFFENSIVE<br />
@@ -171,7 +179,8 @@ const Index = () => {
           <p className="font-marker text-[11px] md:text-sm text-white/80 mt-2 tracking-wider italic">
             {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
           </p>
-          <Link to="/shop" className="mt-3 inline-block">
+          {/* CTA button: desktop only — mobile CTA lives in its own section below */}
+          <Link to="/shop" className="mt-3 hidden md:inline-block">
             <Button className="h-9 px-5 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
               {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
             </Button>
@@ -180,7 +189,7 @@ const Index = () => {
 
         {/* ---- Product slides — fade in together with the glass after hold ---- */}
         <motion.div
-          className="absolute inset-0"
+          className="relative order-1 h-[55vw] md:h-auto md:absolute md:inset-0"
           initial={{ opacity: 0 }}
           animate={introHoldElapsed ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
@@ -210,13 +219,44 @@ const Index = () => {
                 }}
               />
 
-              {/* Content — polaroid pushed right on mobile so it clears the glass */}
-              <div className="absolute inset-0 flex items-center z-10">
+              {/* Mobile layout: full-width shirt image + bottom overlay with featured drop + product name */}
+              <div className="block md:hidden absolute inset-0">
+                {product.image && (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-contain"
+                    loading={slideIdx === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                )}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 pt-8 pb-3">
+                  <p className="font-marker text-[10px] tracking-[0.3em] text-[#fde047] uppercase animate-pulse">
+                    ☠ Featured drop
+                  </p>
+                  <Link to={`/product/${product.id}`}>
+                    <h2 className="font-display text-base tracking-wider leading-[0.95] text-white hover:underline underline-offset-2">
+                      {product.name.toUpperCase()} <span className="text-xs">→</span>
+                    </h2>
+                  </Link>
+                </div>
+                {product.badge && (
+                  <div
+                    className="absolute top-2 right-2 bg-[#fde047] text-black px-2 py-0.5 font-marker text-[10px] tracking-widest uppercase stamp-rotate"
+                    style={{ boxShadow: "0 0 20px rgba(253,224,71,0.5)" }}
+                  >
+                    {product.badge}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop layout: polaroid + copy (unchanged) */}
+              <div className="hidden md:flex absolute inset-0 items-center z-10">
                 <div className="container mx-auto px-4 w-full">
-                  <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 items-center">
-                    {/* Glass spacer — invisible on mobile/sm, takes col 1 on md so photo+copy live in cols 2–3 */}
-                    <div className="hidden md:block" aria-hidden="true" />
-                    {/* Polaroid — mobile: top; sm: col 1; md: col 2 */}
+                  <div className="grid grid-cols-3 gap-6 items-center">
+                    {/* Glass spacer — takes col 1 so photo+copy live in cols 2–3 */}
+                    <div aria-hidden="true" />
+                    {/* Polaroid — col 2 */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
                       animate={
@@ -225,7 +265,7 @@ const Index = () => {
                           : { opacity: 0, scale: 0.9, rotate: -3 }
                       }
                       transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="order-1 relative mx-auto max-w-[130px] sm:max-w-[200px] md:max-w-[240px] w-full"
+                      className="relative mx-auto max-w-[240px] w-full"
                     >
                       <div
                         className="relative aspect-square bg-muted border-[10px] border-white/90 shadow-2xl overflow-hidden"
@@ -239,7 +279,7 @@ const Index = () => {
                             src={product.image}
                             alt={product.name}
                             className="w-full h-full object-contain"
-                            loading={slideIdx <= 3 ? "eager" : "lazy"}
+                            loading={slideIdx === 0 ? "eager" : "lazy"}
                             decoding="async"
                           />
                         )}
@@ -254,28 +294,28 @@ const Index = () => {
                       )}
                     </motion.div>
 
-                    {/* Copy */}
+                    {/* Copy — col 3 */}
                     <motion.div
                       initial={{ opacity: 0, x: 30 }}
                       animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
                       transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                      className="order-2 text-white text-center sm:text-left"
+                      className="text-white"
                     >
                       <p
-                        className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-2 md:mb-3"
+                        className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
                         style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
                       >
                         ☠ Featured drop
                       </p>
-                      <h2 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl tracking-wider leading-[0.95] mb-2 md:mb-3">
+                      <h2 className="font-display text-5xl lg:text-6xl tracking-wider leading-[0.95] mb-3">
                         {product.name.toUpperCase()}
                       </h2>
                       {product.humor && (
-                        <p className="font-marker text-sm md:text-base text-white/80 italic mb-2 md:mb-4 max-w-md mx-auto sm:mx-0">
+                        <p className="font-marker text-base text-white/80 italic mb-4 max-w-md">
                           "{product.humor}"
                         </p>
                       )}
-                      <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                      <div className="flex flex-wrap gap-3">
                         <Link to={`/product/${product.id}`}>
                           <Button
                             className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
@@ -295,9 +335,33 @@ const Index = () => {
 
         </motion.div>
 
-        {/* Dot indicators */}
+        {/* Mobile CTA buttons — primary (shop) + secondary (current product) — hidden on desktop */}
+        <motion.div
+          className="order-3 flex flex-col gap-3 px-4 pb-4 pt-2 md:hidden"
+          initial={{ opacity: 0 }}
+          animate={introHoldElapsed ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <Link to="/shop" className="w-full">
+            <Button className="w-full h-11 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
+              {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+          {heroSlides[heroIndex] && (
+            <Link to={`/product/${heroSlides[heroIndex].product.id}`} className="w-full">
+              <Button
+                variant="outline"
+                className="w-full h-11 font-display tracking-widest border-[#fde047] text-[#fde047] bg-transparent hover:bg-[#fde047]/10"
+              >
+                <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans text-[#fde047]/70">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+              </Button>
+            </Link>
+          )}
+        </motion.div>
+
+        {/* Dot indicators — mobile: in-flow below CTAs; desktop: absolute bottom center */}
         <div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 px-3 py-2"
+          className="relative order-4 z-20 flex gap-1 px-3 py-2 justify-center md:absolute md:bottom-4 md:left-1/2 md:-translate-x-1/2"
           onMouseEnter={() => setHeroPaused(true)}
           onMouseLeave={() => setHeroPaused(false)}
           onFocus={() => setHeroPaused(true)}
@@ -306,20 +370,24 @@ const Index = () => {
           {Array.from({ length: totalSlides }).map((_, i) => (
             <button
               key={i}
-              onClick={() => setHeroIndex(i)}
+              onClick={() => handleDotClick(i)}
               aria-label={`Go to slide ${i + 1}`}
               aria-current={heroIndex === i}
-              className={`h-1.5 rounded-full transition-all ${
-                heroIndex === i
-                  ? "w-10 bg-[#fde047]"
-                  : "w-1.5 bg-white/30 hover:bg-white/60"
-              }`}
-              style={
-                heroIndex === i
-                  ? { boxShadow: "0 0 10px rgba(253,224,71,0.6)" }
-                  : undefined
-              }
-            />
+              className="p-2 -m-1 focus:outline-none"
+            >
+              <span
+                className={`block h-1.5 rounded-full transition-all ${
+                  heroIndex === i
+                    ? "w-10 bg-[#fde047]"
+                    : "w-1.5 bg-white/30 hover:bg-white/60"
+                }`}
+                style={
+                  heroIndex === i
+                    ? { boxShadow: "0 0 10px rgba(253,224,71,0.6)" }
+                    : undefined
+                }
+              />
+            </button>
           ))}
         </div>
       </section>
