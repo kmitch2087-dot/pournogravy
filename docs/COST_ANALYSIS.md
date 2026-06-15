@@ -1,7 +1,7 @@
 # Pournogravy — Cost Analysis
 ## Market Value vs. Actual Investment
 **Prepared by:** Kristin Mitchell — Aethyx
-**Last Updated:** April 29, 2026
+**Last Updated:** June 15, 2026
 
 ---
 
@@ -9,7 +9,7 @@
 
 This document provides a transparent comparison between what the Pournogravy website build would have cost at standard market rates versus what Aethyx charged as a portfolio-rate engagement.
 
-**Scope note (April 29 update):** The original cost analysis was drafted before Session 2 completed. The scope delivered is now significantly larger — it includes a full serverless payment pipeline (Stripe Checkout + Webhook handling), transactional email system (Resend via Edge Functions), admin dashboard with role-based access control, multi-table database schema with complex RLS, and production-grade DevOps troubleshooting. The market rate figures below have been updated to reflect actual scope.
+**Scope note (June 15 update):** The original cost analysis was drafted before Session 2 completed. The scope delivered has grown substantially across 14+ sessions — it includes a full serverless payment pipeline (Stripe + Webhook), transactional email system (Resend + 4 branded templates), admin dashboard with role-based access control, multi-table database schema with complex RLS, CMS content editing, Pour Points loyalty program, wishlist, search/sort, analytics, merch drop calendar, rich email template editor, financial invoice dashboard, Cloudflare Email Worker (deployed via CF REST API), print file storage (74 PNGs), fulfillment tracking magic links, blog system, and production-grade DevOps troubleshooting across 14+ sessions. The market rate figures below reflect the actual delivered scope and have been updated accordingly.
 
 ---
 

@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** May 27, 2026
+**Last Updated:** June 15, 2026
 
 ---
 
@@ -58,6 +58,7 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - **Collections page** — curated product groupings
 - **Featured products** — dynamically controlled from product data; easy to update
 - **Wishlist** — customers can save products with a heart toggle; persists without an account (localStorage) and syncs to their profile on login
+- **Blog** — public `/blog` listing and `/blog/:slug` post pages; managed from admin dashboard
 
 ### Cart & Checkout Flow
 - **Persistent cart drawer** — slides in from the right; works for guests and logged-in users
@@ -92,11 +93,14 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 - **Merch drop calendar** — schedule product drops with ad placement, email campaigns, and auto-publish
 - **Analytics dashboard** — page views, event funnel, top products
 - **Site settings** — configurable site-wide settings
-- **Inbox** — admin messaging system
+- **Inbox** — admin messaging system for inbound emails
 - **Edit requests** — split-view note system; Opie submits requests, Kristin replies with inline threads
 - **Project status** — real-time build pipeline with phase tracker and session log
 - **Direct contact to developer** — Opie can message Kristin directly from the dashboard
 - **Site copy editor** — all public page headlines, CTAs, FAQ answers, quotes, and ticker items editable live from the Content tab — no developer or deployment required
+- **Email Templates** — rich email editor for all 4 transactional templates (order confirmation, order shipped, custom request reply, printer notification); Visual/HTML/Preview/Plain Text tabs; live preview; one-click test send; all templates branded with dark theme, POURnogravy logo, and Opie's voice
+- **Invoice Tracker** — financial dashboard showing profit margin, shipping collected, and printer bill; "Mark All Paid" batch action; CSV export for records; collapsible paid order history
+- **Blog management** — create, edit, publish, and delete blog posts from the admin dashboard; slug auto-generation; tag management; image URL support
 
 ### Brand & Content
 - Humor-forward brand voice baked into every product page
@@ -107,9 +111,9 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (May 27, 2026)
+## 4. Current Status (June 15, 2026)
 
-**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, Privacy Policy, Terms of Service, and contact form are all fully operational. All public page copy (headlines, CTAs, FAQ answers, quotes, ticker items) is now editable live from the admin dashboard — no developer required. The following items remain before a full marketing push:
+**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, financial dashboard, email templates, blog, and contact form are all fully operational. All transactional emails are branded and live. The Cloudflare Email Worker is deployed — one 30-second manual step (updating the routing rule in CF Dashboard) completes inbound email. The following items remain before a full marketing push:
 
 | Item | Status | Action Needed |
 |------|--------|--------------|
@@ -125,10 +129,13 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Contact form | ✅ Live | Messages appear in admin Custom Requests panel |
 | Site copy editing | ✅ Live | All public page copy editable from /admin/content — no deploy required |
 | Privacy Policy + Terms of Service | ✅ Live | Linked from footer |
-| Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend |
+| Email templates (all 4) | ✅ Live | Branded — dark theme, logo, Opie's voice; test email sent |
+| Invoice Tracker | ✅ Live | Financial dashboard at /admin/invoices |
+| Blog system | ✅ Built | /blog + /blog/:slug + /admin/blog all wired |
+| Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend (DKIM/SPF done — just confirm in dashboard) |
 | Fulfillment partner | ❌ Not selected | Choose Printful or Printify — wire API key into stripe-webhook |
 | Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp to existing subscriber list |
-| Inbound email routing | ⚠️ Partial | Wire Cloudflare Email Worker `wild-mouse-2b64` routing rule |
+| Inbound email routing | ⚠️ One step left | CF Dashboard → pournogravy.com → Email → Email Routing → edit `opie@pournogravy.com` rule → change destination to `pournogravy-receive-email` (30 seconds) |
 
 ---
 

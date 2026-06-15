@@ -50,6 +50,8 @@
 - [x] `product_reviews`, `discount_codes`, `wishlists`, `loyalty_accounts`, `loyalty_transactions`
 - [x] `email_subscribers`, `analytics_events`, `site_content`, `client_edit_requests`
 - [x] `inbox_messages` — inbound email storage (thread_id, kind, status, message_id uniqueness)
+- [x] `blog_posts` — title, slug, excerpt, content, featured_image_url, tags[], published, published_at, created_by; RLS (public read published, admin full access); updated_at trigger
+- [x] `printer_queue` — `printer_paid_at` column added (migration 20260611222803)
 - [x] All SECURITY DEFINER functions + triggers + RLS policies
 - [x] Products seeded (24 products, migration 20260504000003)
 - [x] `site_content` seeded (~60 rows, migrations 20260522000001 + 20260525000001)
@@ -66,13 +68,18 @@
 
 ### Frontend — Public Pages
 - [x] Homepage, Shop, Product detail, Collections, About, Contact, FAQ, 404, `/proposal`, `/wishlist`, `/privacy`, `/terms`
+- [x] **Blog** — `/blog` public post listing page (`Blog.tsx`)
+- [x] **Blog post** — `/blog/:slug` individual post page (`BlogPost.tsx`)
+- [x] **Ship order** — `/ship/:orderId` printer-facing tracking submission form; HMAC-verified token (`ShipOrder.tsx`)
 
 ### Frontend — Admin Dashboard (`/admin`)
 - [x] Login, Dashboard, Products, Orders, Custom Requests, Reviews, Settings
 - [x] User Manual, Project Status, HelpPanel, ContactKristinModal
 - [x] EditRequests, Analytics, Pour Points Loyalty, Customer Lookup, Email Subscribers, Discount Codes, Content
 - [x] **Inbox (`/admin/inbox`)** — full inbox UI for `inbox_messages`
-- [x] **Email Templates (`/admin/email-templates`)** — rich contenteditable editor, Visual/HTML/Preview/Plain Text tabs, toolbar, variable palette, live preview, test send
+- [x] **Email Templates (`/admin/email-templates`)** — rich contenteditable editor, Visual/HTML/Preview/Plain Text tabs, toolbar, variable palette, live preview, test send; all 4 templates branded (dark theme, POURnogravy logo, Opie's voice, branded footer)
+- [x] **Invoice Tracker (`/admin/invoices`)** — auto-calculated financial dashboard: Profit Margin (revenue, printer cost, gross profit, margin %), Shipping Collected, Printer Bill (unpaid list, Mark All Paid, CSV export, paid history)
+- [x] **Blog Admin (`/admin/blog`)** — blog post CRUD: create/edit/delete, publish toggle, slug auto-gen, image URL, tag management
 
 ### CF Email Worker
 - [x] `cloudflare-workers/receive-email/src/index.ts` — postal-mime parser → posts to `receive-email` Supabase fn
@@ -128,4 +135,4 @@
 
 ---
 
-*Updated end of session June 9, 2026.*
+*Updated end of session June 15, 2026.*
