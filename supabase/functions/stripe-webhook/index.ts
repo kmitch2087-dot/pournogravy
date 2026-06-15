@@ -99,6 +99,19 @@ Deno.serve(async (req) => {
       supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
     ]);
 
+    // Fetch image_url for each unique product slug from the products table
+    const itemSlugs = [...new Set((items ?? []).map((it) => {
+      const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
+      return String(s.slug ?? "");
+    }).filter(Boolean))];
+    const { data: dbProducts } = itemSlugs.length
+      ? await supabase.from("products").select("slug, image_url").in("slug", itemSlugs)
+      : { data: [] };
+    const imageBySlug = new Map<string, string>();
+    for (const p of (dbProducts ?? [])) {
+      if (p.slug && p.image_url) imageBySlug.set(p.slug, p.image_url);
+    }
+
     if (!order) return new Response("ok", { status: 200 });
 
 
@@ -124,6 +137,13 @@ Deno.serve(async (req) => {
       status: "pending",
     }]);
 
+    // Determine first item's image for mockup in emails
+    const firstSlug = (() => {
+      const s = ((items ?? [])[0]?.product_snapshot ?? {}) as Record<string, unknown>;
+      return String(s.slug ?? "");
+    })();
+    const mockImageUrl = firstSlug ? (imageBySlug.get(firstSlug) ?? "") : "";
+
     // We render template at queue time inside send-notification, so kick it off:
     await supabase.functions.invoke("send-notification", {
       body: {
@@ -136,6 +156,7 @@ Deno.serve(async (req) => {
           order_number: order.id.slice(0, 8),
           order_items: itemsList,
           order_total: orderTotal,
+          mock_image_url: mockImageUrl,
         },
       },
     });
@@ -169,6 +190,14 @@ Deno.serve(async (req) => {
       for (const it of (items ?? [])) {
         const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
         const slug = String(s.slug ?? "");
+        if (!slug) {
+          // Missing slug means we cannot build print file URLs — log so this is visible in function logs.
+          console.error(
+            `[stripe-webhook] order_item missing product slug — print file URL cannot be built. ` +
+            `order_id=${order.id} product_id=${(it as Record<string, unknown>).product_id ?? "(unknown)"} ` +
+            `snapshot_name=${String(s.name ?? "(unknown)")}`
+          );
+        }
         if (slug && !seenSlugs.has(slug)) {
           seenSlugs.add(slug);
           designLinkLines.push(
@@ -225,22 +254,25 @@ Deno.serve(async (req) => {
         trackingSubmitUrl = `${siteUrl}/ship/${order.id}?token=${tok}`;
       }
 
+      const printerVars = {
+        order_number: shortId,
+        customer_name: order.email.split("@")[0],
+        customer_email: order.email,
+        order_items: itemsList,
+        shipping_address: addr,
+        tracking_submit_url: trackingSubmitUrl,
+        design_links: designLinks,
+        printer_cost_summary: printerCostSummary,
+        mock_image_url: mockImageUrl,
+      };
+
       await supabase.functions.invoke("send-notification", {
         body: {
           templateKey: "printer_notification",
           recipient: settings.printer_email,
           relatedKind: "order",
           relatedId: order.id,
-          variables: {
-            order_number: shortId,
-            customer_name: order.email.split("@")[0],
-            customer_email: order.email,
-            order_items: itemsList,
-            shipping_address: addr,
-            tracking_submit_url: trackingSubmitUrl,
-            design_links: designLinks,
-            printer_cost_summary: printerCostSummary,
-          },
+          variables: printerVars,
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
       });
@@ -252,16 +284,7 @@ Deno.serve(async (req) => {
           recipient: "kmitch2087@gmail.com",
           relatedKind: "order",
           relatedId: order.id,
-          variables: {
-            order_number: shortId,
-            customer_name: order.email.split("@")[0],
-            customer_email: order.email,
-            order_items: itemsList,
-            shipping_address: addr,
-            tracking_submit_url: trackingSubmitUrl,
-            design_links: designLinks,
-            printer_cost_summary: printerCostSummary,
-          },
+          variables: printerVars,
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
       });

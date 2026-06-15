@@ -41,6 +41,7 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
 const ShipOrder      = lazy(() => import("./pages/ShipOrder"));
+const Rewards        = lazy(() => import("./pages/Rewards"));
 
 // ─── LAZY: admin pages ────────────────────────────────────────────────────────
 const AdminLayout    = lazy(() => import("./components/admin/AdminLayout"));
@@ -65,6 +66,8 @@ const Content        = lazy(() => import("./pages/admin/Content"));
 const BlogAdmin      = lazy(() => import("./pages/admin/BlogAdmin"));
 const InvoiceTracker  = lazy(() => import("./pages/admin/InvoiceTracker"));
 const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
+const EasterEggs      = lazy(() => import("./pages/admin/EasterEggs"));
+const PrintFiles      = lazy(() => import("./pages/admin/PrintFiles"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -122,6 +125,7 @@ const App = () => (
                     <Route path="/login"           element={<Login />} />
                     <Route path="/account"         element={<Account />} />
                     <Route path="/wishlist"        element={<Wishlist />} />
+                    <Route path="/rewards"         element={<Rewards />} />
                     <Route path="/checkout"        element={<Checkout />} />
                     <Route path="/checkout/return" element={<CheckoutReturn />} />
                     <Route
@@ -154,6 +158,8 @@ const App = () => (
                       <Route path="blog"              element={<BlogAdmin />} />
                       <Route path="invoices"          element={<InvoiceTracker />} />
                       <Route path="email-templates"   element={<EmailTemplates />} />
+                      <Route path="easter-eggs"       element={<EasterEggs />} />
+                      <Route path="print-files"       element={<PrintFiles />} />
                     </Route>
                     <Route path="/blog"        element={<Blog />} />
                     <Route path="/blog/:slug"  element={<BlogPost />} />

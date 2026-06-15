@@ -1,10 +1,213 @@
 import { useEffect, useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, Gift, TrendingUp, Users, Search, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Star, Gift, TrendingUp, Users, Search, ChevronDown, ChevronUp, Plus, Minus, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface LoyaltyRules {
+  id: number;
+  points_per_dollar: number;
+  redemption_threshold: number;
+  redemption_value_cents: number;
+  double_points_active: boolean;
+  double_points_start: string | null;
+  double_points_end: string | null;
+  updated_at: string;
+}
+
+// ─── Pour Points Rules Card ───────────────────────────────────────────────────
+const RulesCard = () => {
+  const qc = useQueryClient();
+
+  const { data: rules, isLoading } = useQuery<LoyaltyRules | null>({
+    queryKey: ["loyalty-rules"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("loyalty_rules")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+
+  // Local form state (initialised from query data)
+  const [ptsPerDollar, setPtsPerDollar] = useState(10);
+  const [threshold, setThreshold] = useState(100);
+  const [valueDollars, setValueDollars] = useState(5);
+  const [dpEnabled, setDpEnabled] = useState(false);
+  const [dpStart, setDpStart] = useState("");
+  const [dpEnd, setDpEnd] = useState("");
+
+  // Sync once rules load
+  useEffect(() => {
+    if (!rules) return;
+    setPtsPerDollar(rules.points_per_dollar);
+    setThreshold(rules.redemption_threshold);
+    setValueDollars(rules.redemption_value_cents / 100);
+    const hasSchedule = !!(rules.double_points_start || rules.double_points_end);
+    setDpEnabled(hasSchedule);
+    setDpStart(rules.double_points_start ? toLocalDatetimeInput(rules.double_points_start) : "");
+    setDpEnd(rules.double_points_end ? toLocalDatetimeInput(rules.double_points_end) : "");
+  }, [rules]);
+
+  const { mutate: saveRules, isPending: saving } = useMutation({
+    mutationFn: async () => {
+      const payload: Partial<LoyaltyRules> = {
+        points_per_dollar: ptsPerDollar,
+        redemption_threshold: threshold,
+        redemption_value_cents: Math.round(valueDollars * 100),
+        double_points_start: dpEnabled && dpStart ? new Date(dpStart).toISOString() : null,
+        double_points_end: dpEnabled && dpEnd ? new Date(dpEnd).toISOString() : null,
+      };
+      const { error } = await supabase
+        .from("loyalty_rules")
+        .update(payload)
+        .eq("id", 1);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rules saved");
+      qc.invalidateQueries({ queryKey: ["loyalty-rules"] });
+    },
+    onError: (err: Error) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  // Status badge
+  const dpBadge = () => {
+    if (!rules) return null;
+    if (rules.double_points_active) {
+      const end = rules.double_points_end ? new Date(rules.double_points_end).toLocaleString() : "?";
+      return <Badge className="bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 font-marker tracking-widest text-[10px]">DOUBLE POINTS ACTIVE — ends {end}</Badge>;
+    }
+    if (rules.double_points_start && new Date(rules.double_points_start) > new Date()) {
+      const start = new Date(rules.double_points_start).toLocaleString();
+      return <Badge className="bg-blue-400/20 text-blue-300 border border-blue-400/40 font-marker tracking-widest text-[10px]">Scheduled for {start}</Badge>;
+    }
+    return <Badge variant="outline" className="font-marker tracking-widest text-[10px] text-muted-foreground">Off</Badge>;
+  };
+
+  return (
+    <div className="border border-border bg-card">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+        <Settings2 className="h-4 w-4 text-[#fde047]" />
+        <h2 className="font-display tracking-widest text-sm">POUR POINTS RULES</h2>
+      </div>
+
+      {isLoading ? (
+        <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <div className="px-5 py-5 space-y-6">
+          {/* Earn / redeem settings */}
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Points earned per $1 spent</label>
+              <input
+                type="number"
+                min={1}
+                value={ptsPerDollar}
+                onChange={(e) => setPtsPerDollar(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Points per reward</label>
+              <input
+                type="number"
+                min={1}
+                value={threshold}
+                onChange={(e) => setThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Reward value ($)</label>
+              <input
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={valueDollars}
+                onChange={(e) => setValueDollars(Math.max(0.01, parseFloat(e.target.value) || 0.01))}
+                className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Double Points section */}
+          <div className="border border-border/50 rounded-sm p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-display tracking-widest">DOUBLE POINTS EVENT</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Schedule a window where every purchase earns 2× points</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {dpBadge()}
+                <Switch checked={dpEnabled} onCheckedChange={setDpEnabled} />
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {dpEnabled && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Start date & time</label>
+                      <input
+                        type="datetime-local"
+                        value={dpStart}
+                        onChange={(e) => setDpStart(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">End date & time</label>
+                      <input
+                        type="datetime-local"
+                        value={dpEnd}
+                        onChange={(e) => setDpEnd(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => saveRules()}
+              disabled={saving}
+              className="font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90 h-9 px-6"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Rules"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper: convert ISO string → datetime-local input value (local time)
+function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 interface LoyaltyRow {
   id: string;
@@ -145,6 +348,9 @@ const Loyalty = () => {
 
   return (
     <div className="space-y-6">
+      {/* Pour Points Rules */}
+      <RulesCard />
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Members" value={accounts.length} icon={Users} color="text-[#fde047]" />

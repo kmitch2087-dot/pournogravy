@@ -19,10 +19,12 @@ import { Plus, Loader2, Search, Pencil, Trash2, CalendarDays } from "lucide-reac
 import { fmtMoney, slugify } from "@/lib/admin";
 import { toast } from "sonner";
 
+type CategoryTab = "all" | "apparel" | "accessories";
+
 interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
-  featured: boolean;
+  featured: boolean; category: string | null;
 }
 
 type MergedProduct = {
@@ -32,15 +34,18 @@ type MergedProduct = {
   price_cents: number;
   currency: string;
   is_active: boolean;
+  published: boolean;      // actual DB published flag (drives the Live toggle)
   image_url: string | null;
   isStatic: boolean;       // came from products.ts
   inDrop: boolean;
+  category: string;        // 'apparel' | 'accessories'
 };
 
 const Products = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
 
@@ -49,7 +54,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbProduct[];
@@ -84,9 +89,11 @@ const Products = () => {
         price_cents: p.price_cents,
         currency: p.currency,
         is_active: p.is_active,
+        published: p.published,
         image_url: p.image_url,
         isStatic: false,
         inDrop: dropIdSet.has(p.id),
+        category: p.category ?? "apparel",
       });
     }
 
@@ -100,9 +107,11 @@ const Products = () => {
           price_cents: Math.round(sp.price * 100),
           currency: "USD",
           is_active: sp.published === true,
+          published: sp.published === true,
           image_url: sp.image ?? sp.images?.[0] ?? null,
           isStatic: true,
           inDrop: false,
+          category: "apparel",
         });
       }
     }
@@ -112,11 +121,15 @@ const Products = () => {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return merged;
-    return merged.filter(
+    let result = merged;
+    if (categoryTab !== "all") {
+      result = result.filter((p) => p.category === categoryTab);
+    }
+    if (!q) return result;
+    return result.filter(
       (p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     );
-  }, [merged, search]);
+  }, [merged, search, categoryTab]);
 
   const handleToggleLive = async (p: MergedProduct, newVal: boolean) => {
     const key = p.id ?? p.slug;
@@ -186,8 +199,16 @@ const Products = () => {
     }
   };
 
+  // Category tab counts
+  const tabCounts = useMemo(() => ({
+    all: merged.length,
+    apparel: merged.filter((p) => p.category === "apparel").length,
+    accessories: merged.filter((p) => p.category === "accessories").length,
+  }), [merged]);
+
   return (
     <div className="space-y-6">
+      {/* Search + New Product */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -203,6 +224,24 @@ const Products = () => {
         </Button>
       </div>
 
+      {/* Category sub-tabs */}
+      <div className="flex gap-1 border-b border-border">
+        {(["all", "apparel", "accessories"] as CategoryTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setCategoryTab(tab)}
+            className={[
+              "px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition",
+              categoryTab === tab
+                ? "border-[#fde047] text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {tab} <span className="ml-1 text-muted-foreground font-sans normal-case tracking-normal">({tabCounts[tab]})</span>
+          </button>
+        ))}
+      </div>
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -216,6 +255,7 @@ const Products = () => {
               <TableRow>
                 <TableHead className="w-14" />
                 <TableHead>Product</TableHead>
+                <TableHead className="w-28">Category</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-center w-28">Live</TableHead>
                 <TableHead className="w-24" />
@@ -251,6 +291,14 @@ const Products = () => {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] px-1.5 py-0 uppercase tracking-widest"
+                      >
+                        {p.category}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right font-display tracking-wider">
                       {fmtMoney(p.price_cents, p.currency)}
                     </TableCell>
@@ -259,7 +307,7 @@ const Products = () => {
                         <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
                       ) : (
                         <Switch
-                          checked={p.is_active}
+                          checked={p.published}
                           onCheckedChange={(v) => handleToggleLive(p, v)}
                           className="data-[state=checked]:bg-[#fde047]"
                         />

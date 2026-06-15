@@ -113,6 +113,22 @@
 
 ---
 
+## 👤 Opie's Action Items (Migrated from Dashboard)
+
+These items require Opie's hands — not developer work. Migrated from the in-app dashboard to this doc for tracking.
+
+| Priority | Task | Detail |
+|----------|------|--------|
+| CRITICAL | Enter EIN + Business Name in Stripe | Stripe Dashboard → Settings → Business Details. Enter EIN and legal business name. Without this, Stripe may hold payouts or flag the account. |
+| HIGH | Update Domain Registrar — Business Name (not EIN) | Log into the domain registrar and update WHOIS registrant from personal name to LLC/business name. EIN does not go here — DNS records don't change. |
+| HIGH | Fix Admin Login: Whitelist Supabase in Apollo Extension | Apollo Chrome extension → Settings → Excluded Domains → add *.supabase.co. Extension intercepts Supabase API calls and blocks profile fetch, causing spinner on admin login. 30-second fix. |
+| HIGH | Verify Sender Domain in Resend | Log into resend.com → Domains → verify pournogravy.com. Adds 2–3 DNS TXT records in Cloudflare. Without this, order confirmation emails don't send or go to spam. |
+| MEDIUM | Order Samples from Printify + Printful | Order at least 1 shirt from each before committing to a fulfillment partner. Check: print quality, fabric, wash test, packaging, delivery time. |
+| MEDIUM | Pick a Fulfillment Partner — Tell Kristin | After samples arrive, decide: Printify (best margin) or Printful (premium). Let Kristin know and she'll wire the API key into the stripe-webhook edge function. |
+| LOW | Set Up Google Business Profile | Visit google.com/business and claim or create a profile for Pournogravy. Helps search visibility even for online-only brands. Takes ~10 minutes. |
+
+---
+
 ## 🚫 Known Issues
 
 | Issue | Severity | Status | Fix |

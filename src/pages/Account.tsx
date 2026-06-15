@@ -5,9 +5,17 @@ import { useAuth } from "@/context/AuthContext";
 import { useLoyalty } from "@/hooks/useLoyalty";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Package, LogOut, LayoutDashboard, Star, Gift, Heart } from "lucide-react";
+import { Loader2, Package, LogOut, LayoutDashboard, Star, Gift, Heart, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+
+interface LoyaltyRules {
+  points_per_dollar: number;
+  redemption_threshold: number;
+  redemption_value_cents: number;
+  double_points_active: boolean;
+  double_points_end: string | null;
+}
 
 interface OrderRow {
   id: string;
@@ -31,6 +39,19 @@ const Account = () => {
       navigate("/login", { replace: true, state: { from: { pathname: "/account" } } });
     }
   }, [loading, user, navigate]);
+
+  const { data: rules } = useQuery<LoyaltyRules | null>({
+    queryKey: ["loyalty-rules"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("loyalty_rules")
+        .select("points_per_dollar, redemption_threshold, redemption_value_cents, double_points_active, double_points_end")
+        .eq("id", 1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
 
   const { data: orders = [], isLoading: ordersLoading } = useQuery<OrderRow[]>({
     queryKey: ["account-orders", user?.id],
@@ -123,8 +144,27 @@ const Account = () => {
           <header className="px-6 py-4 border-b border-[#fde047]/20 flex items-center gap-2">
             <Star className="h-4 w-4 text-[#fde047] fill-[#fde047]" />
             <h2 className="font-display tracking-widest text-sm">POUR POINTS</h2>
-            <span className="ml-auto text-[10px] font-marker tracking-widest text-muted-foreground uppercase">1 pt per $1 · 100 pts = $5 off</span>
+            <span className="ml-auto text-[10px] font-marker tracking-widest text-muted-foreground uppercase">
+              {rules
+                ? `${rules.points_per_dollar} pts per $1 · ${rules.redemption_threshold} pts = $${(rules.redemption_value_cents / 100).toFixed(0)} off`
+                : "pts per $1 · redeem for rewards"}
+            </span>
           </header>
+
+          {/* Double Points Banner */}
+          {rules?.double_points_active && (
+            <div className="px-6 py-3 border-b border-yellow-400/20 bg-yellow-400/10 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-[#fde047] fill-[#fde047] shrink-0" />
+              <p className="text-xs font-marker tracking-widest text-[#fde047]">
+                DOUBLE POINTS ACTIVE
+                {rules.double_points_end && (
+                  <span className="text-white/50 ml-2 normal-case tracking-normal font-sans">
+                    — ends {new Date(rules.double_points_end).toLocaleDateString()}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
 
           <div className="px-6 py-6">
             {loyaltyLoading ? (
@@ -142,6 +182,11 @@ const Account = () => {
                   <p className="text-xs text-muted-foreground mt-2">
                     {account?.lifetime_points?.toLocaleString() ?? 0} lifetime points earned
                   </p>
+                  {rules && (
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">
+                      You earn {rules.points_per_dollar} pts per $1 spent · redeem every {rules.redemption_threshold} pts for ${(rules.redemption_value_cents / 100).toFixed(0)} off
+                    </p>
+                  )}
 
                   {/* Progress bar */}
                   <div className="mt-4">

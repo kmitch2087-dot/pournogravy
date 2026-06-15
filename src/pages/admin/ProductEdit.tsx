@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -16,38 +18,67 @@ import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink } from "lucide-react"
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 
-const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
+const AVAILABLE_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
+
+interface ColorRow {
+  name: string;
+  hex: string;
+}
 
 interface FormState {
   slug: string;
+  slugOverride: boolean;   // true once user has manually edited the slug
   name: string;
+  category: string;
   description: string;
   humor: string;
-  longDescription: string[];
+  longDescription: string;  // textarea — newline-separated paragraphs
   badAdviceTitle: string;
-  badAdviceParagraphs: string[];
+  badAdviceParagraphs: string; // textarea — newline-separated paragraphs
   price_dollars: string;
+  badge: string;
   isLive: boolean;
   featured: boolean;
-  fit_type: string;
+  wentLiveAt: string;        // datetime-local value
+  // Images
+  mainImageUrl: string;
+  backImageUrl: string;
+  additionalImages: string[];
+  focusX: number;
+  focusY: number;
+  // Variants
   sizes: string[];
-  images: string[];
-  badge: string;
-  fulfillment_route: string;
-  print_file_url: string;
-  thumbnailFocalX: number;
-  thumbnailFocalY: number;
+  colors: ColorRow[];
+  // Fulfillment
+  fulfillment_type: string;
 }
 
 const defaultForm = (): FormState => ({
-  slug: "", name: "", description: "", humor: "",
-  longDescription: [], badAdviceTitle: "", badAdviceParagraphs: [],
-  price_dollars: "", isLive: false, featured: false, fit_type: "unisex",
-  sizes: DEFAULT_SIZES, images: [], badge: "", fulfillment_route: "local_printer", print_file_url: "",
-  thumbnailFocalX: 40, thumbnailFocalY: 40,
+  slug: "",
+  slugOverride: false,
+  name: "",
+  category: "apparel",
+  description: "",
+  humor: "",
+  longDescription: "",
+  badAdviceTitle: "",
+  badAdviceParagraphs: "",
+  price_dollars: "",
+  badge: "",
+  isLive: false,
+  featured: false,
+  wentLiveAt: "",
+  mainImageUrl: "",
+  backImageUrl: "",
+  additionalImages: [],
+  focusX: 40,
+  focusY: 50,
+  sizes: ["XS", "S", "M", "L", "XL", "2XL"],
+  colors: [],
+  fulfillment_type: "printer",
 });
 
-// Dynamic paragraph list editor
+// ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
 const ParagraphList = ({
   label, paragraphs, onChange, placeholder, rows = 3,
 }: {
@@ -69,7 +100,7 @@ const ParagraphList = ({
         </Button>
       </div>
       {paragraphs.length === 0 && (
-        <p className="text-xs text-muted-foreground italic">No paragraphs yet. Click "Add paragraph" to start.</p>
+        <p className="text-xs text-muted-foreground italic">No paragraphs yet.</p>
       )}
       {paragraphs.map((para, i) => (
         <div key={i} className="relative group">
@@ -93,10 +124,11 @@ const ParagraphList = ({
   );
 };
 
+// ─── Main component ──────────────────────────────────────────────────────────
 const ProductEdit = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const fromSlug = searchParams.get("from"); // static product slug to pre-populate from
+  const fromSlug = searchParams.get("from");
   const isNew = !id || id === "new";
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -104,6 +136,9 @@ const ProductEdit = () => {
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm());
   const [initialized, setInitialized] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["admin-product", id],
@@ -117,59 +152,88 @@ const ProductEdit = () => {
     enabled: !isNew,
   });
 
+  // ── Populate form ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (initialized) return;
 
     if (!isNew && product) {
-      // Editing existing DB product
       const ba = product.bad_advice as { title?: string; paragraphs?: string[] } | null;
+      const allImages: string[] = (() => {
+        if (product.images?.length) return product.images as string[];
+        if ((product as Record<string, unknown>).image_url)
+          return [(product as Record<string, unknown>).image_url as string];
+        const sp = staticProducts.find((s) => s.id === product.slug);
+        return sp?.images?.length ? sp.images : (sp?.image ? [sp.image] : []);
+      })();
+
+      const [main = "", ...rest] = allImages;
+      const rawColors = (product.colors as ColorRow[] | null) ?? [];
+
+      const wentLiveAtRaw = (product as Record<string, unknown>).went_live_at as string | null;
+      const wentLiveAtLocal = wentLiveAtRaw
+        ? new Date(wentLiveAtRaw).toISOString().slice(0, 16)
+        : "";
+
       setForm({
         slug: product.slug ?? "",
+        slugOverride: true,
         name: product.name ?? "",
+        category: (product as Record<string, unknown>).category as string ?? "apparel",
         description: product.description ?? "",
         humor: product.humor ?? "",
-        longDescription: (product.long_description as string[] | null) ?? [],
+        longDescription: ((product.long_description as string[] | null) ?? []).join("\n"),
         badAdviceTitle: ba?.title ?? "",
-        badAdviceParagraphs: ba?.paragraphs ?? [],
+        badAdviceParagraphs: (ba?.paragraphs ?? []).join("\n"),
         price_dollars: product.price_cents ? (product.price_cents / 100).toFixed(2) : "",
-        isLive: product.is_active && product.published,
-        featured: product.featured ?? false,
-        fit_type: product.fit_type ?? "unisex",
-        sizes: product.sizes?.length ? product.sizes : DEFAULT_SIZES,
-        badge: product.badge ?? "",
-        images: (() => {
-          if (product.images?.length) return product.images as string[];
-          if ((product as Record<string, unknown>).image_url) return [(product as Record<string, unknown>).image_url as string];
-          const sp = staticProducts.find((s) => s.id === product.slug);
-          return sp?.images?.length ? sp.images : (sp?.image ? [sp.image] : []);
-        })(),
-        fulfillment_route: (product as Record<string, unknown>).fulfillment_route as string ?? "local_printer",
-        print_file_url: (product as Record<string, unknown>).print_file_url as string ?? "",
-        thumbnailFocalX: (product as Record<string, unknown>).thumbnail_focal_x as number ?? 40,
-        thumbnailFocalY: (product as Record<string, unknown>).thumbnail_focal_y as number ?? 40,
+        badge: (product as Record<string, unknown>).badge as string ?? "",
+        isLive: !!(product.is_active && product.published),
+        featured: !!(product as Record<string, unknown>).featured,
+        wentLiveAt: wentLiveAtLocal,
+        mainImageUrl: main,
+        backImageUrl: (product as Record<string, unknown>).back_image_url as string ?? "",
+        additionalImages: rest,
+        focusX: (product as Record<string, unknown>).focus_x as number
+          ?? (product as Record<string, unknown>).thumbnail_focal_x as number
+          ?? 40,
+        focusY: (product as Record<string, unknown>).focus_y as number
+          ?? (product as Record<string, unknown>).thumbnail_focal_y as number
+          ?? 50,
+        sizes: (product.sizes as string[] | null)?.length
+          ? (product.sizes as string[])
+          : ["XS", "S", "M", "L", "XL", "2XL"],
+        colors: rawColors,
+        fulfillment_type: (product as Record<string, unknown>).fulfillment_type as string
+          ?? mapLegacyRoute((product as Record<string, unknown>).fulfillment_route as string | undefined),
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
-      // Pre-populate from static catalog product
       const sp = staticProducts.find((p) => p.id === fromSlug);
       if (sp) {
+        const allImages = sp.images?.length ? sp.images : (sp.image ? [sp.image] : []);
+        const [main = "", ...rest] = allImages;
         setForm({
           slug: sp.id,
+          slugOverride: true,
           name: sp.name,
+          category: "apparel",
           description: sp.description ?? "",
           humor: sp.humor ?? "",
-          longDescription: sp.longDescription ?? [],
+          longDescription: (sp.longDescription ?? []).join("\n"),
           badAdviceTitle: sp.badAdvice?.title ?? "",
-          badAdviceParagraphs: sp.badAdvice?.paragraphs ?? [],
+          badAdviceParagraphs: (sp.badAdvice?.paragraphs ?? []).join("\n"),
           price_dollars: sp.price.toFixed(2),
+          badge: sp.badge ?? "",
           isLive: sp.published === true,
           featured: sp.featured === true,
-          fit_type: sp.variants ? "mens_womens" : "unisex",
-          sizes: sp.sizes ?? DEFAULT_SIZES,
-          images: sp.images?.length ? sp.images : (sp.image ? [sp.image] : []),
-          badge: sp.badge ?? "",
-          fulfillment_route: "local_printer",
-          print_file_url: "",
+          wentLiveAt: "",
+          mainImageUrl: main,
+          backImageUrl: "",
+          additionalImages: rest,
+          focusX: 40,
+          focusY: 50,
+          sizes: sp.sizes ?? ["XS", "S", "M", "L", "XL", "2XL"],
+          colors: [],
+          fulfillment_type: "printer",
         });
         setInitialized(true);
       }
@@ -178,21 +242,57 @@ const ProductEdit = () => {
     }
   }, [product, isNew, fromSlug, initialized]);
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  const handleNameChange = (name: string) => {
+    setF(form.slugOverride ? { name } : { name, slug: slugify(name) });
+  };
+
+  const handleSlugChange = (raw: string) => {
+    setF({ slug: slugify(raw), slugOverride: raw !== "" });
+  };
+
+  // Image upload to Supabase Storage
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     const ext = file.name.split(".").pop();
-    const path = `${form.slug || crypto.randomUUID()}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("products").upload(path, file, { cacheControl: "3600", upsert: false });
+    const basePath = form.slug || crypto.randomUUID();
+    const path = `${basePath}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(path, file, { cacheControl: "3600", upsert: false });
     if (error) { toast.error(error.message); setUploading(false); return; }
     const { data } = supabase.storage.from("products").getPublicUrl(path);
-    setForm((f) => ({ ...f, images: [...f.images, data.publicUrl] }));
+    // Place as main image if none set, otherwise add to additional images
+    if (!form.mainImageUrl) {
+      setF({ mainImageUrl: data.publicUrl });
+    } else {
+      setF({ additionalImages: [...form.additionalImages, data.publicUrl] });
+    }
     setUploading(false);
     toast.success("Image uploaded");
   };
 
-  const removeImage = (url: string) =>
-    setForm((f) => ({ ...f, images: f.images.filter((u) => u !== url) }));
+  // Color row helpers
+  const addColor = () => setF({ colors: [...form.colors, { name: "", hex: "#000000" }] });
+  const updateColor = (i: number, patch: Partial<ColorRow>) => {
+    const next = [...form.colors];
+    next[i] = { ...next[i], ...patch };
+    setF({ colors: next });
+  };
+  const removeColor = (i: number) =>
+    setF({ colors: form.colors.filter((_, idx) => idx !== i) });
 
+  // Size checkbox toggle
+  const toggleSize = (size: string) => {
+    const next = form.sizes.includes(size)
+      ? form.sizes.filter((s) => s !== size)
+      : [...form.sizes, size];
+    setF({ sizes: next });
+  };
+
+  // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.name) return toast.error("Name is required");
     if (!form.price_dollars || isNaN(Number(form.price_dollars)))
@@ -200,70 +300,101 @@ const ProductEdit = () => {
 
     setSaving(true);
     const slug = form.slug || slugify(form.name);
-    const badAdvice = form.badAdviceTitle || form.badAdviceParagraphs.length > 0
-      ? { title: form.badAdviceTitle, paragraphs: form.badAdviceParagraphs.filter(Boolean) }
+
+    // Compile images array: main first, then additional (skip back_image — stored separately)
+    const images = [
+      form.mainImageUrl,
+      ...form.additionalImages,
+    ].filter(Boolean);
+
+    // Parse textarea fields
+    const longDesc = form.longDescription.split("\n").filter(Boolean);
+    const badParagraphs = form.badAdviceParagraphs.split("\n").filter(Boolean);
+    const badAdvice = form.badAdviceTitle || badParagraphs.length > 0
+      ? { title: form.badAdviceTitle, paragraphs: badParagraphs }
       : null;
 
-    const payload = {
+    // wentLiveAt: respect what's in the field; if going live and field is empty, stamp now
+    let wentLiveAt: string | null = form.wentLiveAt
+      ? new Date(form.wentLiveAt).toISOString()
+      : null;
+
+    const payload: Record<string, unknown> = {
       slug,
       name: form.name,
+      category: form.category,
       description: form.description || null,
       humor: form.humor || null,
-      long_description: form.longDescription.filter(Boolean).length > 0 ? form.longDescription.filter(Boolean) : null,
+      long_description: longDesc.length > 0 ? longDesc : null,
       bad_advice: badAdvice,
       price_cents: Math.round(Number(form.price_dollars) * 100),
       is_active: form.isLive,
       published: form.isLive,
       status: form.isLive ? "published" : "draft",
       featured: form.featured,
-      fit_type: form.fit_type,
-      sizes: form.sizes,
-      images: form.images,
-      image_url: form.images[0] ?? null,
       badge: form.badge || null,
-      fulfillment_route: form.fulfillment_route,
-      print_file_url: form.print_file_url || null,
-      thumbnail_focal_x: form.thumbnailFocalX,
-      thumbnail_focal_y: form.thumbnailFocalY,
+      images,
+      image_url: images[0] ?? null,
+      back_image_url: form.backImageUrl || null,
+      focus_x: form.focusX,
+      focus_y: form.focusY,
+      // Also write to the legacy focal columns so existing display code keeps working
+      thumbnail_focal_x: form.focusX,
+      thumbnail_focal_y: form.focusY,
+      sizes: form.sizes,
+      colors: form.colors.length > 0 ? form.colors : null,
+      fulfillment_type: form.fulfillment_type,
+      // Keep fulfillment_route in sync with the legacy column
+      fulfillment_route: mapFulfillmentTypeToRoute(form.fulfillment_type),
     };
 
     let error;
-    if (!isNew && !fromSlug) {
-      // Stamp went_live_at on first publish (only if not already set)
-      if (form.isLive) {
+    if (!isNew) {
+      // Stamp went_live_at on first publish if not already set
+      if (form.isLive && !wentLiveAt) {
         const { data: existing } = await supabase
           .from("products")
           .select("went_live_at")
           .eq("id", id!)
           .maybeSingle();
         if (!existing?.went_live_at) {
-          (payload as Record<string, unknown>).went_live_at = new Date().toISOString();
+          wentLiveAt = new Date().toISOString();
         }
       }
+      payload.went_live_at = wentLiveAt;
       ({ error } = await supabase.from("products").update(payload).eq("id", id!));
     } else {
-      // Insert new (either truly new or first-time save of static product)
-      if (form.isLive) {
-        (payload as Record<string, unknown>).went_live_at = new Date().toISOString();
+      if (form.isLive && !wentLiveAt) {
+        wentLiveAt = new Date().toISOString();
       }
+      payload.went_live_at = wentLiveAt;
       ({ error } = await supabase.from("products").insert([payload]));
     }
 
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+    const now = new Date();
+    setLastSaved(now);
     toast.success(isNew ? "Product created" : "Saved");
     qc.invalidateQueries({ queryKey: ["admin-products"] });
-    navigate("/admin/products");
+    if (isNew) navigate("/admin/products");
   };
 
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (!isNew && isLoading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
-  const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+  const isPOD = form.fulfillment_type === "printful" || form.fulfillment_type === "printify";
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-4xl">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
           <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
@@ -271,7 +402,7 @@ const ProductEdit = () => {
         {form.slug && (
           <a href={`/product/${form.slug}`} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" className="text-xs font-display tracking-widest">
-              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />View on Site
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View on Site
             </Button>
           </a>
         )}
@@ -281,183 +412,498 @@ const ProductEdit = () => {
         {/* ── Left column — content ── */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Basic details */}
+          {/* ── CORE INFO ── */}
           <Card>
-            <CardHeader><CardTitle className="font-display tracking-widest">DETAILS</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">CORE INFO</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Name *</Label>
-                <Input value={form.name} onChange={(e) => setF({ name: e.target.value })} />
+                <Input
+                  value={form.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Product name"
+                />
               </div>
+
               <div className="space-y-1.5">
                 <Label>Slug (URL)</Label>
                 <Input
                   value={form.slug}
-                  onChange={(e) => setF({ slug: slugify(e.target.value) })}
-                  placeholder={slugify(form.name) || "auto-generated"}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  placeholder={form.name ? slugify(form.name) : "auto-generated-from-name"}
                 />
-                <p className="text-xs text-muted-foreground">Auto-generated from name if left blank.</p>
+                <p className="text-xs text-muted-foreground">
+                  Auto-generated from name. Edit to override.
+                </p>
               </div>
+
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setF({ category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="apparel">Apparel</SelectItem>
+                    <SelectItem value="accessories">Accessories</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Price (USD) *</Label>
-                  <Input type="number" step="0.01" value={form.price_dollars} onChange={(e) => setF({ price_dollars: e.target.value })} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.price_dollars}
+                    onChange={(e) => setF({ price_dollars: e.target.value })}
+                    placeholder="0.00"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Badge</Label>
-                  <Input value={form.badge} onChange={(e) => setF({ badge: e.target.value })} placeholder="e.g. NEW, HOT" />
+                  <Label>Badge Text</Label>
+                  <Input
+                    value={form.badge}
+                    onChange={(e) => setF({ badge: e.target.value })}
+                    placeholder="e.g. NEW, BESTSELLER"
+                  />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Went Live At</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.wentLiveAt}
+                  onChange={(e) => setF({ wentLiveAt: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-stamped on first publish. Controls the "NEW" badge 14-day window.
+                </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Product copy */}
+          {/* ── COPY ── */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display tracking-widest">PRODUCT COPY</CardTitle>
-              <p className="text-xs text-muted-foreground">This is Opie's voice — keep it raw.</p>
+              <CardTitle className="font-display tracking-widest">COPY</CardTitle>
+              <p className="text-xs text-muted-foreground">Keep it in Opie's voice — raw and honest.</p>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-1.5">
-                <Label>Main Description</Label>
+                <Label>Short Description</Label>
                 <Textarea
                   value={form.description}
                   onChange={(e) => setF({ description: e.target.value })}
-                  rows={4}
+                  rows={3}
                   className="resize-none"
                   placeholder="The main product copy shown on the product page."
                 />
               </div>
+
               <div className="space-y-1.5">
-                <Label>Humor / Tagline</Label>
+                <Label>Long Description</Label>
+                <Textarea
+                  value={form.longDescription}
+                  onChange={(e) => setF({ longDescription: e.target.value })}
+                  rows={5}
+                  className="resize-none"
+                  placeholder={"One paragraph per line.\nBlank lines are ignored."}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Each line becomes its own paragraph on the product page.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Humor / Zinger</Label>
                 <Input
                   value={form.humor}
                   onChange={(e) => setF({ humor: e.target.value })}
-                  placeholder="Short one-liner shown on the card and as the pull-quote callout"
+                  placeholder="One-liner shown on the product card and as the pull-quote callout"
                 />
               </div>
-              <ParagraphList
-                label="Extended Description (Long Copy)"
-                paragraphs={form.longDescription}
-                onChange={(p) => setF({ longDescription: p })}
-                placeholder="Additional context, extended story, or extra copy shown on the product page..."
-                rows={3}
-              />
             </CardContent>
           </Card>
 
-          {/* Bad Bartender Advice */}
+          {/* ── BAD BARTENDER ADVICE ── */}
           <Card>
             <CardHeader>
               <CardTitle className="font-display tracking-widest">BAD BARTENDER ADVICE</CardTitle>
-              <p className="text-xs text-muted-foreground">Opie's story / dialogue block shown at the bottom of the product page.</p>
+              <p className="text-xs text-muted-foreground">
+                Opie's story / dialogue block shown at the bottom of the product page.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Section Title</Label>
+                <Label>Title</Label>
                 <Input
                   value={form.badAdviceTitle}
                   onChange={(e) => setF({ badAdviceTitle: e.target.value })}
                   placeholder="e.g. My Name is Opie and I'll Be Your Bartender:"
                 />
               </div>
-              <ParagraphList
-                label="Story / Advice Paragraphs"
-                paragraphs={form.badAdviceParagraphs}
-                onChange={(p) => setF({ badAdviceParagraphs: p })}
-                placeholder="Paragraph or dialogue line..."
-                rows={3}
-              />
+              <div className="space-y-1.5">
+                <Label>Paragraphs</Label>
+                <Textarea
+                  value={form.badAdviceParagraphs}
+                  onChange={(e) => setF({ badAdviceParagraphs: e.target.value })}
+                  rows={6}
+                  className="resize-none"
+                  placeholder={"One paragraph per line.\nEach line becomes its own <p> block."}
+                />
+                <p className="text-xs text-muted-foreground">
+                  One paragraph per line. Blank lines are ignored.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Images */}
+          {/* ── IMAGES ── */}
           <Card>
-            <CardHeader><CardTitle className="font-display tracking-widest">IMAGES</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {form.images.map((url) => (
-                  <div key={url} className="relative aspect-square group">
-                    <img src={url} alt="" className="w-full h-full object-cover rounded-sm border border-border" />
-                    <button
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">IMAGES</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Main image */}
+              <div className="space-y-1.5">
+                <Label>Main Image URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.mainImageUrl}
+                    onChange={(e) => setF({ mainImageUrl: e.target.value })}
+                    placeholder="https://…"
+                  />
+                  {form.mainImageUrl && (
+                    <Button
                       type="button"
-                      onClick={() => removeImage(url)}
-                      className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-sm opacity-0 group-hover:opacity-100 transition"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setF({ mainImageUrl: "" })}
                     >
-                      <X className="h-3 w-3" />
-                    </button>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {form.mainImageUrl && (
+                  <img
+                    src={form.mainImageUrl}
+                    alt="Main"
+                    className="mt-2 h-24 w-24 object-cover rounded-sm border border-border"
+                  />
+                )}
+              </div>
+
+              {/* Back image */}
+              <div className="space-y-1.5">
+                <Label>Back / Logo Side Image URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.backImageUrl}
+                    onChange={(e) => setF({ backImageUrl: e.target.value })}
+                    placeholder="https://… (optional)"
+                  />
+                  {form.backImageUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setF({ backImageUrl: "" })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {form.backImageUrl && (
+                  <img
+                    src={form.backImageUrl}
+                    alt="Back"
+                    className="mt-2 h-24 w-24 object-cover rounded-sm border border-border"
+                  />
+                )}
+              </div>
+
+              {/* Additional images */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Additional Images</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setF({ additionalImages: [...form.additionalImages, ""] })}
+                    className="text-xs text-[#fde047] h-6 px-2"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add URL
+                  </Button>
+                </div>
+                {form.additionalImages.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No additional images.</p>
+                )}
+                {form.additionalImages.map((url, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      value={url}
+                      onChange={(e) => {
+                        const next = [...form.additionalImages];
+                        next[i] = e.target.value;
+                        setF({ additionalImages: next });
+                      }}
+                      placeholder="https://…"
+                    />
+                    {url && (
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-9 w-9 object-cover rounded-sm border border-border flex-shrink-0"
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setF({ additionalImages: form.additionalImages.filter((_, idx) => idx !== i) })
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
-                <label className="aspect-square border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[#fde047] transition text-muted-foreground hover:text-[#fde047]">
-                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                    <><Upload className="h-5 w-5" /><span className="text-[10px] uppercase tracking-wider">Upload</span></>
-                  )}
-                  <input type="file" accept="image/*" className="hidden" disabled={uploading}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
+              </div>
+
+              {/* Upload button */}
+              <div>
+                <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-muted-foreground hover:text-[#fde047] transition border border-dashed border-border rounded px-3 py-2">
+                  {uploading
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Upload className="h-4 w-4" />}
+                  Upload from disk
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageUpload(f);
+                      e.target.value = "";
+                    }}
                   />
                 </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Uploads to Supabase Storage. If no main image is set, the upload fills that slot first.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">First image is used as the thumbnail. Drag to reorder (coming soon).</p>
 
-              {/* Focal point picker */}
-              {form.images[0] && (
-                <div className="pt-2 border-t border-border space-y-2">
-                  <Label className="text-xs tracking-wider uppercase">Thumbnail Crop Center</Label>
-                  <p className="text-[11px] text-muted-foreground">Click anywhere on the preview to set where the zoom anchors. The crosshair shows the current center.</p>
+              {/* Focal point */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <Label className="text-xs tracking-wider uppercase">Image Focus Point</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Focus X %</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={form.focusX}
+                        onChange={(e) => setF({ focusX: Number(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <span className="text-xs font-mono w-8 text-right">{form.focusX}%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Focus Y %</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={form.focusY}
+                        onChange={(e) => setF({ focusY: Number(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <span className="text-xs font-mono w-8 text-right">{form.focusY}%</span>
+                    </div>
+                  </div>
+                </div>
+                {form.mainImageUrl && (
                   <div
                     className="relative aspect-square overflow-hidden border border-border cursor-crosshair max-w-[180px]"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       setF({
-                        thumbnailFocalX: Math.round(((e.clientX - rect.left) / rect.width) * 100),
-                        thumbnailFocalY: Math.round(((e.clientY - rect.top) / rect.height) * 100),
+                        focusX: Math.round(((e.clientX - rect.left) / rect.width) * 100),
+                        focusY: Math.round(((e.clientY - rect.top) / rect.height) * 100),
                       });
                     }}
                   >
                     <img
-                      src={form.images[0]}
+                      src={form.mainImageUrl}
                       alt=""
                       className="w-full h-full object-cover scale-[1.35] pointer-events-none"
-                      style={{ transformOrigin: `${form.thumbnailFocalX}% ${form.thumbnailFocalY}%` }}
+                      style={{ transformOrigin: `${form.focusX}% ${form.focusY}%` }}
                     />
-                    {/* Crosshair */}
                     <div
                       className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                      style={{ left: `${form.thumbnailFocalX}%`, top: `${form.thumbnailFocalY}%` }}
+                      style={{ left: `${form.focusX}%`, top: `${form.focusY}%` }}
                     >
                       <div className="absolute inset-0 border-2 border-[#fde047] rounded-full opacity-90" />
                       <div className="absolute top-1/2 left-0 right-0 h-px bg-[#fde047] -translate-y-1/2 opacity-90" />
                       <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#fde047] -translate-x-1/2 opacity-90" />
                     </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground font-mono">{form.thumbnailFocalX}% × {form.thumbnailFocalY}%</p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Click on the preview to set the zoom anchor, or drag the sliders.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── VARIANTS — apparel only ── */}
+          {form.category === "apparel" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-display tracking-widest">VARIANTS</CardTitle>
+                <p className="text-xs text-muted-foreground">Sizes and colors available for this product.</p>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Sizes */}
+                <div className="space-y-2">
+                  <Label>Available Sizes</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {AVAILABLE_SIZES.map((size) => (
+                      <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox
+                          checked={form.sizes.includes(size)}
+                          onCheckedChange={() => toggleSize(size)}
+                        />
+                        <span className="text-sm font-mono">{size}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Colors */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Colors</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={addColor}
+                      className="text-xs text-[#fde047] h-6 px-2"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Add color
+                    </Button>
+                  </div>
+                  {form.colors.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">
+                      No colors yet — add one to enable color selection in the shop.
+                    </p>
+                  )}
+                  {form.colors.map((c, i) => {
+                    const slugPattern = form.slug
+                      ? `${form.slug}_${c.name.toLowerCase().replace(/\s+/g, "_") || "<name>"}`
+                      : "<slug>_<name>";
+                    return (
+                      <div key={i} className="flex items-center gap-3 group">
+                        <input
+                          type="color"
+                          value={c.hex || "#000000"}
+                          onChange={(e) => updateColor(i, { hex: e.target.value })}
+                          className="h-8 w-8 rounded border border-border cursor-pointer flex-shrink-0"
+                          title="Pick color"
+                        />
+                        <Input
+                          value={c.name}
+                          onChange={(e) => updateColor(i, { name: e.target.value })}
+                          placeholder="Color name (e.g. Black, Navy)"
+                          className="flex-1"
+                        />
+                        <Input
+                          value={c.hex}
+                          onChange={(e) => {
+                            const hex = e.target.value;
+                            updateColor(i, { hex });
+                          }}
+                          placeholder="#000000"
+                          className="w-28 font-mono text-xs"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeColor(i)}
+                          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <X className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {form.colors.length > 0 && form.slug && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Print file pattern: <span className="font-mono">{`${form.slug}_<colorname>.png`}</span>
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── FULFILLMENT ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">FULFILLMENT</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select
+                value={form.fulfillment_type}
+                onValueChange={(v) => setF({ fulfillment_type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None / Digital</SelectItem>
+                  <SelectItem value="self">Self-Fulfilled (ship yourself)</SelectItem>
+                  <SelectItem value="printer">Local Printer (sends printer email on order)</SelectItem>
+                  <SelectItem value="printful">Printful (API — Coming Soon)</SelectItem>
+                  <SelectItem value="printify">Printify (API — Coming Soon)</SelectItem>
+                </SelectContent>
+              </Select>
+              {isPOD && (
+                <p className="text-xs text-muted-foreground italic">
+                  API integration for {form.fulfillment_type === "printful" ? "Printful" : "Printify"} is coming in a future update. Orders will currently fall through to the default fulfillment path.
+                </p>
               )}
             </CardContent>
           </Card>
 
-          {/* Print File URL */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">PRINT FILE</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Input
-                value={form.print_file_url}
-                onChange={(e) => setF({ print_file_url: e.target.value })}
-                placeholder="https://drive.google.com/…"
-              />
-              <p className="text-xs text-muted-foreground">
-                Google Drive or Supabase Storage URL for the printer's high-res print-ready file (300 DPI+ PNG/PDF). Included in the fulfillment CSV emailed to the printer on each order.
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* ── Right column — settings ── */}
+        {/* ── Right column — sidebar ── */}
         <div className="space-y-6">
+
+          {/* Visibility */}
           <Card>
-            <CardHeader><CardTitle className="font-display tracking-widest">VISIBILITY</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">VISIBILITY</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between py-1">
                 <div>
@@ -472,51 +918,83 @@ const ProductEdit = () => {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="featured">Featured</Label>
-                <Switch id="featured" checked={form.featured} onCheckedChange={(v) => setF({ featured: v })} />
+                <div>
+                  <Label htmlFor="featured">Featured</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Shows in hero / featured row</p>
+                </div>
+                <Switch
+                  id="featured"
+                  checked={form.featured}
+                  onCheckedChange={(v) => setF({ featured: v })}
+                />
               </div>
             </CardContent>
           </Card>
 
+          {/* Category summary */}
           <Card>
-            <CardHeader><CardTitle className="font-display tracking-widest text-sm">FIT</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest text-sm">CATEGORY</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Select value={form.fit_type} onValueChange={(v) => setF({ fit_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unisex">Unisex</SelectItem>
-                  <SelectItem value="mens_womens">Men's &amp; Women's</SelectItem>
-                </SelectContent>
-              </Select>
+              <Badge
+                variant="outline"
+                className="text-xs uppercase tracking-widest"
+              >
+                {form.category}
+              </Badge>
+              {form.category === "accessories" && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Size/color variant section hidden for accessories.
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="font-display tracking-widest text-sm">FULFILLMENT</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Select value={form.fulfillment_route} onValueChange={(v) => setF({ fulfillment_route: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="local_printer">Local Printer</SelectItem>
-                  <SelectItem value="printify">Printify</SelectItem>
-                  <SelectItem value="printful">Printful</SelectItem>
-                  <SelectItem value="manual">Manual / Self-fulfill</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full h-12 bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isNew ? "CREATE PRODUCT" : "SAVE CHANGES"}
-          </Button>
+          {/* Save */}
+          <div className="space-y-2">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full h-12 bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+            >
+              {saving
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : isNew ? "CREATE PRODUCT" : "SAVE CHANGES"}
+            </Button>
+            {lastSaved && (
+              <p className="text-xs text-muted-foreground text-center">
+                Last saved: {lastSaved.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+// ── Utility: map new fulfillment_type → legacy fulfillment_route values ──────
+function mapFulfillmentTypeToRoute(type: string): string {
+  switch (type) {
+    case "printer": return "local_printer";
+    case "self": return "manual";
+    case "printful": return "printful";
+    case "printify": return "printify";
+    case "none": return "manual";
+    default: return "local_printer";
+  }
+}
+
+// Map legacy fulfillment_route → new fulfillment_type (for loading existing records)
+function mapLegacyRoute(route: string | undefined): string {
+  switch (route) {
+    case "local_printer": return "printer";
+    case "manual": return "self";
+    case "printful": return "printful";
+    case "printify": return "printify";
+    default: return "printer";
+  }
+}
 
 export default ProductEdit;

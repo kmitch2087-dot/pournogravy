@@ -25,10 +25,6 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
-  AlertTriangle,
-  User,
-  Building2,
-  Globe,
   Wrench,
   Star,
   Clock,
@@ -36,10 +32,7 @@ import {
   TrendingUp,
   CheckCheck,
   Package,
-  CreditCard,
   Mail,
-  Shield,
-  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -247,81 +240,6 @@ const SESSION_LOG = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Data — Opie's tasks
-// ---------------------------------------------------------------------------
-const OPIES_TASKS = [
-  {
-    id: "stripe-ein",
-    priority: "critical",
-    label: "CRITICAL",
-    title: "Enter EIN + Business Name in Stripe",
-    detail:
-      "Stripe Dashboard → Settings → Business Details. Enter your EIN and legal business name. Without this, Stripe may hold your payouts or flag your account for review. This is the #1 thing to do now that you have your registration sorted. The EIN does NOT go in your DNS or domain registrar — it goes here in Stripe for payout verification.",
-    icon: CreditCard,
-    done: false,
-  },
-  {
-    id: "registrar-whois",
-    priority: "high",
-    label: "HIGH",
-    title: "Update Domain Registrar — Business Name (not EIN)",
-    detail:
-      "Log into wherever pournogravy.com is registered (Cloudflare, GoDaddy, Namecheap — check your email for the original confirmation). Update the WHOIS contact/registrant name from your personal name to your LLC or business name. Your EIN itself does NOT go here — just the business name. DNS records don't change at all. This is purely ownership-record paperwork.",
-    icon: Globe,
-    done: false,
-  },
-  {
-    id: "apollo-whitelist",
-    priority: "high",
-    label: "HIGH",
-    title: "Fix Admin Login: Whitelist Supabase in Apollo Extension",
-    detail:
-      "Open your Apollo Chrome extension → Settings (gear icon) → Excluded Domains → add *.supabase.co. The extension is intercepting your Supabase API calls and blocking the profile fetch — which is why you get a spinner on admin login. In incognito (extensions off), login works instantly. This 30-second fix restores normal login in your regular browser.",
-    icon: Shield,
-    done: false,
-  },
-  {
-    id: "resend-domain",
-    priority: "high",
-    label: "HIGH",
-    title: "Verify Sender Domain in Resend",
-    detail:
-      "Log into resend.com → Domains → find pournogravy.com → verify. Resend will give you 2–3 DNS TXT records to add in Cloudflare (takes under 5 minutes). Once done, opie@pournogravy.com becomes a verified sender and customers will receive order confirmation emails. Without this, order emails either go to spam or don't send at all.",
-    icon: Mail,
-    done: false,
-  },
-  {
-    id: "fulfillment-samples",
-    priority: "medium",
-    label: "MEDIUM",
-    title: "Order Samples from Printify + Printful",
-    detail:
-      "Order at least 1 shirt from each before committing to a fulfillment partner. Check: print sharpness and alignment, shirt fabric feel and fit consistency, wash test after 3–5 washes, packaging and presentation, and actual delivery time. Printify is cheaper (~$13.15 total, ~47% margin) but Printful has better brand consistency. Sample first, commit second.",
-    icon: Package,
-    done: false,
-  },
-  {
-    id: "fulfillment-decision",
-    priority: "medium",
-    label: "MEDIUM",
-    title: "Pick a Fulfillment Partner — Tell Kristin",
-    detail:
-      "After samples arrive, decide: Printify (best margin) or Printful (premium). Let Kristin know and she'll wire the API key into the stripe-webhook edge function so orders auto-route to fulfillment on payment. Until this is wired, orders land in the DB and printer queue but nothing ships automatically.",
-    icon: Rocket,
-    done: false,
-  },
-  {
-    id: "google-business",
-    priority: "low",
-    label: "LOW",
-    title: "Set Up Google Business Profile",
-    detail:
-      "Visit google.com/business and claim or create a profile for Pournogravy. Even for an online-only brand, a Google Business Profile helps with search visibility and gives the brand a verified presence on Maps and Search. Takes about 10 minutes.",
-    icon: Building2,
-    done: false,
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Data — backlog
@@ -524,86 +442,6 @@ function SessionLogEntry({ entry, index }: { entry: typeof SESSION_LOG[0]; index
   );
 }
 
-function OpiesTaskCard({ task, index }: { task: typeof OPIES_TASKS[0]; index: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const [done, setDone] = useState(task.done);
-  const Icon = task.icon;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06 }}
-      className={`border rounded-sm overflow-hidden bg-card transition-opacity ${
-        done ? "opacity-50" :
-        task.priority === "critical" ? "border-red-500/30" :
-        task.priority === "high"     ? "border-orange-500/20" :
-        "border-border"
-      }`}
-    >
-      <button
-        className="w-full text-left p-4 flex items-start gap-3 hover:bg-muted/20 transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className={`p-1.5 rounded shrink-0 mt-0.5 ${
-          task.priority === "critical" ? "bg-red-500/15" :
-          task.priority === "high"     ? "bg-orange-500/15" :
-          "bg-muted/30"
-        }`}>
-          <Icon className={`h-4 w-4 ${
-            task.priority === "critical" ? "text-red-400" :
-            task.priority === "high"     ? "text-orange-400" :
-            "text-muted-foreground"
-          }`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <Badge className={`text-[10px] ${
-              task.priority === "critical" ? "bg-red-500/20 text-red-400 border-red-500/30" :
-              task.priority === "high"     ? "bg-orange-500/20 text-orange-400 border-orange-500/30" :
-              task.priority === "medium"   ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
-              "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
-            }`}>{task.label}</Badge>
-          </div>
-          <p className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-            {task.title}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDone(!done);
-              toast.success(done ? "Marked incomplete" : "Done! Pour one out 🍺");
-            }}
-            className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
-              done ? "bg-[#fde047] border-[#fde047]" : "border-muted-foreground/30 hover:border-[#fde047]/60"
-            }`}
-          >
-            {done && <CheckCheck className="h-3 w-3 text-black" />}
-          </button>
-          {expanded
-            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-        </div>
-      </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 border-t border-border/40">
-              <p className="text-sm text-muted-foreground pt-3 leading-relaxed">{task.detail}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
 
 function BacklogSection({ title, items, color }: { title: string; items: { text: string }[]; color: string }) {
   const [open, setOpen] = useState(true);
@@ -842,7 +680,7 @@ export default function ProjectStatus() {
         <StatCard label="Features Shipped" value="40+" icon={CheckCheck} accent />
         <StatCard label="Completion" value="~85%" sub="Core features done" icon={TrendingUp} />
         <StatCard label="Days Active" value={`${daysSinceLaunch}`} sub="Since April 28, 2026" icon={Calendar} />
-        <StatCard label="Sessions" value="6" sub="Across all tools" icon={Clock} />
+        <StatCard label="Sessions" value="14" sub="Across all tools" icon={Clock} />
       </div>
 
       {/* Phase Tracker */}
@@ -863,11 +701,8 @@ export default function ProjectStatus() {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="opie" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="opie" className="text-xs gap-1.5">
-            <User className="h-3.5 w-3.5" />Opie's Tasks
-          </TabsTrigger>
+      <Tabs defaultValue="log" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="log" className="text-xs gap-1.5">
             <Clock className="h-3.5 w-3.5" />Session Log
           </TabsTrigger>
@@ -881,27 +716,6 @@ export default function ProjectStatus() {
             <Star className="h-3.5 w-3.5" />Cost Analysis
           </TabsTrigger>
         </TabsList>
-
-        {/* Opie's Tasks */}
-        <TabsContent value="opie" className="mt-4 space-y-3">
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div>
-              <h2 className="text-base font-semibold">Opie's Action Items</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Things that need your hands, not Kristin's. Click any item for details. Check off when done.
-              </p>
-            </div>
-            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              {OPIES_TASKS.filter(t => !t.done && t.priority === "critical").length} Critical Open
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            {OPIES_TASKS.map((task, i) => (
-              <OpiesTaskCard key={task.id} task={task} index={i} />
-            ))}
-          </div>
-        </TabsContent>
 
         {/* Session Log */}
         <TabsContent value="log" className="mt-4">

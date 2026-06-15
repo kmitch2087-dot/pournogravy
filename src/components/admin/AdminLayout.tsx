@@ -28,6 +28,8 @@ import {
   Tag,
   FileText,
   Receipt,
+  FileImage,
+  Sparkles,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -63,6 +65,8 @@ const navItems: NavItem[] = [
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
   { to: "/admin/email-templates", label: "Email Templates",       icon: Mail,            end: false },
+  { to: "/admin/easter-eggs",   label: "Easter Eggs",           icon: Sparkles,        end: false },
+  { to: "/admin/print-files",    label: "Print Files",           icon: FileImage,       end: false },
 ];
 
 const SidebarContent = ({

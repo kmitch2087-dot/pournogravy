@@ -46,6 +46,9 @@ const Footer = () => {
               <Link to="/merch-drops" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
                 Merch Drops
               </Link>
+              <Link to="/rewards" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
+                Pour Points
+              </Link>
             </div>
           </div>
 
