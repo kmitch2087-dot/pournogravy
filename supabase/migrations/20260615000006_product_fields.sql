@@ -39,7 +39,7 @@ ALTER TABLE public.products
 
 -- Set default + constraint on category if not already present
 -- (safe to run multiple times — DO UPDATE NOTHING on conflict)
-UPDATE public.products SET category = 'apparel' WHERE category IS NULL;
+UPDATE public.products SET category = 'apparel' WHERE category IS NULL OR category NOT IN ('apparel', 'accessories');
 
 ALTER TABLE public.products
   ALTER COLUMN category SET DEFAULT 'apparel';
