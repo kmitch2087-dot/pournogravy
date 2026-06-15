@@ -48,9 +48,118 @@ import { toast } from "sonner";
 // ---------------------------------------------------------------------------
 const SESSION_LOG = [
   {
-    date: "May 9, 2026",
+    date: "June 11, 2026",
     tag: "TODAY",
     tagColor: "bg-[#fde047] text-black",
+    summary:
+      "Financial dashboard + printer cost tracking + branded emails. Added printer_paid_at column to printer_queue for order-level payment tracking. Updated printer_notification email template with amber cost box showing $12/item × N items total. Rebuilt InvoiceTracker as auto-calculated financial dashboard: Profit Margin section (revenue, printer cost, gross profit, margin %, all-time + this-week), Shipping Collected section, and Printer Bill section (unpaid orders, Mark All Paid batch button, CSV export, collapsible paid history). Branded all 4 customer-facing email templates (order_confirmation, order_shipped, custom_request_reply, printer_notification) with dark theme, POURnogravy logo header, Opie's voice, and footer: 'DRINK MORE. BITCH LESS. TIP BIG. STAY MOIST.' Sent live printer test email to all 4 recipients with TEST banner.",
+    completed: [
+      "Invoice Tracker financial dashboard (/admin/invoices)",
+      "printer_paid_at column + migration",
+      "Printer cost auto-calc ($12/item)",
+      "Mark All Paid batch button + CSV export",
+      "All 4 email templates branded (dark theme, logo, Opie's voice)",
+      "Live printer test email sent (order ACEF8BD5)",
+    ],
+    next: "CF email routing rule (manual — 30 seconds in CF Dashboard); place test order end-to-end",
+  },
+  {
+    date: "June 9, 2026",
+    tag: "CF WORKER",
+    tagColor: "bg-blue-500/20 text-blue-300",
+    summary:
+      "Deployed pournogravy-receive-email CF Worker via CF REST API (bypassed broken wrangler auth — used multipart PUT upload with esbuild-bundled ESM). Set both Worker secrets (RECEIVE_EMAIL_SECRET, SUPABASE_URL). Completed print file uploads: 74/74 PNGs in Supabase Storage print-files bucket (37 black + 37 white). Cleaned up temp anon upload policies, deleted 18 duplicate black/black/ files, deleted test file.",
+    completed: [
+      "CF Worker pournogravy-receive-email deployed via REST API",
+      "74/74 print PNGs confirmed in Supabase Storage",
+      "Worker secrets set (RECEIVE_EMAIL_SECRET, SUPABASE_URL)",
+      "Temp anon policies dropped",
+      "Duplicate files cleaned",
+    ],
+    next: "CF Dashboard → Email → Email Routing → update opie@pournogravy.com rule → pournogravy-receive-email (manual)",
+  },
+  {
+    date: "June 8–9, 2026",
+    tag: "EMAIL SYSTEM",
+    tagColor: "bg-purple-500/20 text-purple-300",
+    summary:
+      "Built full Email Templates admin page (/admin/email-templates) — 600+ lines, rich contenteditable editor with Visual/HTML/Preview/Plain Text tabs, formatting toolbar, click-to-insert variable chips, live sandboxed iframe preview, test email send. Fixed send-notification param mismatch across 3 files (to/template_key → recipient/templateKey). Built CF Email Worker (cloudflare-workers/receive-email/) with postal-mime parser + HMAC auth. Redeployed receive-email Supabase edge fn with verify_jwt: false. Set RECEIVE_EMAIL_SECRET in Supabase.",
+    completed: [
+      "Email Templates admin page (/admin/email-templates)",
+      "send-notification param fix (3 files)",
+      "CF Email Worker source built",
+      "receive-email edge fn redeployed (verify_jwt: false)",
+      "RECEIVE_EMAIL_SECRET set in Supabase",
+    ],
+    next: "Deploy CF Worker, set Email Routing rule",
+  },
+  {
+    date: "June 8, 2026",
+    tag: "FULFILLMENT WIRED",
+    tagColor: "bg-green-500/20 text-green-400",
+    summary:
+      "Rotated and set all Supabase edge function secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SIGNING_SECRET fixed doubled whsec_ prefix, RESEND_API_KEY, FULFILLMENT_SECRET). Resend domain confirmed verified (DKIM+SPF). Updated stripe-webhook with slug-based print file URLs per order item. Added CC copy of printer notification to kmitch2087@gmail.com. Lovable disconnected — Claude (Cowork) is now exclusive builder.",
+    completed: [
+      "All Stripe/Resend/Fulfillment secrets set and verified",
+      "stripe-webhook: design_links URLs per order item",
+      "Printer notification CC to Kristin",
+      "Lovable disconnected — Claude is exclusive builder",
+    ],
+    next: "Place test order; CF Email Worker deploy",
+  },
+  {
+    date: "May 22–27, 2026",
+    tag: "CMS + AUTH FIX",
+    tagColor: "bg-blue-500/20 text-blue-300",
+    summary:
+      "Wired all 5 public pages (Index, About, Shop, Contact, FAQ) to site_content DB table via SiteContentContext. ~60 rows seeded. New /admin/content tab for live copy editing. Auth fix: loadedProfileIdRef prevents spurious spinner when Supabase fires SIGNED_IN on token auto-refresh. Migration sync: Docker Desktop + supabase db pull + migration repair — all remote schema drift captured.",
+    completed: [
+      "CMS: all 5 public pages use getValue() with static fallbacks",
+      "~60 site_content rows seeded",
+      "/admin/content editor tab (Home/Shop/About/Contact/FAQ)",
+      "Auth fix: loadedProfileIdRef (no more mid-session spinner)",
+      "Migration history fully synced via supabase migration repair",
+    ],
+    next: "Fulfillment partner; Resend domain verify",
+  },
+  {
+    date: "May 15, 2026",
+    tag: "AUDIT + POLISH",
+    tagColor: "bg-orange-500/20 text-orange-300",
+    summary:
+      "Homepage marquee upgraded to CSS keyframe (40s, pause-on-hover, prefers-reduced-motion). Hero navbar clearance fixed for mobile. WishlistContext lifted to shared provider (eliminated N auth subscriptions — was one per ProductCard). Contact form wired to Supabase (was cosmetic-only). CustomGarmentRequestModal dead import fixed (all custom garment submissions were silently failing). Privacy Policy + Terms of Service pages added. 11 additional UX/a11y/perf bug fixes.",
+    completed: [
+      "Marquee: CSS keyframe, pause-on-hover, reduced-motion",
+      "WishlistContext: single shared instance (not per-card)",
+      "Contact form: wired to Supabase custom_requests",
+      "CustomGarmentRequestModal: dead import fixed",
+      "/privacy and /terms pages added",
+      "11 UX/a11y fixes (touch targets, aria-pressed, null guards, etc.)",
+    ],
+    next: "Fulfillment partner; CF Email Worker",
+  },
+  {
+    date: "May 14, 2026",
+    tag: "PHASE 3",
+    tagColor: "bg-purple-500/20 text-purple-300",
+    summary:
+      "Major feature sprint: Shop search (URL-synced ?q=) + sort. Wishlist system (auth=DB, guest=localStorage) with heart toggle + /wishlist page + Navbar badge. Pour Points loyalty — tables, SECURITY DEFINER fn, redeem-points edge fn, Account page rewrite, CheckoutReturn banner. Admin panels: Loyalty, Customer Lookup, Email Subscribers, Discount Codes. Star ratings via shared React Query cache. Cart merge on login. Homepage email capture to email_subscribers. JSON-LD structured data.",
+    completed: [
+      "Shop search + sort",
+      "Wishlist system (full stack)",
+      "Pour Points loyalty system (full stack)",
+      "Admin: Loyalty, Customer Lookup, Subscribers, Discount Codes",
+      "Star ratings (shared React Query cache)",
+      "Cart merge on login + cross-device sync",
+      "Homepage email capture → email_subscribers",
+      "Organization + Product JSON-LD",
+    ],
+    next: "Run migrations, push to GitHub, wire fulfillment partner",
+  },
+  {
+    date: "May 9, 2026",
+    tag: "HYGIENE + POLISH",
+    tagColor: "bg-orange-500/20 text-orange-300",
     summary:
       "Auth spinner root-caused to Apollo extension blocking Supabase REST calls. Confirmed via incognito (extensions disabled → instant login). Bumped fetchProfile timeout to 12s as defence. All merch drop / fulfillment feature files committed and pushed.",
     completed: [

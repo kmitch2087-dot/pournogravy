@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** May 27, 2026 (CMS wiring + auth fix + migration sync)  
+**Last Updated:** June 15, 2026 (Invoice Tracker, Email Templates, CF Worker, Blog system, June sessions)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -53,7 +53,7 @@ Payments:    Stripe (embedded Payment Element — PaymentIntents, NOT Checkout S
 Email:       Resend (send-notification edge function + template system)
 Hosting:     Cloudflare Pages (global CDN, project: pournogravydev)
 CI/CD:       GitHub master → Cloudflare Pages (auto-deploy on push)
-AI builder:  Lovable (bidirectional GitHub sync to master)
+AI builder:  Claude (Cowork mode) — Lovable disconnected June 8, 2026
 Testing:     Vitest
 Package mgr: npm
 ```
@@ -107,6 +107,9 @@ src/
 │   ├── CheckoutReturn.tsx     # Post-payment confirmation screen
 │   ├── Account.tsx            # Auth user account page
 │   ├── Login.tsx              # Customer login
+│   ├── Blog.tsx               # /blog public listing page
+│   ├── BlogPost.tsx           # /blog/:slug public post page
+│   ├── ShipOrder.tsx          # /ship/:orderId — printer-facing tracking submission form (HMAC-verified token)
 │   ├── Proposal.tsx           # Founding Client Offer / partnership pitch
 │   ├── NotFound.tsx           # 404
 │   └── admin/
@@ -126,6 +129,9 @@ src/
 │       ├── Customers.tsx      # Customer lookup by email — stats, order history
 │       ├── Subscribers.tsx    # Email subscriber list, CSV export, 8-week sparkline
 │       ├── DiscountCodes.tsx  # Create/toggle/delete promo codes, usage tracking
+│       ├── BlogAdmin.tsx      # Blog post CRUD (create/edit/delete, publish toggle, slug auto-gen, image URL)
+│       ├── InvoiceTracker.tsx # Financial dashboard: profit margin, shipping collected, printer bill, mark-paid, CSV export
+│       ├── EmailTemplates.tsx # Rich email editor: Visual/HTML/Preview/Plain Text tabs, variable chips, live preview, test send
 │       ├── Content.tsx        # CMS editor — Home/Shop/About/Contact/FAQ tabs; edits site_content rows
 │       ├── UserManual.tsx     # Full operational guide for Opie
 │       └── Settings.tsx       # Site config (requires settings row id=1)
@@ -181,7 +187,7 @@ supabase/
 ## 5. Key Architectural Decisions
 
 ### SPA Routing — DO NOT ADD `_redirects`
-CF Pages has "Pretty URLs" enabled. `/* /index.html 200` in `_redirects` creates an infinite redirect loop. **SPA routing is handled by `wrangler.toml`:** `not_found_handling = "single-page-application"`. This serves any unmatched path as `index.html` at HTTP 200. Do not change this pattern.
+CF Pages has "Pretty URLs" enabled. `/* /index.html 200` in `_redirects` creates an infinite redirect loop. SPA routing is handled by `404.html` (a copy of `index.html` produced by the build script: `cp dist/index.html dist/404.html`). CF Pages serves `404.html` for any unmatched path at HTTP 404 status, preserving the URL so React Router handles routing client-side. The HTTP 404 status is expected and correct for this pattern. Do not add a `_redirects` file. `wrangler.toml` does not exist in this repo.
 
 ### Why `.env.production` is Committed
 Vite bakes `import.meta.env.VITE_*` at build time. CF Pages Dashboard Secrets are runtime-only — not available during `vite build`. `.env.production` contains the public Supabase URL and anon key (safe to commit — not service_role). This guarantees they are baked into the bundle during CF Pages CI.
@@ -370,9 +376,9 @@ RESEND_API_KEY
 | **Stripe** | ✅ Live payments active | `pk_live_*` + `sk_live_*` in use |
 | **Resend** | ✅ Secrets set | `opie@pournogravy.com` sender domain — verify status in Resend dashboard |
 | **GitHub** | ✅ Active | `kmitch2087-dot/pournogravy`, master branch |
-| **Lovable** | ✅ Active | Syncs to GitHub master bidirectionally |
+| **Lovable** | ❌ Disconnected | Disconnected June 8, 2026 — Claude (Cowork) is now exclusive builder |
 | **Fulfillment partner** | ❌ Not selected | Printful or Printify — must wire API key into stripe-webhook |
-| **Cloudflare Email Worker** | ⚠️ Exists, no route | `wild-mouse-2b64` worker exists with no routing rule — needs a catch-all or specific route to `receive-email` edge function |
+| **Cloudflare Email Worker** | ⚠️ Worker deployed, routing pending | `pournogravy-receive-email` worker deployed. One manual step: CF Dashboard → Email → Email Routing → edit opie@pournogravy.com rule → change destination to pournogravy-receive-email |
 
 ### Environment Variables
 ```bash
@@ -441,6 +447,11 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 
 | Date | Change |
 |------|--------|
+| June 8, 2026 | All Stripe/Resend/Fulfillment secrets rotated and set; stripe-webhook updated with slug-based print file URLs; Lovable disconnected |
+| June 8–9, 2026 | Email Templates admin page built (/admin/email-templates); send-notification param fix; CF Email Worker source created; receive-email redeployed (verify_jwt: false) |
+| June 9, 2026 | CF Worker pournogravy-receive-email deployed via CF REST API; 74/74 print PNGs confirmed; temp policies cleaned |
+| June 11, 2026 | InvoiceTracker financial dashboard (/admin/invoices); printer_paid_at migration; all 4 email templates branded; printer test email sent |
+| June 15, 2026 | Blog system documented (Blog, BlogPost, BlogAdmin, ShipOrder pages); HANDOFF brought current |
 | April 2026 | Initial schema, products, cart, custom requests, admin dashboard (Lovable + Aethyx) |
 | April 2026 | Stripe edge functions, email edge functions, auth, Cloudflare deployment |
 | April 28, 2026 | CLAUDE.md + full docs suite created |
