@@ -173,7 +173,7 @@ const Index = () => {
             MILDLY OFFENSIVE<br />
             BARTENDER APPAREL<br />
             FOR THE{" "}
-            <span className="font-marker stamp-rotate inline-block text-[#CDDC39] md:text-[#ff1744] md:drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] md:drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
+            <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
             OFFENSIVE BARTENDER.
           </h1>
           <p className="font-marker text-[11px] md:text-sm text-white/80 mt-2 tracking-wider italic">
