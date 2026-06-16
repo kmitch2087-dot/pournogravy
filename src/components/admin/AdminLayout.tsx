@@ -37,6 +37,7 @@ import {
   Receipt,
   FileImage,
   Sparkles,
+  PieChart,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -71,6 +72,7 @@ const navItems: NavItem[] = [
   { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
+  { to: "/admin/financials",    label: "Financials & Taxes",   icon: PieChart,        end: false },
   { to: "/admin/easter-eggs",   label: "Easter Eggs",           icon: Sparkles,        end: false },
   { to: "/admin/print-files",    label: "Print Files",           icon: FileImage,       end: false },
 ];

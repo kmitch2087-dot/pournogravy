@@ -118,6 +118,14 @@ Deno.serve(async (req) => {
 
     if (!order) return new Response("ok", { status: 200 });
 
+    // Write purchase analytics event (fire-and-forget — don't block fulfillment)
+    supabase.from("analytics_events").insert({
+      event_type: "purchase",
+      order_id: order.id,
+      revenue: ((order.total_cents ?? 0) - (order.shipping_cents ?? 0)) / 100,
+      session_id: order.stripe_session_id ?? order.id,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
 
     const itemsList = (items ?? [])
       .map((it) => {

@@ -68,6 +68,7 @@ const InvoiceTracker  = lazy(() => import("./pages/admin/InvoiceTracker"));
 const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
 const EasterEggs      = lazy(() => import("./pages/admin/EasterEggs"));
 const PrintFiles      = lazy(() => import("./pages/admin/PrintFiles"));
+const Financials      = lazy(() => import("./pages/admin/Financials"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -160,6 +161,7 @@ const App = () => (
                       <Route path="email-templates"   element={<Navigate to="/admin/inbox?tab=templates" replace />} />
                       <Route path="easter-eggs"       element={<EasterEggs />} />
                       <Route path="print-files"       element={<PrintFiles />} />
+                      <Route path="financials"        element={<Financials />} />
                     </Route>
                     <Route path="/blog"        element={<Blog />} />
                     <Route path="/blog/:slug"  element={<BlogPost />} />

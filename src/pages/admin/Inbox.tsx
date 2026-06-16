@@ -807,7 +807,7 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
         setBlastResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 });
         toast.success(`Blast sent: ${data.sent} delivered, ${data.failed} failed.`);
       } else {
-        const { error } = await supabase.functions.invoke("send-notification", {
+        const { data: sendData, error } = await supabase.functions.invoke("send-notification", {
           body: {
             templateKey,
             recipient: to.trim(),
@@ -815,7 +815,11 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
           },
         });
         if (error) throw error;
-        toast.success(`Email sent to ${to.trim()}.`);
+        if (sendData?.queued) {
+          toast.warning("Email queued — Resend sender not configured yet. Check Settings → Resend API key.");
+        } else {
+          toast.success(`Email sent to ${to.trim()}.`);
+        }
         handleClose();
       }
     } catch (err) {

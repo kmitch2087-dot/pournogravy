@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 interface DailyRevenue  { day: string; revenue: number; purchases: number; }
 interface FunnelRow     { event_type: string; sessions: number; }
 interface TopProduct    { product_id: string; views: number; cart_adds: number; purchases: number; }
-interface RecentOrder   { id: string; created_at: string; amount_total: number; status: string; customer_email?: string; }
+interface RecentOrder   { id: string; created_at: string; total_cents: number; status: string; email?: string; }
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ const useRecentOrders = () =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, created_at, amount_total, status, customer_email")
+        .select("id, created_at, total_cents, status, email")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -386,10 +386,10 @@ export default function Analytics() {
                       {format(new Date(order.created_at), "MMM d, h:mm a")}
                     </td>
                     <td className="py-3 pr-4 text-xs text-muted-foreground truncate max-w-[160px]">
-                      {order.customer_email ?? "—"}
+                      {order.email ?? "—"}
                     </td>
                     <td className="py-3 pr-4 text-right font-mono font-semibold tabular-nums">
-                      ${((order.amount_total ?? 0) / 100).toFixed(2)}
+                      ${((order.total_cents ?? 0) / 100).toFixed(2)}
                     </td>
                     <td className="py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${orderStatusColor[order.status] ?? "bg-muted/30 text-muted-foreground border-border"}`}>
