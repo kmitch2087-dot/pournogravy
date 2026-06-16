@@ -445,6 +445,15 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 
 ## 11. Change Log
 
+### June 15, 2026
+- **Shipping pipeline complete**: stripe-webhook captures shipping_cents, writes to orders table. Printer invoice now includes print cost + shipping pass-through with clear "TOTAL TO INVOICE US" total. Customer shipped email has clickable tracking URL.
+- **New edge function**: `resend-printer-notification` — admin-callable, requires is_admin JWT, regenerates HMAC magic link and re-sends printer notification email.
+- **Orders admin overhaul**: shipping address formatted (no raw JSON), one-click Mark as Shipped flow, Resend Printer Email button.
+- **InvoiceTracker**: 9-column CSV (Gross Total, Shipping pass-through, Net Revenue, Print Cost, Printer Invoice, Printer Paid). Printer bill totals now include shipping.
+- **Bug fixes**: easter egg column name (value→text), loyalty threshold hardcoded 100 (now reads from loyalty_rules), PrintFiles slug mismatch (now lists from Storage), double points direct toggle.
+- **Storage**: logo_back_white.png + logo_back_black.png uploaded to print-files bucket.
+- **Loyalty**: useLoyalty hook now fetches redemption_threshold from loyalty_rules; Account.tsx progress bar uses live value.
+
 | Date | Change |
 |------|--------|
 | June 8, 2026 | All Stripe/Resend/Fulfillment secrets rotated and set; stripe-webhook updated with slug-based print file URLs; Lovable disconnected |

@@ -41,8 +41,42 @@ import { toast } from "sonner";
 // ---------------------------------------------------------------------------
 const SESSION_LOG = [
   {
-    date: "June 11, 2026",
+    date: "June 15, 2026",
     tag: "TODAY",
+    tagColor: "bg-green-500/20 text-green-300",
+    summary: "Shipping pipeline complete. Printer invoice now includes shipping pass-through. One-click Mark as Shipped in Orders admin. Bug fixes: easter egg column, loyalty threshold, PrintFiles slugs, double points toggle.",
+    completed: [
+      "stripe-webhook captures shipping_cents from Stripe session",
+      "Printer invoice: print cost + shipping as separate lines with TOTAL TO INVOICE US",
+      "Loyalty points awarded on subtotal only (excludes shipping)",
+      "New resend-printer-notification edge function (admin-callable)",
+      "Orders admin: clean shipping address, Mark as Shipped button, Resend Printer Email",
+      "InvoiceTracker: 9-column CSV with shipping pass-through",
+      "Bug fix: easter egg column value→text",
+      "Bug fix: useLoyalty reads threshold from loyalty_rules",
+      "Bug fix: PrintFiles lists from Storage directly",
+      "Bug fix: Double Points toggle writes directly to DB",
+      "Uploaded logo_back_white.png + logo_back_black.png to print-files bucket",
+    ],
+    next: "Place test order to verify full fulfillment email flow; CF email routing rule (manual)",
+  },
+  {
+    date: "June 15, 2026",
+    tag: "FEATURES",
+    tagColor: "bg-purple-500/20 text-purple-300",
+    summary: "Pour Points rules live on loyalty_rules table. Admin toggle for Double Points — Activate Now button writes directly to DB. useLoyalty hook reads threshold from DB. Back logo PNGs uploaded to Storage.",
+    completed: [
+      "loyalty_rules table drives redemption threshold",
+      "useLoyalty hook reads threshold from DB (no more hardcoded 100)",
+      "Account.tsx progress bar uses live threshold value",
+      "Double Points Activate Now writes current timestamp directly to DB",
+      "logo_back_white.png + logo_back_black.png in print-files bucket",
+    ],
+    next: "Test loyalty redemption flow end-to-end",
+  },
+  {
+    date: "June 11, 2026",
+    tag: "FINANCIAL DASHBOARD",
     tagColor: "bg-[#fde047] text-black",
     summary:
       "Financial dashboard + printer cost tracking + branded emails. Added printer_paid_at column to printer_queue for order-level payment tracking. Updated printer_notification email template with amber cost box showing $12/item × N items total. Rebuilt InvoiceTracker as auto-calculated financial dashboard: Profit Margin section (revenue, printer cost, gross profit, margin %, all-time + this-week), Shipping Collected section, and Printer Bill section (unpaid orders, Mark All Paid batch button, CSV export, collapsible paid history). Branded all 4 customer-facing email templates (order_confirmation, order_shipped, custom_request_reply, printer_notification) with dark theme, POURnogravy logo header, Opie's voice, and footer: 'DRINK MORE. BITCH LESS. TIP BIG. STAY MOIST.' Sent live printer test email to all 4 recipients with TEST banner.",
@@ -680,7 +714,7 @@ export default function ProjectStatus() {
         <StatCard label="Features Shipped" value="40+" icon={CheckCheck} accent />
         <StatCard label="Completion" value="~85%" sub="Core features done" icon={TrendingUp} />
         <StatCard label="Days Active" value={`${daysSinceLaunch}`} sub="Since April 28, 2026" icon={Calendar} />
-        <StatCard label="Sessions" value="14" sub="Across all tools" icon={Clock} />
+        <StatCard label="Sessions" value="16" sub="Across all tools" icon={Clock} />
       </div>
 
       {/* Phase Tracker */}
