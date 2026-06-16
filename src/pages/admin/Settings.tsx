@@ -866,10 +866,62 @@ const Settings = () => {
                         </div>
                       );
                     })}
-                    <p className="text-[9px] text-muted-foreground/60">
-                      Tip: green = you're under market (you could charge more); red = you're over market (customer may shop elsewhere).
-                      Market rates shown are approximate commercial base rates for a 1 lb parcel.
-                    </p>
+                    {/* Opie-directed explainer note */}
+                    <div className="border border-[#fde047]/20 bg-[#fde047]/5 rounded-md p-4 space-y-2">
+                      <p className="text-xs font-display tracking-widest text-[#fde047]">HEY OPIE — HOW TO READ THIS</p>
+                      <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
+                        <li>
+                          <span className="text-foreground font-medium">Your price</span> is what the customer pays at checkout —
+                          click any dollar amount to edit it.
+                        </li>
+                        <li>
+                          <span className="text-green-400 font-medium">Green badge</span> = you're charging less than the cheapest
+                          carrier option. You could raise it and still be competitive — or keep it as a selling point.
+                        </li>
+                        <li>
+                          <span className="text-red-400 font-medium">Red badge</span> = you're charging more than at least one
+                          carrier's published rate. That's fine if you're offering faster service, but worth knowing.
+                        </li>
+                        <li>
+                          <span className="text-foreground font-medium">USPS Priority Mail</span> is what your printer most likely
+                          uses — it's the cheapest and fastest for small parcels. Those are <em>commercial base rates</em> (what
+                          you'd pay through a platform like PirateShip, not the post office counter price).
+                        </li>
+                        <li>
+                          <span className="text-foreground font-medium">UPS / FedEx</span> are shown as reference. FedEx Ground
+                          Economy is slower (5–7 days) but cheap. UPS Ground is similar. Your printer probably isn't using these
+                          unless they tell you otherwise.
+                        </li>
+                        <li>
+                          <span className="text-foreground font-medium">Rates update automatically every Sunday</span> — but
+                          carriers only change rates in January so you shouldn't see big swings mid-year. If something looks off,
+                          hit "Refresh Now" below.
+                        </li>
+                      </ul>
+                      {marketRates.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground/60 pt-1 border-t border-[#fde047]/10">
+                          Market rates last updated:{" "}
+                          {new Date(marketRates[0].last_updated).toLocaleDateString("en-US", {
+                            month: "long", day: "numeric", year: "numeric",
+                          })}
+                          {" · "}
+                          <button
+                            className="underline underline-offset-2 hover:text-[#fde047] transition-colors"
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase.functions.invoke("refresh-market-rates", { body: {} });
+                                if (error) throw error;
+                                toast.success("Rate refresh triggered — check back in a moment");
+                              } catch {
+                                toast.error("Could not trigger refresh — try again or update manually in Supabase");
+                              }
+                            }}
+                          >
+                            Refresh Now
+                          </button>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
