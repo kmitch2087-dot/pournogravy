@@ -3,9 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Star, Gift, TrendingUp, Users, Search, ChevronDown, ChevronUp, Plus, Minus, Settings2 } from "lucide-react";
+import { Loader2, Star, Gift, TrendingUp, Users, Search, ChevronDown, ChevronUp, Plus, Minus, Settings2, Zap, ZapOff, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -43,9 +42,10 @@ const RulesCard = () => {
   const [ptsPerDollar, setPtsPerDollar] = useState(10);
   const [threshold, setThreshold] = useState(100);
   const [valueDollars, setValueDollars] = useState(5);
-  const [dpEnabled, setDpEnabled] = useState(false);
-  const [dpStart, setDpStart] = useState("");
   const [dpEnd, setDpEnd] = useState("");
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [schedStart, setSchedStart] = useState("");
+  const [schedEnd, setSchedEnd] = useState("");
 
   // Sync once rules load
   useEffect(() => {
@@ -53,25 +53,18 @@ const RulesCard = () => {
     setPtsPerDollar(rules.points_per_dollar);
     setThreshold(rules.redemption_threshold);
     setValueDollars(rules.redemption_value_cents / 100);
-    const hasSchedule = !!(rules.double_points_start || rules.double_points_end);
-    setDpEnabled(hasSchedule);
-    setDpStart(rules.double_points_start ? toLocalDatetimeInput(rules.double_points_start) : "");
     setDpEnd(rules.double_points_end ? toLocalDatetimeInput(rules.double_points_end) : "");
+    if (rules.double_points_start) setSchedStart(toLocalDatetimeInput(rules.double_points_start));
+    if (rules.double_points_end) setSchedEnd(toLocalDatetimeInput(rules.double_points_end));
   }, [rules]);
 
   const { mutate: saveRules, isPending: saving } = useMutation({
     mutationFn: async () => {
-      const payload: Partial<LoyaltyRules> = {
+      const { error } = await supabase.from("loyalty_rules").update({
         points_per_dollar: ptsPerDollar,
         redemption_threshold: threshold,
         redemption_value_cents: Math.round(valueDollars * 100),
-        double_points_start: dpEnabled && dpStart ? new Date(dpStart).toISOString() : null,
-        double_points_end: dpEnabled && dpEnd ? new Date(dpEnd).toISOString() : null,
-      };
-      const { error } = await supabase
-        .from("loyalty_rules")
-        .update(payload)
-        .eq("id", 1);
+      }).eq("id", 1);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -81,16 +74,75 @@ const RulesCard = () => {
     onError: (err: Error) => toast.error(`Save failed: ${err.message}`),
   });
 
+  // Activate now — immediately on, optional end date
+  const { mutate: activateNow, isPending: activating } = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("loyalty_rules").update({
+        double_points_active: true,
+        double_points_start: new Date().toISOString(),
+        double_points_end: dpEnd ? new Date(dpEnd).toISOString() : null,
+      }).eq("id", 1);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Double points are LIVE");
+      qc.invalidateQueries({ queryKey: ["loyalty-rules"] });
+    },
+    onError: (err: Error) => toast.error(`Failed: ${err.message}`),
+  });
+
+  // Turn off immediately
+  const { mutate: deactivate, isPending: deactivating } = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("loyalty_rules").update({
+        double_points_active: false,
+        double_points_start: null,
+        double_points_end: null,
+      }).eq("id", 1);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Double points turned off");
+      setDpEnd("");
+      setSchedStart("");
+      setSchedEnd("");
+      qc.invalidateQueries({ queryKey: ["loyalty-rules"] });
+    },
+    onError: (err: Error) => toast.error(`Failed: ${err.message}`),
+  });
+
+  // Save schedule (start + end, let cron handle activation)
+  const { mutate: saveSchedule, isPending: scheduleSaving } = useMutation({
+    mutationFn: async () => {
+      if (!schedStart || !schedEnd) throw new Error("Both start and end are required");
+      const { error } = await supabase.from("loyalty_rules").update({
+        double_points_active: false,
+        double_points_start: new Date(schedStart).toISOString(),
+        double_points_end: new Date(schedEnd).toISOString(),
+      }).eq("id", 1);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Schedule saved — double points will activate automatically");
+      setShowSchedule(false);
+      qc.invalidateQueries({ queryKey: ["loyalty-rules"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const isActive = rules?.double_points_active ?? false;
+  const isScheduled = !isActive && !!(rules?.double_points_start && new Date(rules.double_points_start) > new Date());
+
   // Status badge
   const dpBadge = () => {
     if (!rules) return null;
-    if (rules.double_points_active) {
-      const end = rules.double_points_end ? new Date(rules.double_points_end).toLocaleString() : "?";
-      return <Badge className="bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 font-marker tracking-widest text-[10px]">DOUBLE POINTS ACTIVE — ends {end}</Badge>;
+    if (isActive) {
+      const end = rules.double_points_end ? new Date(rules.double_points_end).toLocaleString() : "until turned off";
+      return <Badge className="bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 font-marker tracking-widest text-[10px]">● LIVE — ends {end}</Badge>;
     }
-    if (rules.double_points_start && new Date(rules.double_points_start) > new Date()) {
-      const start = new Date(rules.double_points_start).toLocaleString();
-      return <Badge className="bg-blue-400/20 text-blue-300 border border-blue-400/40 font-marker tracking-widest text-[10px]">Scheduled for {start}</Badge>;
+    if (isScheduled) {
+      const start = new Date(rules.double_points_start!).toLocaleString();
+      return <Badge className="bg-blue-400/20 text-blue-300 border border-blue-400/40 font-marker tracking-widest text-[10px]">Scheduled — starts {start}</Badge>;
     }
     return <Badge variant="outline" className="font-marker tracking-widest text-[10px] text-muted-foreground">Off</Badge>;
   };
@@ -143,48 +195,129 @@ const RulesCard = () => {
 
           {/* Double Points section */}
           <div className="border border-border/50 rounded-sm p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="text-sm font-display tracking-widest">DOUBLE POINTS EVENT</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Schedule a window where every purchase earns 2× points</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Every purchase earns 2× points while active</p>
               </div>
-              <div className="flex items-center gap-3">
-                {dpBadge()}
-                <Switch checked={dpEnabled} onCheckedChange={setDpEnabled} />
-              </div>
+              {dpBadge()}
             </div>
 
-            <AnimatePresence>
-              {dpEnabled && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
+            {/* Active state — show turn-off button */}
+            {isActive && (
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <Button
+                  variant="outline"
+                  className="gap-2 font-display tracking-widest text-xs border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  onClick={() => deactivate()}
+                  disabled={deactivating}
                 >
-                  <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Start date & time</label>
-                      <input
-                        type="datetime-local"
-                        value={dpStart}
-                        onChange={(e) => setDpStart(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">End date & time</label>
-                      <input
-                        type="datetime-local"
-                        value={dpEnd}
-                        onChange={(e) => setDpEnd(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
-                      />
-                    </div>
+                  {deactivating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ZapOff className="h-3 w-3" />}
+                  Turn Off Now
+                </Button>
+                {rules?.double_points_end && (
+                  <p className="text-xs text-muted-foreground self-center">
+                    Auto-expires {new Date(rules.double_points_end).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Inactive / scheduled state — show activate + schedule options */}
+            {!isActive && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">
+                      End date & time <span className="normal-case font-sans">(optional — leave blank to run until turned off)</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={dpEnd}
+                      onChange={(e) => setDpEnd(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                    />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <Button
+                    className="gap-2 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90 shrink-0"
+                    onClick={() => activateNow()}
+                    disabled={activating}
+                  >
+                    {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    Activate Now
+                  </Button>
+                </div>
+
+                {/* Schedule ahead (collapsed by default) */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSchedule((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-marker tracking-widest uppercase"
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {showSchedule ? "Hide" : "Schedule for a future date instead"}
+                  </button>
+
+                  <AnimatePresence>
+                    {showSchedule && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="grid sm:grid-cols-2 gap-4 pt-4">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">Start date & time</label>
+                            <input
+                              type="datetime-local"
+                              value={schedStart}
+                              onChange={(e) => setSchedStart(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase block">End date & time</label>
+                            <input
+                              type="datetime-local"
+                              value={schedEnd}
+                              onChange={(e) => setSchedEnd(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 font-display tracking-widest text-xs"
+                            onClick={() => saveSchedule()}
+                            disabled={scheduleSaving || !schedStart || !schedEnd}
+                          >
+                            {scheduleSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarClock className="h-3 w-3" />}
+                            Save Schedule
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Show cancel button if there's a pending schedule */}
+                {isScheduled && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-red-400 font-marker tracking-widest"
+                    onClick={() => deactivate()}
+                    disabled={deactivating}
+                  >
+                    Cancel scheduled event
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end">
