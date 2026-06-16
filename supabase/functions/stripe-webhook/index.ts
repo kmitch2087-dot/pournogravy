@@ -126,7 +126,10 @@ Deno.serve(async (req) => {
       })
       .join("\n");
 
+    const subtotalCents = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
     const orderTotal = `$${((order.total_cents ?? 0) / 100).toFixed(2)}`;
+    const orderSubtotal = `$${(subtotalCents / 100).toFixed(2)}`;
+    const shippingCostForEmail = shippingCents > 0 ? `$${(shippingCents / 100).toFixed(2)}` : 'TBD';
 
     // 1) Customer confirmation
     await supabase.from("notifications").insert([{
@@ -159,6 +162,8 @@ Deno.serve(async (req) => {
           customer_name: order.email.split("@")[0],
           order_number: order.id.slice(0, 8),
           order_items: itemsList,
+          order_subtotal: orderSubtotal,
+          shipping_cost: shippingCostForEmail,
           order_total: orderTotal,
           mock_image_url: mockImageUrl,
         },

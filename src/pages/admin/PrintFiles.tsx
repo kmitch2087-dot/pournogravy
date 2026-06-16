@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileImage, Lock, Eye, Image } from "lucide-react";
+import { products as staticProducts } from "@/data/products";
+import { Loader2, FileImage, Lock, Eye, Image, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -192,6 +193,184 @@ const AccessLog = () => {
   );
 };
 
+// ─── Audit types ─────────────────────────────────────────────────────────────
+
+interface AuditRow {
+  slug: string;
+  blackFile: string | null;
+  whiteFile: string | null;
+  hasProduct: boolean;
+  isSplitFile: boolean;
+}
+
+function buildAudit(
+  blackFiles: { name: string }[],
+  whiteFiles: { name: string }[],
+  productSlugs: Set<string>,
+): AuditRow[] {
+  const SPLIT_RE = /[-_](part\d*|\d+)(\.\w+)?$/i;
+  const stripExt = (n: string) => n.replace(/\.\w+$/, "");
+  const stripVariant = (n: string) => stripExt(n).replace(/_black$/, "").replace(/_white$/, "");
+
+  const blackMap = new Map<string, string>();
+  const whiteMap = new Map<string, string>();
+  for (const f of blackFiles) blackMap.set(stripVariant(f.name), f.name);
+  for (const f of whiteFiles) whiteMap.set(stripVariant(f.name), f.name);
+
+  const allSlugs = new Set([...blackMap.keys(), ...whiteMap.keys(), ...productSlugs]);
+
+  return Array.from(allSlugs).sort().map((slug) => ({
+    slug,
+    blackFile: blackMap.get(slug) ?? null,
+    whiteFile: whiteMap.get(slug) ?? null,
+    hasProduct: productSlugs.has(slug),
+    isSplitFile: SPLIT_RE.test(blackMap.get(slug) ?? "") || SPLIT_RE.test(whiteMap.get(slug) ?? ""),
+  }));
+}
+
+// ─── Audit Table component ────────────────────────────────────────────────────
+
+const AuditTable = () => {
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [ran, setRan] = useState(false);
+
+  const runAudit = async () => {
+    setLoading(true);
+    try {
+      const [blackRes, whiteRes, dbRes] = await Promise.all([
+        supabase.storage.from("print-files").list("black", { limit: 500 }),
+        supabase.storage.from("print-files").list("white", { limit: 500 }),
+        supabase.from("products").select("slug"),
+      ]);
+
+      const blackFiles = blackRes.data ?? [];
+      const whiteFiles = whiteRes.data ?? [];
+      const dbSlugs = (dbRes.data ?? []).map((r: { slug: string }) => r.slug);
+      const staticSlugs = staticProducts.map((p) => p.id);
+      const productSlugs = new Set([...dbSlugs, ...staticSlugs]);
+
+      setRows(buildAudit(blackFiles, whiteFiles, productSlugs));
+      setRan(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const orphaned = rows.filter((r) => !r.hasProduct && (r.blackFile || r.whiteFile));
+  const missingFiles = rows.filter((r) => r.hasProduct && (!r.blackFile || !r.whiteFile));
+  const splits = rows.filter((r) => r.isSplitFile);
+
+  return (
+    <div className="border border-border bg-card">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-3 flex-wrap">
+        <AlertTriangle className="h-4 w-4 text-[#fde047]" />
+        <h2 className="font-display tracking-widest text-sm">PRINT FILE AUDIT</h2>
+        {ran && (
+          <div className="flex gap-2 text-xs text-muted-foreground font-marker">
+            <span className="text-red-400">{orphaned.length} orphaned</span>
+            <span>·</span>
+            <span className="text-amber-400">{missingFiles.length} missing files</span>
+            {splits.length > 0 && <><span>·</span><span className="text-yellow-400">{splits.length} split</span></>}
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-xs font-marker text-muted-foreground"
+          onClick={runAudit}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+          {ran ? "Refresh" : "Run Audit"}
+        </Button>
+      </div>
+
+      {!ran && !loading && (
+        <div className="p-10 text-center">
+          <p className="font-marker text-muted-foreground italic text-sm">
+            Click "Run Audit" to cross-reference storage files against your product catalog.
+          </p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="p-10 flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {ran && !loading && rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="px-4 py-2 text-left font-marker tracking-widest text-muted-foreground uppercase text-[10px]">Slug</th>
+                <th className="px-4 py-2 text-center font-marker tracking-widest text-muted-foreground uppercase text-[10px]">Black</th>
+                <th className="px-4 py-2 text-center font-marker tracking-widest text-muted-foreground uppercase text-[10px]">White</th>
+                <th className="px-4 py-2 text-center font-marker tracking-widest text-muted-foreground uppercase text-[10px]">Product</th>
+                <th className="px-4 py-2 text-left font-marker tracking-widest text-muted-foreground uppercase text-[10px]">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row) => {
+                const isOrphaned = !row.hasProduct && (row.blackFile || row.whiteFile);
+                const isMissing = row.hasProduct && (!row.blackFile || !row.whiteFile);
+                const rowClass = isOrphaned
+                  ? "bg-red-950/20 hover:bg-red-950/30"
+                  : isMissing
+                  ? "bg-amber-950/20 hover:bg-amber-950/30"
+                  : "hover:bg-muted/20";
+                return (
+                  <tr key={row.slug} className={`transition ${rowClass}`}>
+                    <td className="px-4 py-2 font-mono text-[10px] text-muted-foreground max-w-[220px] truncate" title={row.slug}>
+                      {row.slug}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {row.blackFile
+                        ? <span className="text-green-400 text-sm">✓</span>
+                        : <span className="text-red-400 text-sm">✗</span>}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {row.whiteFile
+                        ? <span className="text-green-400 text-sm">✓</span>
+                        : <span className="text-red-400 text-sm">✗</span>}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {row.hasProduct
+                        ? <span className="text-green-400 text-sm">✓</span>
+                        : <span className="text-muted-foreground text-sm">–</span>}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {isOrphaned && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-marker tracking-widest bg-red-900/40 text-red-400 border border-red-800/40">
+                            ORPHANED
+                          </span>
+                        )}
+                        {isMissing && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-marker tracking-widest bg-amber-900/40 text-amber-400 border border-amber-800/40">
+                            MISSING PRINT FILE
+                          </span>
+                        )}
+                        {row.isSplitFile && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-marker tracking-widest bg-yellow-900/40 text-yellow-400 border border-yellow-800/40">
+                            ⚠ SPLIT FILE — verify with printer
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const PrintFiles = () => {
@@ -366,6 +545,9 @@ const PrintFiles = () => {
           ))
         )}
       </div>
+
+      {/* Audit */}
+      <AuditTable />
 
       {/* Access log */}
       <AccessLog />

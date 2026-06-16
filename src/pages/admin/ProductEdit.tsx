@@ -124,6 +124,85 @@ const ParagraphList = ({
   );
 };
 
+// ─── Shirt outline SVG for print preview ────────────────────────────────────
+const ShirtOutline = ({ className = "" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 200 240"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`w-full h-full ${className}`}
+  >
+    <path
+      d="M68 5 C82 5 88 26 100 26 C112 26 118 5 132 5 L200 48 L178 92 L156 82 L156 234 L44 234 L44 82 L22 92 L0 48 Z"
+      stroke="currentColor"
+      strokeWidth="3"
+      fill="none"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+// ─── Print preview ────────────────────────────────────────────────────────────
+const PrintPreview = ({ slug }: { slug: string }) => {
+  const [blackError, setBlackError] = useState(false);
+  const [whiteError, setWhiteError] = useState(false);
+
+  const blackUrl = supabase.storage.from("print-files").getPublicUrl(`black/${slug}.png`).data.publicUrl;
+  const whiteUrl = supabase.storage.from("print-files").getPublicUrl(`white/${slug}.png`).data.publicUrl;
+
+  if (blackError && whiteError) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display tracking-widest text-sm">PRINT PREVIEW</CardTitle>
+        <p className="text-xs text-muted-foreground font-mono">{slug}.png</p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {!whiteError && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Dark / White print</p>
+              <div className="relative bg-zinc-900 rounded overflow-hidden" style={{ aspectRatio: "5/6" }}>
+                <div className="absolute inset-0 p-4 text-zinc-700">
+                  <ShirtOutline />
+                </div>
+                <img
+                  src={whiteUrl}
+                  alt="White print overlay"
+                  onError={() => setWhiteError(true)}
+                  className="absolute pointer-events-none object-contain"
+                  style={{ top: "38%", left: "50%", transform: "translateX(-50%)", width: "42%" }}
+                />
+              </div>
+            </div>
+          )}
+          {!blackError && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Light / Black print</p>
+              <div className="relative bg-zinc-100 rounded overflow-hidden" style={{ aspectRatio: "5/6" }}>
+                <div className="absolute inset-0 p-4 text-zinc-400">
+                  <ShirtOutline />
+                </div>
+                <img
+                  src={blackUrl}
+                  alt="Black print overlay"
+                  onError={() => setBlackError(true)}
+                  className="absolute pointer-events-none object-contain"
+                  style={{ top: "38%", left: "50%", transform: "translateX(-50%)", width: "42%" }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-3 italic">
+          Preview hides automatically if print file is not yet uploaded.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
 // ─── Main component ──────────────────────────────────────────────────────────
 const ProductEdit = () => {
   const { id } = useParams();
@@ -134,11 +213,13 @@ const ProductEdit = () => {
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mainUploading, setMainUploading] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm());
   const [initialized, setInitialized] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mainUploadRef = useRef<HTMLInputElement>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["admin-product", id],
@@ -272,6 +353,21 @@ const ProductEdit = () => {
     }
     setUploading(false);
     toast.success("Image uploaded");
+  };
+
+  const handleMainImageUpload = async (file: File) => {
+    setMainUploading(true);
+    const ext = file.name.split(".").pop() ?? "png";
+    const basePath = form.slug || crypto.randomUUID();
+    const path = `${basePath}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(path, file, { cacheControl: "3600", upsert: true });
+    if (error) { toast.error(error.message); setMainUploading(false); return; }
+    const { data } = supabase.storage.from("products").getPublicUrl(path);
+    setF({ mainImageUrl: data.publicUrl });
+    setMainUploading(false);
+    toast.success("Main image uploaded");
   };
 
   // Color row helpers
@@ -771,6 +867,9 @@ const ProductEdit = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* ── PRINT PREVIEW ── */}
+          {form.slug && <PrintPreview key={form.slug} slug={form.slug} />}
 
           {/* ── VARIANTS — apparel only ── */}
           {form.category === "apparel" && (

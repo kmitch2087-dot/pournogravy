@@ -6,8 +6,24 @@
     <!-- CF Pages handles cache headers for static assets via ETags -->
     <title>POURnogravy | Apparel for Bartenders Who Have Seen Some Shit</title>
     <meta name="description" content="Saving my bar from the socially stupid, one Karen at a time. Humorous bartender t-shirts for service industry survivors.">
-    
-    
+
+    <!-- Theme flash prevention: reads localStorage before React loads -->
+    <script>
+      (function(){
+        try {
+          var t = localStorage.getItem('theme') || 'dark';
+          if (t === 'system') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.classList.remove('light','dark');
+          document.documentElement.classList.add(t);
+        } catch(e) {}
+      })();
+    </script>
+
+    <!-- Space Grotesk for admin UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <meta property="og:type" content="website" />
     <meta property="og:title" content="POURnogravy | Apparel for Bartenders Who Have Seen Some Shit">
   <meta name="twitter:title" content="POURnogravy | Apparel for Bartenders Who Have Seen Some Shit">

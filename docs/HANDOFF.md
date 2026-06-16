@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** June 15, 2026 (Invoice Tracker, Email Templates, CF Worker, Blog system, June sessions)  
+**Last Updated:** June 16, 2026 (Fulfillment Partners UI, add-fulfillment-vendor edge fn, abandoned-cart-reminder, refund-order, archive-orders, blast-email, fulfillment_vendors table, order_archive table)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -286,6 +286,8 @@ The Contact page form inserts into `custom_requests` with `garment = 'contact-fo
 | `loyalty_accounts` | Pour Points — points_balance, lifetime_points per user |
 | `loyalty_transactions` | Point earn/redeem/adjustment history per user |
 | `email_subscribers` | Homepage email capture — email + source, unique constraint |
+| `fulfillment_vendors` | Vendor/printer contact directory — services[], turnaround, min_order_qty, file_formats[]; RLS admin-only |
+| `order_archive` | Archived orders moved out of main orders table — same schema + archived_at timestamptz |
 
 ### Key Schema Details
 
@@ -356,6 +358,11 @@ All functions live in `supabase/functions/`.
 | `receive-email` | Handles inbound email from Cloudflare Email Worker routing | None |
 | `track-event` | Ingests analytics events into `analytics_events` table | None |
 | `redeem-points` | Exchanges 100 Pour Points for a single-use $5 discount code; atomic deduction with optimistic concurrency | None |
+| `abandoned-cart-reminder` | Cron-triggered — finds carts idle >2h with email, sends reminder via send-notification | `RESEND_API_KEY` |
+| `refund-order` | Admin-callable — issues Stripe refund, updates order status to refunded, sends customer email | `STRIPE_SECRET_KEY`, `RESEND_API_KEY` |
+| `archive-orders` | Admin or cron — moves fulfilled orders older than threshold to order_archive table | None |
+| `blast-email` | Admin-callable — sends bulk email to all subscribers via send-notification loop | `RESEND_API_KEY` |
+| `add-fulfillment-vendor` | Admin-callable — inserts to fulfillment_vendors, sends vendor_welcome email via send-notification | `RESEND_API_KEY` |
 
 ### Required Secrets (all confirmed set in Supabase):
 ```

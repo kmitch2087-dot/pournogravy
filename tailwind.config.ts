@@ -17,6 +17,7 @@ export default {
         display: ['"Bebas Neue"', 'sans-serif'],
         body: ['"Inter"', 'sans-serif'],
         marker: ['"Permanent Marker"', 'cursive'],
+        ui: ['"Space Grotesk"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

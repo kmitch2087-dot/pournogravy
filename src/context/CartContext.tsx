@@ -193,6 +193,7 @@ const syncCartToDb = async (userId: string, items: CartItem[]) => {
       variant_id: item.variantId ?? null,
       color_id: item.colorId ?? null,
       quantity: item.quantity,
+      last_updated_at: new Date().toISOString(),
     })),
   );
 };

@@ -6,7 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Truck, RotateCcw, Star } from "lucide-react";
+import { ArrowLeft, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
 import CustomGarmentRequestModal from "@/components/CustomGarmentRequestModal";
@@ -33,6 +33,37 @@ const ProductDetail = () => {
   );
   // "Want this on a hoodie/speedo/whatever?" request modal.
   const [customOpen, setCustomOpen] = useState(false);
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+
+  // Stripe purchasability check
+  const { data: stripeData, isLoading: stripeLoading } = useQuery({
+    queryKey: ["product-stripe", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("stripe_price_id")
+        .eq("slug", id ?? "")
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+  });
+  const canPurchase = !!stripeData?.stripe_price_id;
+  const showDropComingSoon = !stripeLoading && !canPurchase;
+
+  const handleSubscribe = async () => {
+    if (!subscribeEmail.trim()) return;
+    setSubscribing(true);
+    await supabase.from("subscribers").insert({
+      email: subscribeEmail.trim(),
+      source: "product_drop",
+      product_slug: id,
+    });
+    setSubscribed(true);
+    setSubscribing(false);
+  };
 
   // Reviews
   const qc = useQueryClient();
@@ -489,40 +520,71 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Add to bag */}
-            <Button
-              onClick={handleAdd}
-              disabled={!selectedSize}
-              className="w-full h-14 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
-              style={
-                selectedSize && !justAdded
-                  ? { boxShadow: "0 0 20px rgba(253,224,71,0.25)" }
-                  : undefined
-              }
-            >
-              <AnimatePresence mode="wait">
-                {justAdded ? (
-                  <motion.span
-                    key="added"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex items-center gap-2"
-                  >
-                    <Check className="h-5 w-5" /> ADDED
-                  </motion.span>
+            {/* Add to bag — or drop coming soon */}
+            {showDropComingSoon ? (
+              <div className="space-y-3 border border-border/50 rounded p-4 bg-muted/10">
+                <p className="text-sm font-display tracking-widest text-muted-foreground">
+                  Drop coming soon — get on the list
+                </p>
+                {subscribed ? (
+                  <p className="text-sm text-[#fde047] font-marker tracking-wider">
+                    You're on the list.
+                  </p>
                 ) : (
-                  <motion.span
-                    key="add"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    {selectedSize ? "ADD TO BAG" : "SELECT A SIZE"}
-                  </motion.span>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={subscribeEmail}
+                      onChange={(e) => setSubscribeEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+                      className="flex-1 bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60"
+                    />
+                    <Button
+                      onClick={handleSubscribe}
+                      disabled={!subscribeEmail.trim() || subscribing}
+                      className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest text-xs px-4 disabled:opacity-40"
+                    >
+                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : "NOTIFY ME"}
+                    </Button>
+                  </div>
                 )}
-              </AnimatePresence>
-            </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleAdd}
+                disabled={!selectedSize || stripeLoading}
+                className="w-full h-14 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+                style={
+                  selectedSize && !justAdded
+                    ? { boxShadow: "0 0 20px rgba(253,224,71,0.25)" }
+                    : undefined
+                }
+              >
+                <AnimatePresence mode="wait">
+                  {justAdded ? (
+                    <motion.span
+                      key="added"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Check className="h-5 w-5" /> ADDED
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="add"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      {selectedSize ? "ADD TO BAG" : "SELECT A SIZE"}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Button>
+            )}
 
             {/* Shipping perks */}
             <div className="grid grid-cols-2 gap-3 pt-2">

@@ -1,7 +1,7 @@
 import SEO from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
@@ -61,6 +61,19 @@ const Index = () => {
         .filter(r => r.products?.is_active);
     },
     staleTime: 1000 * 60 * 5,
+  });
+  const { data: reviews } = useQuery({
+    queryKey: ["home-reviews"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("product_reviews")
+        .select("id, reviewer_name, product_slug, rating, body")
+        .eq("is_approved", true)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      return (data ?? []) as Array<{ id: string; reviewer_name: string; product_slug: string; rating: number; body: string | null }>;
+    },
+    staleTime: 1000 * 60 * 10,
   });
 
   // Featured row only shows published products.
@@ -598,6 +611,61 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* What The Bar Says — customer reviews */}
+      {reviews && reviews.length > 0 && (
+        <section
+          className="relative noise-overlay"
+          style={{
+            background:
+              "linear-gradient(180deg, hsl(var(--muted)) 0%, hsl(var(--background)) 100%)",
+          }}
+        >
+          <div className="container mx-auto px-4 py-20 md:py-24">
+            <div className="text-center mb-12">
+              <p className="font-marker text-xs md:text-sm tracking-widest text-[#fde047] mb-2 uppercase">
+                Verified humans
+              </p>
+              <h2 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider leading-none">
+                WHAT THE BAR SAYS
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {reviews.map((review, i) => {
+                const productName = products.find((p) => p.id === review.product_slug)?.name ?? review.product_slug;
+                const snippet = review.body && review.body.length > 120
+                  ? review.body.slice(0, 120) + "…"
+                  : review.body ?? "";
+                return (
+                  <motion.div
+                    key={review.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.4, delay: i * 0.06 }}
+                    className="border border-border bg-card p-5 space-y-3 hover:border-[#fde047]/40 transition-colors"
+                  >
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, si) => (
+                        <Star
+                          key={si}
+                          className={`h-3.5 w-3.5 ${si < review.rating ? "text-[#fde047] fill-[#fde047]" : "text-muted-foreground/30"}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{snippet}"</p>
+                    <div className="pt-1 border-t border-border/50">
+                      <p className="font-marker text-xs tracking-widest text-foreground">{review.reviewer_name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{productName}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
 
       {/* Rotating quote */}
       <section className="relative border-y-2 border-foreground/20 rough-border noise-overlay overflow-hidden">

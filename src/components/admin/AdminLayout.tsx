@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   LayoutDashboard,
   Package,
@@ -15,6 +21,7 @@ import {
   Menu,
   Moon,
   Sun,
+  Monitor,
   ExternalLink,
   BookOpen,
   HelpCircle,
@@ -64,7 +71,6 @@ const navItems: NavItem[] = [
   { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
-  { to: "/admin/email-templates", label: "Email Templates",       icon: Mail,            end: false },
   { to: "/admin/easter-eggs",   label: "Easter Eggs",           icon: Sparkles,        end: false },
   { to: "/admin/print-files",    label: "Print Files",           icon: FileImage,       end: false },
 ];
@@ -73,10 +79,12 @@ const SidebarContent = ({
   onNavigate,
   badges,
   compact,
+  navRef,
 }: {
   onNavigate?: () => void;
   badges?: Record<string, number>;
   compact?: boolean;
+  navRef?: React.RefObject<HTMLDivElement>;
 }) => (
   <nav className="flex flex-col h-full">
     <div className="p-4 border-b border-border">
@@ -129,7 +137,7 @@ const SidebarContent = ({
     ) : (
       /* ── Desktop: vertical list ── */
       <>
-        <div className="flex-1 p-3 space-y-1">
+        <div ref={navRef} className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
             return (
@@ -152,7 +160,7 @@ const SidebarContent = ({
             );
           })}
         </div>
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border shrink-0">
           <a
             href="/"
             target="_blank"
@@ -170,7 +178,7 @@ const SidebarContent = ({
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
-  const { theme, setTheme }   = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate              = useNavigate();
   const location              = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -179,11 +187,36 @@ const AdminLayout = () => {
   const { unreadCount } = useInboxNotifications();
   const badges = { inbox: unreadCount };
 
+  // Sidebar scroll persistence
+  const sidebarRef = useRef<HTMLElement>(null);
+  const navScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = navScrollRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem("admin-sidebar-scroll");
+    if (saved) el.scrollTop = Number(saved);
+    const onScroll = () =>
+      sessionStorage.setItem("admin-sidebar-scroll", String(el.scrollTop));
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
   const handleSignOut = async () => {
     await signOut();
     toast.success("Signed out");
     navigate("/admin/login");
   };
+
+  const cycleTheme = () => {
+    if (theme === "dark") setTheme("light");
+    else if (theme === "light") setTheme("system");
+    else setTheme("dark");
+  };
+
+  const ThemeIcon = theme === "dark" ? Sun : theme === "light" ? Monitor : Moon;
+  const themeLabel =
+    theme === "dark" ? "Light mode" : theme === "light" ? "System theme" : "Dark mode";
 
   const currentTitle =
     navItems.find((i) =>
@@ -191,64 +224,87 @@ const AdminLayout = () => {
     )?.label ?? "Admin";
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 border-r border-border flex-col bg-card">
-        <SidebarContent badges={badges} />
-      </aside>
+    <TooltipProvider>
+      <div className="h-screen flex bg-background">
+        {/* Desktop sidebar — sticky full-height, scrolls independently */}
+        <aside
+          ref={sidebarRef}
+          className="hidden md:flex w-60 border-r border-border flex-col bg-card sticky top-0 h-screen overflow-y-auto"
+        >
+          <SidebarContent badges={badges} navRef={navScrollRef} />
+        </aside>
 
-      {/* Mobile sidebar */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-60 p-0 bg-card">
-          <SidebarContent onNavigate={() => setMobileOpen(false)} badges={badges} compact />
-        </SheetContent>
-      </Sheet>
+        {/* Mobile sidebar */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="w-60 p-0 bg-card">
+            <SidebarContent onNavigate={() => setMobileOpen(false)} badges={badges} compact />
+          </SheetContent>
+        </Sheet>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 bg-card">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <h2 className="font-display text-lg tracking-widest">{currentTitle}</h2>
-          </div>
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Top bar */}
+          <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 bg-card shrink-0">
+            <div className="flex items-center gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={() => setMobileOpen(true)}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Menu</TooltipContent>
+              </Tooltip>
+              <h2 className="font-display text-lg tracking-widest">{currentTitle}</h2>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setHelpOpen(true)}
-              title="Quick reference manual"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </Button>
-            <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
-            <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </header>
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={cycleTheme}>
+                    <ThemeIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{themeLabel}</TooltipContent>
+              </Tooltip>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <Outlet />
-        </main>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setHelpOpen(true)}
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Quick reference manual</TooltipContent>
+              </Tooltip>
+
+              <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sign out</TooltipContent>
+              </Tooltip>
+            </div>
+          </header>
+
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            <Outlet />
+          </main>
+        </div>
+
+        <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>
-
-      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
-    </div>
+    </TooltipProvider>
   );
 };
 

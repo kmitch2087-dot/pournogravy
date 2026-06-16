@@ -4,6 +4,8 @@ import { DropShopBanner } from "@/components/DropShopBanner";
 import ProductCard from "@/components/ProductCard";
 import { products } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, X, ArrowUpDown } from "lucide-react";
@@ -29,6 +31,22 @@ const Shop = () => {
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, sortBy]);
+
+
+  const { data: shippingSettings } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("free_shipping_threshold_cents")
+        .eq("id", 1)
+        .maybeSingle();
+      return data as { free_shipping_threshold_cents: number | null } | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const thresholdDollars = Math.round((shippingSettings?.free_shipping_threshold_cents ?? 7500) / 100);
 
   // Only published products are visible to shoppers. Drafts (anything not
   // explicitly `published: true`) are hidden from the catalog.
@@ -61,6 +79,15 @@ const Shop = () => {
       />
       {/* Drop Shop Banner */}
       <DropShopBanner />
+
+      {/* Free shipping banner */}
+      {thresholdDollars > 0 && (
+        <div className="bg-[#fde047]/10 border-b border-[#fde047]/20 py-2 px-4 text-center">
+          <p className="font-marker text-xs tracking-widest text-[#fde047] uppercase">
+            🚚 Free shipping on orders over ${thresholdDollars}
+          </p>
+        </div>
+      )}
 
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">

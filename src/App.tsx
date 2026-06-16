@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
@@ -157,7 +157,7 @@ const App = () => (
                       <Route path="content"           element={<Content />} />
                       <Route path="blog"              element={<BlogAdmin />} />
                       <Route path="invoices"          element={<InvoiceTracker />} />
-                      <Route path="email-templates"   element={<EmailTemplates />} />
+                      <Route path="email-templates"   element={<Navigate to="/admin/inbox?tab=templates" replace />} />
                       <Route path="easter-eggs"       element={<EasterEggs />} />
                       <Route path="print-files"       element={<PrintFiles />} />
                     </Route>

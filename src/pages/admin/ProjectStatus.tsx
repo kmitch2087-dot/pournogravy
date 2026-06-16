@@ -548,16 +548,17 @@ const FulfillmentResearch = () => (
               <tr className="border-b border-border text-left text-xs text-muted-foreground uppercase tracking-wider">
                 <th className="px-4 py-2.5">Rank</th><th className="px-4 py-2.5">Service</th>
                 <th className="px-4 py-2.5">Product</th><th className="px-4 py-2.5">Shipping</th>
-                <th className="px-4 py-2.5 font-bold text-foreground">Total</th><th className="px-4 py-2.5">Margin @$25</th>
+                {/* Base cost per unit: $27.99 (updated 2026-06-16) */}
+                <th className="px-4 py-2.5 font-bold text-foreground">Total</th><th className="px-4 py-2.5">Margin @$27.99</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {[
-                { rank: 1, name: "Printify", product: "~$8.32", ship: "$4.75", total: "~$13.15", margin: "~47%", tag: "PRIMARY" },
-                { rank: 2, name: "Gooten", product: "~$8.65", ship: "~$4.95", total: "~$13.60", margin: "~46%", tag: null },
-                { rank: 3, name: "Gelato (Gelato+)", product: "$8.55", ship: "~$4.99", total: "~$13.54", margin: "~46%", tag: null },
-                { rank: 4, name: "CustomCat Pro", product: "$8.67", ship: "~$4.99", total: "~$13.66", margin: "~45%", tag: "U.S. MARGIN" },
-                { rank: 5, name: "Printful", product: "$11.69", ship: "~$4.75", total: "~$16.44", margin: "~34%", tag: "PREMIUM" },
+                { rank: 1, name: "Printify", product: "~$8.32", ship: "$4.75", total: "~$13.15", margin: "~53%", tag: "PRIMARY" },
+                { rank: 2, name: "Gooten", product: "~$8.65", ship: "~$4.95", total: "~$13.60", margin: "~51%", tag: null },
+                { rank: 3, name: "Gelato (Gelato+)", product: "$8.55", ship: "~$4.99", total: "~$13.54", margin: "~52%", tag: null },
+                { rank: 4, name: "CustomCat Pro", product: "$8.67", ship: "~$4.99", total: "~$13.66", margin: "~51%", tag: "U.S. MARGIN" },
+                { rank: 5, name: "Printful", product: "$11.69", ship: "~$4.75", total: "~$16.44", margin: "~41%", tag: "PREMIUM" },
               ].map((r) => (
                 <tr key={r.rank} className={r.tag === "PRIMARY" ? "bg-[#fde047]/5" : ""}>
                   <td className="px-4 py-3 text-muted-foreground">{r.rank}</td>

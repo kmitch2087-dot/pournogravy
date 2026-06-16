@@ -28,9 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { ArrowUpDown, Loader2 } from "lucide-react";
+import { ArrowUpDown, Loader2, CheckCircle, Archive, RotateCcw } from "lucide-react";
 import { statusClass, REQUEST_STATUSES } from "@/lib/admin";
 import { toast } from "sonner";
+
+type Tab = "active" | "done" | "archived";
 
 const CustomRequests = () => {
   const qc = useQueryClient();
@@ -39,7 +41,7 @@ const CustomRequests = () => {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [sortAsc, setSortAsc] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tab, setTab] = useState<Tab>("active");
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ["admin-requests"],
@@ -53,34 +55,65 @@ const CustomRequests = () => {
     },
   });
 
-  const markContacted = useMutation({
+  const sorted = (list: typeof requests) =>
+    (list ?? []).slice().sort((a, b) => {
+      const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return sortAsc ? diff : -diff;
+    });
+
+  const active   = sorted((requests ?? []).filter((r) => !r.archived_at && r.status !== "completed"));
+  const done     = sorted((requests ?? []).filter((r) => !r.archived_at && r.status === "completed"));
+  const archived = sorted((requests ?? []).filter((r) => !!r.archived_at));
+
+  const displayed = tab === "active" ? active : tab === "done" ? done : archived;
+  const detail = requests?.find((r) => r.id === selectedId);
+
+  const markDone = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("custom_requests")
-        .update({ status: "contacted" })
+        .update({ status: "completed" })
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Marked as contacted");
+      toast.success("Marked as done");
       qc.invalidateQueries({ queryKey: ["admin-requests"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = (requests ?? [])
-    .filter((r) => statusFilter === "all" || r.status === statusFilter)
-    .sort((a, b) => {
-      const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      return sortAsc ? diff : -diff;
-    });
+  const archiveRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("custom_requests")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Archived");
+      qc.invalidateQueries({ queryKey: ["admin-requests"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const detail = requests?.find((r) => r.id === selectedId);
+  const unarchiveRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("custom_requests")
+        .update({ archived_at: null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Unarchived");
+      qc.invalidateQueries({ queryKey: ["admin-requests"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const updateRequest = async (patch: {
-    status?: string;
-    internal_notes?: string | null;
-  }) => {
+  const updateRequest = async (patch: { status?: string; internal_notes?: string | null }) => {
     if (!selectedId) return;
     const { error } = await supabase.from("custom_requests").update(patch).eq("id", selectedId);
     if (error) toast.error(error.message);
@@ -116,32 +149,56 @@ const CustomRequests = () => {
     setReply("");
   };
 
+  const tabClass = (t: Tab) =>
+    `px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 transition-colors ${
+      tab === t
+        ? "border-[#fde047] text-foreground"
+        : "border-transparent text-muted-foreground hover:text-foreground"
+    }`;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {REQUEST_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSortAsc((v) => !v)}
-          className="gap-1.5"
-        >
-          <ArrowUpDown className="h-3.5 w-3.5" />
-          {sortAsc ? "Oldest first" : "Newest first"}
-        </Button>
-        <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length} request{filtered.length !== 1 ? "s" : ""}
-        </span>
+      {/* Tab bar */}
+      <div className="flex items-center gap-0 border-b border-border">
+        <button className={tabClass("active")} onClick={() => setTab("active")}>
+          Active
+          {active.length > 0 && (
+            <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-sm">
+              {active.length}
+            </span>
+          )}
+        </button>
+        <button className={tabClass("done")} onClick={() => setTab("done")}>
+          Done
+          {done.length > 0 && (
+            <span className="ml-1.5 text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-sm">
+              {done.length}
+            </span>
+          )}
+        </button>
+        <button className={tabClass("archived")} onClick={() => setTab("archived")}>
+          Archived
+          {archived.length > 0 && (
+            <span className="ml-1.5 text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-sm">
+              {archived.length}
+            </span>
+          )}
+        </button>
+
+        <div className="ml-auto flex items-center gap-2 pb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortAsc((v) => !v)}
+            className="gap-1.5"
+          >
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {sortAsc ? "Oldest first" : "Newest first"}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {displayed.length} request{displayed.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
 
       <Card className="overflow-hidden">
@@ -149,9 +206,11 @@ const CustomRequests = () => {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : displayed.length === 0 ? (
           <div className="py-20 text-center text-sm text-muted-foreground">
-            {statusFilter === "all" ? "No custom requests yet." : `No requests with status "${statusFilter}".`}
+            {tab === "active" && "No active requests."}
+            {tab === "done" && "Nothing marked done yet."}
+            {tab === "archived" && "Archive is empty."}
           </div>
         ) : (
           <Table>
@@ -165,29 +224,58 @@ const CustomRequests = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((r) => (
+              {displayed.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => setParams({ id: r.id })}>
                   <TableCell>
                     <div className="font-medium">{r.name}</div>
                     <div className="text-xs text-muted-foreground">{r.email}</div>
                   </TableCell>
                   <TableCell className="text-sm">{r.garment}</TableCell>
-                  <TableCell><span className={statusClass(r.status)}>{r.status}</span></TableCell>
+                  <TableCell>
+                    <span className={statusClass(r.status)}>{r.status}</span>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(r.created_at), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    {r.status === "new" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs h-7"
-                        disabled={markContacted.isPending}
-                        onClick={() => markContacted.mutate(r.id)}
-                      >
-                        Mark contacted
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1.5 justify-end">
+                      {tab !== "done" && r.status !== "completed" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 gap-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                          disabled={markDone.isPending}
+                          onClick={() => markDone.mutate(r.id)}
+                          title="Mark done"
+                        >
+                          <CheckCircle className="h-3 w-3" /> Done
+                        </Button>
+                      )}
+                      {tab !== "archived" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 gap-1 text-muted-foreground hover:text-foreground"
+                          disabled={archiveRequest.isPending}
+                          onClick={() => archiveRequest.mutate(r.id)}
+                          title="Archive"
+                        >
+                          <Archive className="h-3 w-3" /> Archive
+                        </Button>
+                      )}
+                      {tab === "archived" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 gap-1"
+                          disabled={unarchiveRequest.isPending}
+                          onClick={() => unarchiveRequest.mutate(r.id)}
+                          title="Unarchive"
+                        >
+                          <RotateCcw className="h-3 w-3" /> Unarchive
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -242,6 +330,38 @@ const CustomRequests = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                {detail.status !== "completed" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                    onClick={() => { markDone.mutate(detail.id); setParams({}); }}
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" /> Mark Done
+                  </Button>
+                )}
+                {!detail.archived_at ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => { archiveRequest.mutate(detail.id); setParams({}); }}
+                  >
+                    <Archive className="h-3.5 w-3.5" /> Archive
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => { unarchiveRequest.mutate(detail.id); setParams({}); }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Unarchive
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-2 border-t border-border pt-4">

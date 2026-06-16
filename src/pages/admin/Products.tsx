@@ -6,7 +6,6 @@ import { products as staticProducts } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -25,6 +24,7 @@ interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
   featured: boolean; category: string | null;
+  stripe_product_id: string | null; stripe_price_id: string | null;
 }
 
 type MergedProduct = {
@@ -39,6 +39,8 @@ type MergedProduct = {
   isStatic: boolean;       // came from products.ts
   inDrop: boolean;
   category: string;        // 'apparel' | 'accessories'
+  stripeProductId: string | null;
+  stripePriceId: string | null;
 };
 
 const Products = () => {
@@ -54,7 +56,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, stripe_product_id, stripe_price_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbProduct[];
@@ -94,6 +96,8 @@ const Products = () => {
         isStatic: false,
         inDrop: dropIdSet.has(p.id),
         category: p.category ?? "apparel",
+        stripeProductId: p.stripe_product_id,
+        stripePriceId: p.stripe_price_id,
       });
     }
 
@@ -112,6 +116,8 @@ const Products = () => {
           isStatic: true,
           inDrop: false,
           category: "apparel",
+          stripeProductId: null,
+          stripePriceId: null,
         });
       }
     }
@@ -206,6 +212,12 @@ const Products = () => {
     accessories: merged.filter((p) => p.category === "accessories").length,
   }), [merged]);
 
+  const getLiveState = (p: MergedProduct): "live" | "listed" | "draft" => {
+    if (!p.published) return "draft";
+    if (p.stripeProductId && p.stripePriceId) return "live";
+    return "listed";
+  };
+
   return (
     <div className="space-y-6">
       {/* Search + New Product */}
@@ -257,7 +269,7 @@ const Products = () => {
                 <TableHead>Product</TableHead>
                 <TableHead className="w-28">Category</TableHead>
                 <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-center w-28">Live</TableHead>
+                <TableHead className="text-center w-32">Status</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -305,13 +317,34 @@ const Products = () => {
                     <TableCell className="text-center">
                       {isToggling ? (
                         <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
-                      ) : (
-                        <Switch
-                          checked={p.published}
-                          onCheckedChange={(v) => handleToggleLive(p, v)}
-                          className="data-[state=checked]:bg-[#fde047]"
-                        />
-                      )}
+                      ) : (() => {
+                        const state = getLiveState(p);
+                        if (state === "live") return (
+                          <Badge
+                            onClick={() => handleToggleLive(p, false)}
+                            className="cursor-pointer bg-green-500/20 text-green-400 border-green-500/30 text-[9px] px-2 py-0.5 hover:bg-green-500/30 transition"
+                          >
+                            LIVE
+                          </Badge>
+                        );
+                        if (state === "listed") return (
+                          <Badge
+                            onClick={() => handleToggleLive(p, false)}
+                            title="Visible in shop but cannot be purchased — set a Stripe Price ID first."
+                            className="cursor-pointer bg-amber-500/20 text-amber-400 border-amber-500/30 text-[9px] px-2 py-0.5 hover:bg-amber-500/30 transition"
+                          >
+                            LISTED
+                          </Badge>
+                        );
+                        return (
+                          <Badge
+                            onClick={() => handleToggleLive(p, true)}
+                            className="cursor-pointer bg-muted text-muted-foreground border-border text-[9px] px-2 py-0.5 hover:bg-muted/70 transition"
+                          >
+                            DRAFT
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
