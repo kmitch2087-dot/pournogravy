@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
   let shippingAddress: unknown = null;
   let amountTotal: number | undefined;
   let paymentIntentId: string | undefined;
+  let shippingCents = 0;
 
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data.object as Stripe.PaymentIntent;
@@ -70,11 +71,13 @@ Deno.serve(async (req) => {
     shippingAddress = pi.shipping ?? null;
     amountTotal = pi.amount_received;
     paymentIntentId = pi.id;
+    // shippingCents not available on payment_intent — stays 0
   } else if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     orderId = session.metadata?.order_id;
     shippingAddress = session.shipping_details ?? null;
     amountTotal = session.amount_total ?? undefined;
+    shippingCents = session.shipping_cost?.amount_total ?? 0;
     paymentIntentId = typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id;
@@ -89,6 +92,7 @@ Deno.serve(async (req) => {
         ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
         shipping_address: shippingAddress ? JSON.parse(JSON.stringify(shippingAddress)) : null,
         ...(amountTotal != null ? { total_cents: amountTotal } : {}),
+        shipping_cents: shippingCents,
       })
       .eq("id", orderId);
 
@@ -161,10 +165,11 @@ Deno.serve(async (req) => {
       },
     });
 
-    // 2) Pour Points — 1 point per $1 spent (auth users only)
+    // 2) Pour Points — 1 point per $1 spent on products only (auth users only; shipping excluded)
     if (order.user_id && (order.total_cents ?? 0) > 0) {
-      const pointsEarned = Math.floor((order.total_cents ?? 0) / 100);
-      if (pointsEarned > 0) {
+      const subtotalForPoints = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
+      const pointsEarned = Math.floor(subtotalForPoints / 100);
+      if (subtotalForPoints > 0 && pointsEarned > 0) {
         await supabase.rpc("increment_loyalty_points", {
           p_user_id: order.user_id,
           p_points: pointsEarned,
@@ -211,7 +216,7 @@ Deno.serve(async (req) => {
       const ship = order.shipping_address as Record<string, unknown> | null;
       const shipName = (ship?.name as string) ?? "";
       const shipAddr = ship?.address as Record<string, unknown> | null;
-      const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Print File URL";
+      const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Print File URL,Shipping Collected";
       const csvRows = (items ?? []).map((it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
         const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
         const slug = String(s.slug ?? "");
@@ -232,12 +237,19 @@ Deno.serve(async (req) => {
           col(shipAddr?.postal_code ?? ""),
           col(shipAddr?.country ?? "US"),
           col(printUrl),
+          col(shippingCents > 0 ? `$${(shippingCents / 100).toFixed(2)}` : "TBD"),
         ].join(",");
       });
 
       const totalItemCount = (items ?? []).reduce((sum, it) => sum + (it.quantity ?? 1), 0);
       const printerCostCents = totalItemCount * 1200;
-      const printerCostSummary = `$12/item × ${totalItemCount} item${totalItemCount !== 1 ? "s" : ""} = $${(printerCostCents / 100).toFixed(2)} — please invoice us for this amount when shipped.`;
+      const totalInvoiceCents = printerCostCents + shippingCents;
+      const printerCostSummary = [
+        `Print cost: $12.00/item × ${totalItemCount} item${totalItemCount !== 1 ? "s" : ""} = $${(printerCostCents / 100).toFixed(2)}`,
+        shippingCents > 0 ? `Shipping (pass-through): $${(shippingCents / 100).toFixed(2)}` : `Shipping: TBD — check order`,
+        ``,
+        `TOTAL TO INVOICE US: $${(totalInvoiceCents / 100).toFixed(2)}`,
+      ].join("\n");
 
       const csvContent = [csvHeader, ...csvRows].join("\n");
       const csvBase64 = btoa(csvContent);
@@ -264,6 +276,7 @@ Deno.serve(async (req) => {
         design_links: designLinks,
         printer_cost_summary: printerCostSummary,
         mock_image_url: mockImageUrl,
+        shipping_cents: shippingCents,
       };
 
       await supabase.functions.invoke("send-notification", {

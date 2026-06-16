@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,11 +32,55 @@ import { Loader2 } from "lucide-react";
 import { fmtMoney, statusClass, ORDER_STATUSES } from "@/lib/admin";
 import { toast } from "sonner";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function carrierUrl(carrier: string, tracking: string): string {
+  const c = carrier.toLowerCase();
+  if (c.includes("usps"))  return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
+  if (c.includes("ups"))   return `https://www.ups.com/track?tracknum=${tracking}`;
+  if (c.includes("fedex")) return `https://www.fedex.com/fedextrack/?tracknumbers=${tracking}`;
+  if (c.includes("dhl"))   return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${tracking}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} tracking ${tracking}`)}`;
+}
+
+function formatAddress(addr: unknown): string[] {
+  if (!addr || typeof addr !== "object") return [];
+  const a = addr as Record<string, unknown>;
+  const name = typeof a.name === "string" ? a.name : "";
+  const addressObj = a.address && typeof a.address === "object"
+    ? (a.address as Record<string, unknown>)
+    : {};
+  const line1      = typeof addressObj.line1        === "string" ? addressObj.line1        : "";
+  const line2      = typeof addressObj.line2        === "string" ? addressObj.line2        : "";
+  const city       = typeof addressObj.city         === "string" ? addressObj.city         : "";
+  const state      = typeof addressObj.state        === "string" ? addressObj.state        : "";
+  const postalCode = typeof addressObj.postal_code  === "string" ? addressObj.postal_code  : "";
+  const country    = typeof addressObj.country      === "string" ? addressObj.country      : "";
+
+  const cityLine = [city, state].filter(Boolean).join(", ") + (postalCode ? ` ${postalCode}` : "");
+
+  return [name, line1, line2, cityLine, country].filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 const Orders = () => {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("id");
-  const [savingStatus, setSavingStatus] = useState(false);
+
+  // Ship form state
+  const [carrier, setCarrier] = useState("USPS");
+  const [trackingInput, setTrackingInput] = useState("");
+  const [shipping, setShipping] = useState(false);
+
+  // Resend printer state
+  const [resendingPrinter, setResendingPrinter] = useState(false);
+  const [resendResult, setResendResult] = useState("");
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["admin-orders"],
@@ -66,26 +110,76 @@ const Orders = () => {
     enabled: !!selectedId,
   });
 
+  // Seed local carrier/tracking from the order whenever detail loads
+  useEffect(() => {
+    if (detail?.order) {
+      setCarrier(detail.order.tracking_carrier ?? "USPS");
+      setTrackingInput(detail.order.tracking_number ?? "");
+      setResendResult("");
+    }
+  }, [detail?.order?.id]);
+
   const updateOrder = async (patch: {
     status?: string;
     tracking_number?: string | null;
     tracking_carrier?: string | null;
   }) => {
     if (!selectedId) return;
-    setSavingStatus(true);
     const { error } = await supabase.from("orders").update(patch).eq("id", selectedId);
-    setSavingStatus(false);
     if (error) {
       toast.error(error.message);
-      return;
+      throw error;
     }
-    toast.success("Order updated");
     qc.invalidateQueries({ queryKey: ["admin-order", selectedId] });
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
   };
 
-  const sendShippedNotification = async () => {
+  const handleMarkAsShipped = async () => {
     if (!detail?.order) return;
+    if (!trackingInput.trim()) {
+      toast.error("Enter a tracking number first");
+      return;
+    }
+    setShipping(true);
+    try {
+      await updateOrder({
+        status: "shipped",
+        tracking_carrier: carrier,
+        tracking_number: trackingInput.trim(),
+      });
+
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          templateKey: "order_shipped",
+          recipient: detail.order.email,
+          relatedKind: "order",
+          relatedId: detail.order.id,
+          variables: {
+            customer_name: detail.order.email.split("@")[0],
+            order_number: detail.order.id.slice(0, 8),
+            tracking_carrier: carrier,
+            tracking_number: trackingInput.trim(),
+            tracking_url: carrierUrl(carrier, trackingInput.trim()),
+          },
+        },
+      });
+
+      if (error) {
+        toast.error(`Order marked shipped but email failed: ${error.message}`);
+      } else {
+        toast.success("Marked as shipped — customer notified");
+      }
+    } catch {
+      // updateOrder already toasted the error
+    } finally {
+      setShipping(false);
+    }
+  };
+
+  const handleResendShippedNotification = async () => {
+    if (!detail?.order) return;
+    const tc = detail.order.tracking_carrier ?? "";
+    const tn = detail.order.tracking_number ?? "";
     const { error } = await supabase.functions.invoke("send-notification", {
       body: {
         templateKey: "order_shipped",
@@ -95,13 +189,29 @@ const Orders = () => {
         variables: {
           customer_name: detail.order.email.split("@")[0],
           order_number: detail.order.id.slice(0, 8),
-          tracking_carrier: detail.order.tracking_carrier ?? "",
-          tracking_number: detail.order.tracking_number ?? "",
+          tracking_carrier: tc,
+          tracking_number: tn,
+          tracking_url: carrierUrl(tc, tn),
         },
       },
     });
     if (error) toast.error(error.message);
-    else toast.success("Notification queued");
+    else toast.success("Notification resent");
+  };
+
+  const handleResendPrinter = async () => {
+    if (!selectedId) return;
+    setResendingPrinter(true);
+    setResendResult("");
+    const { error } = await supabase.functions.invoke("resend-printer-notification", {
+      body: { orderId: selectedId },
+    });
+    setResendingPrinter(false);
+    if (error) {
+      setResendResult(error.message);
+    } else {
+      setResendResult("Sent — new magic link generated");
+    }
   };
 
   return (
@@ -164,6 +274,8 @@ const Orders = () => {
             </div>
           ) : (
             <div className="space-y-6 mt-6">
+
+              {/* Order totals */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Customer</span>
@@ -187,6 +299,7 @@ const Orders = () => {
                 </div>
               </div>
 
+              {/* Line items */}
               <div>
                 <h4 className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Items</h4>
                 <div className="space-y-2">
@@ -209,65 +322,117 @@ const Orders = () => {
                 </div>
               </div>
 
+              {/* Shipping address */}
               {detail.order.shipping_address ? (
                 <div>
                   <h4 className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Ship to</h4>
-                  <pre className="text-xs bg-muted/30 border border-border p-3 rounded-sm whitespace-pre-wrap font-mono">
-                    {JSON.stringify(detail.order.shipping_address, null, 2)}
-                  </pre>
+                  <div className="text-sm bg-muted/30 border border-border p-3 rounded-sm space-y-0.5">
+                    {formatAddress(detail.order.shipping_address).map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
-              <div className="space-y-3 border-t border-border pt-4">
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select
-                    value={detail.order.status}
-                    onValueChange={(v) => updateOrder({ status: v })}
-                    disabled={savingStatus}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ORDER_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Status + shipping section */}
+              <div className="space-y-4 border-t border-border pt-4">
+                {/* Status display */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Status</p>
+                  <span className={statusClass(detail.order.status)}>{detail.order.status}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label>Carrier</Label>
-                    <Input
-                      defaultValue={detail.order.tracking_carrier ?? ""}
-                      onBlur={(e) =>
-                        e.target.value !== (detail.order.tracking_carrier ?? "") &&
-                        updateOrder({ tracking_carrier: e.target.value || null })
-                      }
-                      placeholder="USPS"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Tracking #</Label>
-                    <Input
-                      defaultValue={detail.order.tracking_number ?? ""}
-                      onBlur={(e) =>
-                        e.target.value !== (detail.order.tracking_number ?? "") &&
-                        updateOrder({ tracking_number: e.target.value || null })
-                      }
-                    />
-                  </div>
-                </div>
+                {detail.order.status !== "shipped" ? (
+                  /* Mark as shipped form */
+                  <div className="space-y-3 bg-muted/20 border border-border rounded-sm p-4">
+                    <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Mark as Shipped</p>
 
-                <Button
-                  onClick={sendShippedNotification}
-                  variant="outline"
-                  className="w-full"
-                  disabled={!detail.order.tracking_number}
-                >
-                  Send "shipped" email
-                </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Carrier</Label>
+                        <Select value={carrier} onValueChange={setCarrier}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USPS">USPS</SelectItem>
+                            <SelectItem value="UPS">UPS</SelectItem>
+                            <SelectItem value="FedEx">FedEx</SelectItem>
+                            <SelectItem value="DHL">DHL</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Tracking #</Label>
+                        <Input
+                          value={trackingInput}
+                          onChange={(e) => setTrackingInput(e.target.value)}
+                          placeholder="1Z999AA10123456784"
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleMarkAsShipped}
+                      disabled={shipping || !trackingInput.trim()}
+                      className="w-full bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+                    >
+                      {shipping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Mark as Shipped &amp; Notify Customer
+                    </Button>
+                  </div>
+                ) : (
+                  /* Already shipped — display tracking info */
+                  <div className="space-y-2">
+                    <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Tracking</p>
+                    <div className="text-sm space-y-1">
+                      {detail.order.tracking_carrier && (
+                        <p className="text-muted-foreground">{detail.order.tracking_carrier}</p>
+                      )}
+                      {detail.order.tracking_number ? (
+                        <a
+                          href={carrierUrl(
+                            detail.order.tracking_carrier ?? "",
+                            detail.order.tracking_number
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[#fde047] underline underline-offset-2 hover:no-underline"
+                        >
+                          {detail.order.tracking_number}
+                        </a>
+                      ) : (
+                        <p className="text-muted-foreground">No tracking number on file</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleResendShippedNotification}
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground mt-1"
+                    >
+                      Resend notification
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Resend printer email */}
+              <div className="border-t border-border pt-4">
+                <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase mb-2">Printer</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendPrinter}
+                  disabled={resendingPrinter}
+                >
+                  {resendingPrinter ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                  Resend Printer Email
+                </Button>
+                {resendResult && (
+                  <p className="text-xs text-muted-foreground mt-2">{resendResult}</p>
+                )}
+              </div>
+
             </div>
           )}
         </SheetContent>

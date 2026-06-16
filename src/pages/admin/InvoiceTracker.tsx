@@ -36,15 +36,18 @@ interface OrderFinancial {
 }
 
 const downloadCSV = (rows: OrderFinancial[], filename: string) => {
-  const header = "Order ID,Date,Items,Print Cost,Shipping Collected,Order Revenue,Printer Paid";
+  const header =
+    "Order ID,Date,Items,Gross Total,Shipping (pass-through),Net Revenue,Print Cost (est.),Printer Invoice (print+ship),Printer Paid";
   const lines = rows.map((o) =>
     [
       o.id.slice(0, 8).toUpperCase(),
       fmtDate(o.created_at),
       o.item_count,
-      (o.printer_cost_cents / 100).toFixed(2),
+      (o.total_cents / 100).toFixed(2),
       (o.shipping_cents / 100).toFixed(2),
       (o.revenue_cents / 100).toFixed(2),
+      (o.printer_cost_cents / 100).toFixed(2),
+      ((o.printer_cost_cents + o.shipping_cents) / 100).toFixed(2),
       o.printer_paid_at ? fmtDate(o.printer_paid_at) : "UNPAID",
     ]
       .map((v) => `"${v}"`)
@@ -98,10 +101,10 @@ const PrinterBillSection = ({
   const unpaid = orders.filter((o) => !o.printer_paid_at);
   const paid = orders.filter((o) => !!o.printer_paid_at);
 
-  const totalOwed = unpaid.reduce((s, o) => s + o.printer_cost_cents, 0);
+  const totalOwed = unpaid.reduce((s, o) => s + o.printer_cost_cents + o.shipping_cents, 0);
   const thisWeekOwed = unpaid
     .filter((o) => isThisWeek(o.created_at))
-    .reduce((s, o) => s + o.printer_cost_cents, 0);
+    .reduce((s, o) => s + o.printer_cost_cents + o.shipping_cents, 0);
 
   const handleMarkPaid = async () => {
     if (!unpaid.length) return;
@@ -172,11 +175,11 @@ const PrinterBillSection = ({
         />
         <MetricBox
           label="Paid to Printer"
-          allTime={fmt(paid.reduce((s, o) => s + o.printer_cost_cents, 0))}
+          allTime={fmt(paid.reduce((s, o) => s + o.printer_cost_cents + o.shipping_cents, 0))}
           thisWeek={fmt(
             paid
               .filter((o) => isThisWeek(o.printer_paid_at!))
-              .reduce((s, o) => s + o.printer_cost_cents, 0)
+              .reduce((s, o) => s + o.printer_cost_cents + o.shipping_cents, 0)
           )}
           accent="text-green-400"
         />
@@ -196,9 +199,14 @@ const PrinterBillSection = ({
               <span className="text-muted-foreground text-[10px] shrink-0">
                 {o.item_count} item{o.item_count !== 1 ? "s" : ""}
               </span>
-              <span className="font-display text-sm tracking-wider text-red-400 ml-auto">
-                {fmt(o.printer_cost_cents)}
-              </span>
+              <div className="ml-auto text-right">
+                <span className="font-display text-sm tracking-wider text-red-400">
+                  {fmt(o.printer_cost_cents + o.shipping_cents)}
+                </span>
+                <p className="text-[9px] text-muted-foreground">
+                  {fmt(o.printer_cost_cents)} print + {fmt(o.shipping_cents)} ship
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -224,9 +232,14 @@ const PrinterBillSection = ({
                   <span className="text-[10px] text-green-400 shrink-0">
                     paid {fmtDate(o.printer_paid_at!)}
                   </span>
-                  <span className="font-display text-sm tracking-wider text-green-400 ml-auto">
-                    {fmt(o.printer_cost_cents)}
-                  </span>
+                  <div className="ml-auto text-right">
+                    <span className="font-display text-sm tracking-wider text-green-400">
+                      {fmt(o.printer_cost_cents + o.shipping_cents)}
+                    </span>
+                    <p className="text-[9px] text-muted-foreground">
+                      {fmt(o.printer_cost_cents)} print + {fmt(o.shipping_cents)} ship
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -281,6 +294,7 @@ const InvoiceTracker = () => {
     staleTime: 30_000,
   });
 
+  const totalGross = orders.reduce((s, o) => s + o.total_cents, 0);
   const totalRevenue = orders.reduce((s, o) => s + o.revenue_cents, 0);
   const totalPrinterCost = orders.reduce((s, o) => s + o.printer_cost_cents, 0);
   const totalShipping = orders.reduce((s, o) => s + o.shipping_cents, 0);
@@ -288,6 +302,7 @@ const InvoiceTracker = () => {
   const marginPct = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : "—";
 
   const thisWeekOrders = orders.filter((o) => isThisWeek(o.created_at));
+  const thisWeekGross = thisWeekOrders.reduce((s, o) => s + o.total_cents, 0);
   const thisWeekRevenue = thisWeekOrders.reduce((s, o) => s + o.revenue_cents, 0);
   const thisWeekPrinterCost = thisWeekOrders.reduce((s, o) => s + o.printer_cost_cents, 0);
   const thisWeekShipping = thisWeekOrders.reduce((s, o) => s + o.shipping_cents, 0);
@@ -335,12 +350,39 @@ const InvoiceTracker = () => {
           <>
             <section className="space-y-3 print:break-inside-avoid">
               <p className="text-[10px] font-marker tracking-widest text-muted-foreground uppercase">
+                Revenue Summary
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <MetricBox
+                  label="Gross Collected"
+                  allTime={fmt(totalGross)}
+                  thisWeek={fmt(thisWeekGross)}
+                />
+                <MetricBox
+                  label="Shipping (pass-through)"
+                  allTime={fmt(totalShipping)}
+                  thisWeek={fmt(thisWeekShipping)}
+                  accent="text-blue-400"
+                />
+                <MetricBox
+                  label="Net Revenue"
+                  allTime={fmt(totalRevenue)}
+                  thisWeek={fmt(thisWeekRevenue)}
+                  accent="text-[#fde047]"
+                />
+              </div>
+            </section>
+
+            <hr className="border-border" />
+
+            <section className="space-y-3 print:break-inside-avoid">
+              <p className="text-[10px] font-marker tracking-widest text-muted-foreground uppercase">
                 Profit Margin
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <MetricBox label="Revenue" allTime={fmt(totalRevenue)} thisWeek={fmt(thisWeekRevenue)} />
+                <MetricBox label="Net Revenue" allTime={fmt(totalRevenue)} thisWeek={fmt(thisWeekRevenue)} />
                 <MetricBox
-                  label="Printer Cost"
+                  label="Print Cost (est.)"
                   allTime={fmt(totalPrinterCost)}
                   thisWeek={fmt(thisWeekPrinterCost)}
                   accent="text-red-400"
@@ -369,29 +411,6 @@ const InvoiceTracker = () => {
                       {thisWeekMarginPct}%
                     </p>
                   </div>
-                </div>
-              </div>
-            </section>
-
-            <hr className="border-border" />
-
-            <section className="space-y-3 print:break-inside-avoid">
-              <p className="text-[10px] font-marker tracking-widest text-muted-foreground uppercase">
-                Shipping Collected
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <MetricBox
-                  label="Total Collected"
-                  allTime={fmt(totalShipping)}
-                  thisWeek={fmt(thisWeekShipping)}
-                  accent="text-blue-400"
-                />
-                <div className="border border-border bg-card p-5 flex items-center justify-center">
-                  <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
-                    Shipping fees charged to customers.
-                    <br />
-                    Does not include your actual carrier cost.
-                  </p>
                 </div>
               </div>
             </section>
