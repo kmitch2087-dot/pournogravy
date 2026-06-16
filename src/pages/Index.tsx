@@ -167,21 +167,21 @@ const Index = () => {
           initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
           animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
           transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
-          className="relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[240px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-5 md:py-4 z-20"
+          className="relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[320px] lg:max-w-[360px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-7 md:py-6 z-20"
         >
-          <h1 className="font-display text-lg sm:text-xl md:text-xl lg:text-2xl leading-[1] tracking-wider mb-0 text-white md:text-primary-foreground">
+          <h1 className="font-display text-lg sm:text-xl md:text-2xl lg:text-3xl leading-[1] tracking-wider mb-0 text-white md:text-primary-foreground">
             MILDLY OFFENSIVE<br />
             BARTENDER APPAREL<br />
             FOR THE{" "}
             <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
             OFFENSIVE BARTENDER.
           </h1>
-          <p className="font-marker text-[11px] md:text-sm text-white/80 mt-2 tracking-wider italic">
+          <p className="font-marker text-[11px] md:text-sm lg:text-base text-white/80 mt-2 tracking-wider italic">
             {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
           </p>
           {/* CTA button: desktop only — mobile CTA lives in its own section below */}
           <Link to="/shop" className="mt-3 hidden md:inline-block">
-            <Button className="h-9 px-5 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button className="h-10 px-6 font-display text-sm tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
               {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
             </Button>
           </Link>
@@ -250,84 +250,82 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Desktop layout: polaroid + copy (unchanged) */}
-              <div className="hidden md:flex absolute inset-0 items-center z-10">
-                <div className="container mx-auto px-4 w-full">
-                  <div className="grid grid-cols-3 gap-6 items-center">
-                    {/* Glass spacer — takes col 1 so photo+copy live in cols 2–3 */}
-                    <div aria-hidden="true" />
-                    {/* Polaroid — col 2 */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-                      animate={
-                        active
-                          ? { opacity: 1, scale: 1, rotate: -2 }
-                          : { opacity: 0, scale: 0.9, rotate: -3 }
-                      }
-                      transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="relative mx-auto max-w-[240px] w-full"
+              {/* Desktop layout: photo centered on page, copy anchored right */}
+              <div className="hidden md:block absolute inset-0 z-10">
+                {/* Polaroid — truly centered on the full viewport */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
+                    animate={
+                      active
+                        ? { opacity: 1, scale: 1, rotate: -2 }
+                        : { opacity: 0, scale: 0.9, rotate: -3 }
+                    }
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                    className="relative w-[320px] lg:w-[390px] xl:w-[440px]"
+                  >
+                    <div
+                      className="relative aspect-square bg-muted border-[12px] border-white/90 shadow-2xl overflow-hidden"
+                      style={{
+                        boxShadow:
+                          "0 20px 60px rgba(0,0,0,0.5), 0 0 60px rgba(253,224,71,0.15)",
+                      }}
                     >
+                      {product.image && (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-contain"
+                          loading={slideIdx === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                        />
+                      )}
+                    </div>
+                    {product.badge && (
                       <div
-                        className="relative aspect-square bg-muted border-[10px] border-white/90 shadow-2xl overflow-hidden"
-                        style={{
-                          boxShadow:
-                            "0 20px 60px rgba(0,0,0,0.5), 0 0 60px rgba(253,224,71,0.15)",
-                        }}
+                        className="absolute -top-3 -right-3 bg-[#fde047] text-black px-3 py-1 font-marker text-xs tracking-widest uppercase stamp-rotate"
+                        style={{ boxShadow: "0 0 20px rgba(253,224,71,0.5)" }}
                       >
-                        {product.image && (
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-contain"
-                            loading={slideIdx === 0 ? "eager" : "lazy"}
-                            decoding="async"
-                          />
-                        )}
+                        {product.badge}
                       </div>
-                      {product.badge && (
-                        <div
-                          className="absolute -top-3 -right-3 bg-[#fde047] text-black px-3 py-1 font-marker text-xs tracking-widest uppercase stamp-rotate"
-                          style={{ boxShadow: "0 0 20px rgba(253,224,71,0.5)" }}
-                        >
-                          {product.badge}
-                        </div>
-                      )}
-                    </motion.div>
-
-                    {/* Copy — col 3 */}
-                    <motion.div
-                      initial={{ opacity: 0, x: 30 }}
-                      animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-                      transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                      className="text-white"
-                    >
-                      <p
-                        className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
-                        style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
-                      >
-                        ☠ Featured drop
-                      </p>
-                      <h2 className="font-display text-5xl lg:text-6xl tracking-wider leading-[0.95] mb-3">
-                        {product.name.toUpperCase()}
-                      </h2>
-                      {product.humor && (
-                        <p className="font-marker text-base text-white/80 italic mb-4 max-w-md">
-                          "{product.humor}"
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-3">
-                        <Link to={`/product/${product.id}`}>
-                          <Button
-                            className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
-                            style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
-                          >
-                            <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </motion.div>
-                  </div>
+                    )}
+                  </motion.div>
                 </div>
+
+                {/* Copy — absolutely positioned right; photo centering is independent */}
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+                  transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+                  className="absolute right-0 top-0 bottom-0 w-[280px] lg:w-[320px] xl:w-[360px] flex items-center pr-8 lg:pr-10 xl:pr-14 text-white"
+                >
+                  <div>
+                    <p
+                      className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
+                      style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
+                    >
+                      ☠ Featured drop
+                    </p>
+                    <h2 className="font-display text-4xl lg:text-5xl xl:text-6xl tracking-wider leading-[0.95] mb-3">
+                      {product.name.toUpperCase()}
+                    </h2>
+                    {product.humor && (
+                      <p className="font-marker text-sm lg:text-base text-white/80 italic mb-4">
+                        "{product.humor}"
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-3">
+                      <Link to={`/product/${product.id}`}>
+                        <Button
+                          className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
+                          style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
+                        >
+                          <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </div>
           );
