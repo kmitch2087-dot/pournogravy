@@ -202,6 +202,14 @@ Deno.serve(async (req) => {
       // Design file URLs are stored in Supabase Storage keyed by product slug
       const STORAGE_BASE = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object/public/print-files";
 
+      // Determine which ink color (black or white) to use for the back logo
+      // based on garment color: dark garments get white ink, light garments get black ink.
+      const DARK_GARMENTS = ["black", "charcoal", "navy", "dark", "graphite", "forest", "maroon", "royal", "hunter", "slate"];
+      const backLogoForColor = (garmentColor: string): string => {
+        const isDark = DARK_GARMENTS.some((d) => garmentColor.toLowerCase().includes(d));
+        return `${STORAGE_BASE}/back/logo_back_${isDark ? "white" : "black"}.png`;
+      };
+
       // Build design links list (one per unique slug) for printer email
       const seenSlugs = new Set<string>();
       const designLinkLines: string[] = [];
@@ -218,8 +226,13 @@ Deno.serve(async (req) => {
         }
         if (slug && !seenSlugs.has(slug)) {
           seenSlugs.add(slug);
+          const garmentColor = String(s.color ?? "");
+          const backUrl = backLogoForColor(garmentColor);
           designLinkLines.push(
-            `${slug}:\n  Black: ${STORAGE_BASE}/black/${slug}_black.png\n  White: ${STORAGE_BASE}/white/${slug}_white.png`
+            `${slug} (${garmentColor || "color unknown"}) — TWO-SIDED:\n` +
+            `  Front Black Ink: ${STORAGE_BASE}/black/${slug}_black.png\n` +
+            `  Front White Ink: ${STORAGE_BASE}/white/${slug}_white.png\n` +
+            `  Back (auto-matched to garment color): ${backUrl}`
           );
         }
       }
@@ -229,11 +242,16 @@ Deno.serve(async (req) => {
       const ship = order.shipping_address as Record<string, unknown> | null;
       const shipName = (ship?.name as string) ?? "";
       const shipAddr = ship?.address as Record<string, unknown> | null;
-      const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Print File URL,Shipping Collected";
+      const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Front Print File URL,Back Print File URL,Shipping Collected";
       const csvRows = (items ?? []).map((it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
         const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
         const slug = String(s.slug ?? "");
-        const printUrl = slug ? `${STORAGE_BASE}/black/${slug}_black.png` : "";
+        const garmentColor = String(s.color ?? "");
+        const isDark = DARK_GARMENTS.some((d) => garmentColor.toLowerCase().includes(d));
+        const inkSuffix = isDark ? "white" : "black";
+        const inkFolder = isDark ? "white" : "black";
+        const frontUrl = slug ? `${STORAGE_BASE}/${inkFolder}/${slug}_${inkSuffix}.png` : "";
+        const backUrl = backLogoForColor(garmentColor);
         const col = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
         return [
           col(order.id.slice(0, 8).toUpperCase()),
@@ -241,7 +259,7 @@ Deno.serve(async (req) => {
           col(s.name ?? ""),
           col(s.slug ?? ""),
           col(s.size ?? ""),
-          col(s.color ?? ""),
+          col(garmentColor),
           col(it.quantity),
           col(shipName),
           col(shipAddr?.line1 ?? ""),
@@ -249,7 +267,8 @@ Deno.serve(async (req) => {
           col(shipAddr?.state ?? ""),
           col(shipAddr?.postal_code ?? ""),
           col(shipAddr?.country ?? "US"),
-          col(printUrl),
+          col(frontUrl),
+          col(backUrl),
           col(shippingCents > 0 ? `$${(shippingCents / 100).toFixed(2)}` : "TBD"),
         ].join(",");
       });
