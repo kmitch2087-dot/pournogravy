@@ -15,7 +15,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Printer, Info, Truck, ExternalLink, Plus, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, Printer, Info, Truck, ExternalLink, Plus, Building2, CheckCircle2, MapPin, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +104,52 @@ const Settings = () => {
       return data ?? [];
     },
   });
+
+  const { data: shippingZones = [], refetch: refetchZones } = useQuery<{
+    id: string; zone_name: string; description: string | null;
+    price_cents: number; states: string[] | null; sort_order: number; updated_at: string;
+  }[]>({
+    queryKey: ["shipping-zones"],
+    queryFn: async () => {
+      const { data } = await supabase.from("shipping_zones").select("*").order("sort_order");
+      return data ?? [];
+    },
+  });
+
+  const { data: marketRates = [] } = useQuery<{
+    id: string; carrier: string; service: string; zone_label: string;
+    weight_label: string; rate_cents: number; effective_date: string; last_updated: string;
+  }[]>({
+    queryKey: ["shipping-market-rates"],
+    staleTime: 60 * 60_000, // 1 hour — these don't change frequently
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("shipping_market_rates")
+        .select("*")
+        .order("carrier")
+        .order("zone_label");
+      return data ?? [];
+    },
+  });
+
+  const [editingZone, setEditingZone] = useState<string | null>(null);
+  const [zonePrice, setZonePrice] = useState("");
+  const [savingZone, setSavingZone] = useState(false);
+
+  const saveZonePrice = async (zoneId: string) => {
+    const cents = Math.round(parseFloat(zonePrice || "0") * 100);
+    if (isNaN(cents) || cents <= 0) return;
+    setSavingZone(true);
+    const { error } = await supabase
+      .from("shipping_zones")
+      .update({ price_cents: cents, updated_at: new Date().toISOString() })
+      .eq("id", zoneId);
+    if (error) toast.error(error.message);
+    else { toast.success("Zone price updated"); refetchZones(); }
+    setEditingZone(null);
+    setZonePrice("");
+    setSavingZone(false);
+  };
 
   const { data: vendors, refetch: refetchVendors } = useQuery({
     queryKey: ["fulfillment-vendors"],
@@ -686,6 +732,149 @@ const Settings = () => {
                 <SaveBtn onClick={saveSettings} />
               </CardContent>
             </Card>
+
+            {/* ── Shipping Zones ── */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="font-display tracking-widest">SHIPPING ZONES</CardTitle>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  What you charge customers per zone. Click a price to edit it inline. Market rates (USPS/UPS/FedEx)
+                  shown alongside so you can see at a glance if you're over or under.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {shippingZones.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    No zones found — apply migration 20260616000012_shipping_zones.sql to seed default zones.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {shippingZones.map((zone) => {
+                      const competitors = marketRates.filter(
+                        (r) => r.zone_label === zone.zone_name,
+                      );
+                      const lowestMarket = competitors.length
+                        ? Math.min(...competitors.map((r) => r.rate_cents))
+                        : null;
+                      const isEditing = editingZone === zone.id;
+                      const diff = lowestMarket != null ? zone.price_cents - lowestMarket : null;
+
+                      return (
+                        <div key={zone.id} className="border border-border rounded-md overflow-hidden">
+                          {/* Zone header row */}
+                          <div className="flex items-center gap-3 px-4 py-3 bg-muted/20">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-display tracking-widest text-sm">{zone.zone_name}</p>
+                              {zone.description && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{zone.description}</p>
+                              )}
+                              {zone.states && zone.states.length > 0 && (
+                                <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                                  {zone.states.join(", ")}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isEditing ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-muted-foreground">$</span>
+                                  <Input
+                                    value={zonePrice}
+                                    onChange={(e) => setZonePrice(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveZonePrice(zone.id);
+                                      if (e.key === "Escape") { setEditingZone(null); setZonePrice(""); }
+                                    }}
+                                    className="h-7 w-20 text-sm"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2 bg-[#fde047] text-black hover:bg-[#fde047]/90"
+                                    onClick={() => saveZonePrice(zone.id)}
+                                    disabled={savingZone}
+                                  >
+                                    {savingZone ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => { setEditingZone(null); setZonePrice(""); }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setEditingZone(zone.id);
+                                    setZonePrice((zone.price_cents / 100).toFixed(2));
+                                  }}
+                                  className="flex items-center gap-1.5 group"
+                                >
+                                  <span className="font-display text-lg tracking-wider text-[#fde047]">
+                                    ${(zone.price_cents / 100).toFixed(2)}
+                                  </span>
+                                  <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                              {diff != null && (
+                                <span className={cn(
+                                  "text-[9px] font-marker tracking-wider px-1.5 py-0.5 rounded",
+                                  diff > 0
+                                    ? "bg-red-500/10 text-red-400"
+                                    : diff < 0
+                                    ? "bg-green-500/10 text-green-400"
+                                    : "bg-muted text-muted-foreground",
+                                )}>
+                                  {diff > 0 ? `+$${(diff / 100).toFixed(2)} vs market` : diff < 0 ? `-$${(Math.abs(diff) / 100).toFixed(2)} vs market` : "at market"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Market rate comparison */}
+                          {competitors.length > 0 && (
+                            <div className="px-4 py-2 bg-muted/5 border-t border-border">
+                              <p className="text-[9px] font-marker tracking-widest text-muted-foreground uppercase mb-1.5">
+                                Market rates ({competitors[0].weight_label})
+                              </p>
+                              <div className="flex flex-wrap gap-3">
+                                {competitors.map((r) => (
+                                  <div key={r.id} className="flex items-baseline gap-1">
+                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                      {r.carrier} {r.service}:
+                                    </span>
+                                    <span className={cn(
+                                      "text-[10px] font-display tracking-wider",
+                                      r.rate_cents < zone.price_cents ? "text-green-400" : r.rate_cents > zone.price_cents ? "text-red-400" : "text-foreground",
+                                    )}>
+                                      ${(r.rate_cents / 100).toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[8px] text-muted-foreground/50 mt-1">
+                                As of {new Date(competitors[0].effective_date).toLocaleDateString()} · {competitors[0].source_note ?? ""}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <p className="text-[9px] text-muted-foreground/60">
+                      Tip: green = you're under market (you could charge more); red = you're over market (customer may shop elsewhere).
+                      Market rates shown are approximate commercial base rates for a 1 lb parcel.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
           </div>
         </TabsContent>
 

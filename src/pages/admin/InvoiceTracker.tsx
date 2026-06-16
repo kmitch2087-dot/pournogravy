@@ -253,6 +253,40 @@ const PrinterBillSection = ({
 const InvoiceTracker = () => {
   const qc = useQueryClient();
 
+  // Refunded orders that had printer queue entries — shown as "backed out" in financials
+  const { data: refundedOrders = [] } = useQuery<OrderFinancial[]>({
+    queryKey: ["financials-refunded"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const [{ data: ordersData }, { data: itemsData }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, created_at, total_cents, subtotal_cents, shipping_cents")
+          .eq("status", "refunded")
+          .order("created_at", { ascending: false }),
+        supabase.from("order_items").select("order_id, quantity"),
+      ]);
+      const itemCounts = new Map<string, number>();
+      for (const it of itemsData ?? []) {
+        itemCounts.set(it.order_id, (itemCounts.get(it.order_id) ?? 0) + it.quantity);
+      }
+      return (ordersData ?? []).map((o) => {
+        const itemCount = itemCounts.get(o.id) ?? 0;
+        return {
+          id: o.id,
+          created_at: o.created_at,
+          total_cents: o.total_cents ?? 0,
+          subtotal_cents: o.subtotal_cents ?? 0,
+          shipping_cents: o.shipping_cents ?? 0,
+          revenue_cents: (o.total_cents ?? 0) - (o.shipping_cents ?? 0),
+          item_count: itemCount,
+          printer_cost_cents: itemCount * PRINT_COST_PER_ITEM_CENTS,
+          printer_paid_at: null,
+        };
+      });
+    },
+  });
+
   const { data: orders = [], isLoading } = useQuery<OrderFinancial[]>({
     queryKey: ["financials"],
     queryFn: async () => {
@@ -260,7 +294,7 @@ const InvoiceTracker = () => {
         supabase
           .from("orders")
           .select("id, created_at, total_cents, subtotal_cents, shipping_cents")
-          .eq("status", "paid")
+          .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
           .order("created_at", { ascending: false }),
         supabase.from("order_items").select("order_id, quantity"),
         supabase.from("printer_queue").select("order_id, printer_paid_at"),
@@ -423,6 +457,62 @@ const InvoiceTracker = () => {
                 onMarkedPaid={() => qc.invalidateQueries({ queryKey: ["financials"] })}
               />
             </section>
+
+            {refundedOrders.length > 0 && (
+              <>
+                <hr className="border-border" />
+                <section className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-marker tracking-widest text-muted-foreground uppercase">
+                      Backed Out — Refunded Orders
+                    </p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">
+                      These orders were refunded and removed from the printer bill. Printer cancellation emails were sent automatically.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <MetricBox
+                      label="Gross Refunded"
+                      allTime={fmt(refundedOrders.reduce((s, o) => s + o.total_cents, 0))}
+                      thisWeek={fmt(refundedOrders.filter((o) => isThisWeek(o.created_at)).reduce((s, o) => s + o.total_cents, 0))}
+                      accent="text-red-400"
+                    />
+                    <MetricBox
+                      label="Print Cost Saved"
+                      allTime={fmt(refundedOrders.reduce((s, o) => s + o.printer_cost_cents, 0))}
+                      thisWeek={fmt(refundedOrders.filter((o) => isThisWeek(o.created_at)).reduce((s, o) => s + o.printer_cost_cents, 0))}
+                      accent="text-green-400"
+                    />
+                    <MetricBox
+                      label="Shipping Backed Out"
+                      allTime={fmt(refundedOrders.reduce((s, o) => s + o.shipping_cents, 0))}
+                      thisWeek={fmt(refundedOrders.filter((o) => isThisWeek(o.created_at)).reduce((s, o) => s + o.shipping_cents, 0))}
+                      accent="text-blue-400"
+                    />
+                  </div>
+                  <div className="border border-red-500/20 bg-card divide-y divide-border">
+                    <p className="px-4 py-2 text-[9px] font-marker tracking-widest text-red-400 uppercase">
+                      Cancelled jobs — {refundedOrders.length} order{refundedOrders.length !== 1 ? "s" : ""}
+                    </p>
+                    {refundedOrders.map((o) => (
+                      <div key={o.id} className="flex items-center gap-4 px-4 py-2.5 opacity-60">
+                        <span className="text-muted-foreground text-[10px] font-mono w-20 shrink-0 line-through">
+                          {o.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <span className="text-muted-foreground text-[10px] shrink-0">{fmtDate(o.created_at)}</span>
+                        <span className="text-[10px] text-red-400 shrink-0">refunded</span>
+                        <div className="ml-auto text-right">
+                          <span className="font-display text-sm tracking-wider text-red-400 line-through">
+                            {fmt(o.printer_cost_cents + o.shipping_cents)}
+                          </span>
+                          <p className="text-[9px] text-muted-foreground">backed out of bill</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
 
             <div className="hidden print:block text-xs text-muted-foreground mt-8 border-t border-border pt-4">
               <p>
