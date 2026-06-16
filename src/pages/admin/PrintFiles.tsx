@@ -5,8 +5,12 @@ import { Loader2, FileImage, Lock, Eye, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { products } from "@/data/products";
 import { toast } from "sonner";
+
+interface DesignSlug {
+  slug: string;
+  name: string;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -196,6 +200,32 @@ const PrintFiles = () => {
   const [passwordInput, setPasswordInput] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [designSlugs, setDesignSlugs] = useState<DesignSlug[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
+  useEffect(() => {
+    if (!creds) return;
+    setLoadingFiles(true);
+    supabase.storage
+      .from("print-files")
+      .list("black/", { limit: 100 })
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const slugs = data
+          .filter((f) => f.name.endsWith("_black.png"))
+          .map((f) => {
+            const slug = f.name.replace("_black.png", "");
+            const name = slug
+              .split("_")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" ");
+            return { slug, name };
+          })
+          .sort((a, b) => a.slug.localeCompare(b.slug));
+        setDesignSlugs(slugs);
+      })
+      .finally(() => setLoadingFiles(false));
+  }, [creds]);
 
   const handleAccess = async () => {
     if (!emailInput.trim() || !passwordInput) {
@@ -315,16 +345,26 @@ const PrintFiles = () => {
         </Button>
       </div>
 
-      {/* Product grid */}
+      {/* Print file grid — derived from actual storage contents */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product) => (
-          <PrintFileCard
-            key={product.id}
-            slug={product.id}
-            name={product.name}
-            creds={creds}
-          />
-        ))}
+        {loadingFiles ? (
+          <div className="col-span-full flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : designSlugs.length === 0 ? (
+          <div className="col-span-full py-12 text-center">
+            <p className="font-marker text-muted-foreground italic text-sm">No print files found in storage.</p>
+          </div>
+        ) : (
+          designSlugs.map((design) => (
+            <PrintFileCard
+              key={design.slug}
+              slug={design.slug}
+              name={design.name}
+              creds={creds!}
+            />
+          ))
+        )}
       </div>
 
       {/* Access log */}
