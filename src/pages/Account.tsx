@@ -96,7 +96,8 @@ const Account = () => {
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 
   const balance = account?.points_balance ?? 0;
-  const progressPct = Math.min(100, ((balance % 100) / 100) * 100);
+  const threshold = rules?.redemption_threshold ?? 100;
+  const progressPct = Math.min(100, ((balance % threshold) / threshold) * 100);
 
   return (
     <div className="min-h-screen bg-background pt-28 pb-20">
@@ -191,7 +192,7 @@ const Account = () => {
                   {/* Progress bar */}
                   <div className="mt-4">
                     <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                      <span>{balance % 100} / 100 pts to next reward</span>
+                      <span>{balance % threshold} / {threshold} pts to next reward</span>
                       {rewardsAvailable > 0 && (
                         <span className="text-[#fde047]">{rewardsAvailable} reward{rewardsAvailable !== 1 ? "s" : ""} ready</span>
                       )}
@@ -222,7 +223,7 @@ const Account = () => {
                         className="h-10 font-display tracking-widest gap-2 bg-[#fde047] text-black hover:bg-[#fde047]/90 disabled:opacity-40"
                       >
                         {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                        {rewardsAvailable > 0 ? `Redeem 100 pts for $5 off` : `${pointsToNextReward} pts to next reward`}
+                        {rewardsAvailable > 0 ? `Redeem ${threshold} pts for $${((rules?.redemption_value_cents ?? 500) / 100).toFixed(0)} off` : `${pointsToNextReward} pts to next reward`}
                       </Button>
                     )}
                   </div>

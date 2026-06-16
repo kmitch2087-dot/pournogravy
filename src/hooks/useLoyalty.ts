@@ -16,9 +16,28 @@ interface LoyaltyTransaction {
   created_at: string;
 }
 
+interface LoyaltyRules {
+  redemption_threshold: number;
+  redemption_value_cents: number;
+  points_per_dollar: number;
+}
+
 export const useLoyalty = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const { data: rules = null } = useQuery<LoyaltyRules | null>({
+    queryKey: ["loyalty-rules"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("loyalty_rules")
+        .select("redemption_threshold, redemption_value_cents, points_per_dollar")
+        .eq("id", 1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
 
   const { data: account = null, isLoading: acctLoading } = useQuery<LoyaltyAccount | null>({
     queryKey: ["loyalty-account", user?.id],
@@ -61,9 +80,10 @@ export const useLoyalty = () => {
     return data;
   }, [refresh]);
 
+  const threshold = rules?.redemption_threshold ?? 100;
   const loading = acctLoading || txLoading;
-  const pointsToNextReward = account ? 100 - (account.points_balance % 100) : 100;
-  const rewardsAvailable = account ? Math.floor(account.points_balance / 100) : 0;
+  const pointsToNextReward = account ? threshold - (account.points_balance % threshold) : threshold;
+  const rewardsAvailable = account ? Math.floor(account.points_balance / threshold) : 0;
 
-  return { account, transactions, loading, redeem, refresh, pointsToNextReward, rewardsAvailable };
+  return { account, transactions, loading, rules, redeem, refresh, pointsToNextReward, rewardsAvailable };
 };

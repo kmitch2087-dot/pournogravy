@@ -40,7 +40,7 @@ const FALLBACK_FOOTER_NOTES = [
 interface EasterEgg {
   id: string;
   category: string;
-  value: string;
+  text: string;
   active: boolean;
 }
 
@@ -56,7 +56,7 @@ const useEasterEggs = () =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_easter_eggs")
-        .select("id, category, value, active")
+        .select("id, category, text, active")
         .eq("active", true);
       if (error) throw error;
       return (data ?? []) as EasterEgg[];
@@ -98,7 +98,7 @@ const ProductCard = ({ product }: { product: Product }) => {
   const { tableName, serverName, specialInstruction, footerNote } =
     useMemo(() => {
       const byCategory = (cat: string): string[] => {
-        const found = (eggsData ?? []).filter((e) => e.category === cat).map((e) => e.value);
+        const found = (eggsData ?? []).filter((e) => e.category === cat).map((e) => e.text);
         return found.length > 0 ? found : null!;
       };
 
