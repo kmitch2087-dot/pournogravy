@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
   { to: "/admin/financials",    label: "Financials & Taxes",   icon: PieChart,        end: false },
+  { to: "/admin/bookkeeping",  label: "Bookkeeping",          icon: BookOpen,        end: false },
   { to: "/admin/easter-eggs",   label: "Easter Eggs",           icon: Sparkles,        end: false },
   { to: "/admin/print-files",    label: "Print Files",           icon: FileImage,       end: false },
 ];

@@ -69,6 +69,11 @@ const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
 const EasterEggs      = lazy(() => import("./pages/admin/EasterEggs"));
 const PrintFiles      = lazy(() => import("./pages/admin/PrintFiles"));
 const Financials      = lazy(() => import("./pages/admin/Financials"));
+const BookkeepingOverview  = lazy(() => import("./pages/admin/BookkeepingOverview"));
+const BookkeepingExpenses  = lazy(() => import("./pages/admin/BookkeepingExpenses"));
+const BookkeepingProducts  = lazy(() => import("./pages/admin/BookkeepingProducts"));
+const BookkeepingReports   = lazy(() => import("./pages/admin/BookkeepingReports"));
+const BookkeepingTaxPacket = lazy(() => import("./pages/admin/BookkeepingTaxPacket"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -162,6 +167,11 @@ const App = () => (
                       <Route path="easter-eggs"       element={<EasterEggs />} />
                       <Route path="print-files"       element={<PrintFiles />} />
                       <Route path="financials"        element={<Financials />} />
+                      <Route path="bookkeeping"             element={<BookkeepingOverview />} />
+                      <Route path="bookkeeping/expenses"    element={<BookkeepingExpenses />} />
+                      <Route path="bookkeeping/products"    element={<BookkeepingProducts />} />
+                      <Route path="bookkeeping/reports"     element={<BookkeepingReports />} />
+                      <Route path="bookkeeping/tax-packet"  element={<BookkeepingTaxPacket />} />
                     </Route>
                     <Route path="/blog"        element={<Blog />} />
                     <Route path="/blog/:slug"  element={<BlogPost />} />
