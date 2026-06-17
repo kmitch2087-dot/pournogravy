@@ -280,45 +280,38 @@ const SESSION_LOG = [
 // ---------------------------------------------------------------------------
 const BACKLOG = {
   critical: [
-    { text: "Select fulfillment partner (Printify primary) + wire API key into stripe-webhook" },
-    { text: "Verify opie@pournogravy.com as Resend sender domain" },
-    { text: "Seed email_templates table — order_confirmation + custom_request rows" },
-    { text: "Create Supabase Storage products bucket with public read (ProductEdit image upload needs it)" },
+    { text: "Verify opie@pournogravy.com as Resend sender domain (BLOCKING — order emails won't send without this)" },
+    { text: "CF Email Routing rule — CF Dashboard → pournogravy.com → Email → Routing Rules → set opie@pournogravy.com → pournogravy-receive-email worker" },
+    { text: "Place live test order to verify full fulfillment email flow end-to-end" },
+    { text: "Opie: update product costs in Admin → Bookkeeping → Products (before July 1st month close)" },
   ],
   hygiene: [
     { text: "Delete src/utils/supabase/ — dead second Supabase client, never used" },
     { text: "Delete src/lib/fulfillment.ts — dead code, misleadingly named" },
     { text: "Delete wrangler.jsonc — duplicate of wrangler.toml" },
-    { text: "Fix .env.local — rename VITE_SUPABASE_PUBLISHABLE_KEY → VITE_SUPABASE_ANON_KEY" },
     { text: "Delete deprecated main branch from GitHub" },
     { text: "Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)" },
     { text: "npm audit fix — 19 vulnerabilities (none critical)" },
   ],
   phase3: [
-    { text: "Cloudflare Workers proxy — route Supabase calls server-side (security hardening)" },
-    { text: "Analytics — Cloudflare Web Analytics or Plausible" },
     { text: "Cart merge on login (guest → auth cart merge)" },
-    { text: "Bundle size optimization (972KB → <500KB target via lazy-load routes)" },
     { text: "Email marketing integration (Klaviyo or Mailchimp for captured emails)" },
-    { text: "Pour Points loyalty program" },
-    { text: "Wishlist / Save for later" },
-    { text: "Product search + filter by category" },
     { text: "International shipping config" },
     { text: "Wholesale portal (foundation exists at /proposal)" },
+    { text: "Product search + filter by category" },
+    { text: "Analytics — Cloudflare Web Analytics or Plausible" },
+    { text: "Printify/Printful API integration (optional — local printer model is fully operational)" },
   ],
 };
 
 const KNOWN_ISSUES = [
-  { severity: "critical", item: "Fulfillment not wired", fix: "Select Printful/Printify, add API key to stripe-webhook" },
-  { severity: "critical", item: "Email templates not seeded", fix: "INSERT rows for order_confirmation + custom_request" },
-  { severity: "critical", item: "Storage bucket missing", fix: "Create products bucket in Supabase Storage" },
-  { severity: "high", item: "Apollo extension blocks admin login", fix: "Whitelist *.supabase.co in Apollo → Excluded Domains" },
+  { severity: "critical", item: "Resend domain not verified", fix: "resend.com → Domains → verify pournogravy.com (DKIM/SPF already in CF DNS)" },
+  { severity: "high", item: "CF email routing rule not updated", fix: "CF Dashboard → Email Routing → opie@pournogravy.com → switch to pournogravy-receive-email worker" },
+  { severity: "medium", item: "Live test order not placed", fix: "Place a real order to confirm confirmation + printer emails land correctly" },
   { severity: "medium", item: "src/utils/supabase/ dead code", fix: "Delete folder" },
   { severity: "medium", item: "src/lib/fulfillment.ts dead code", fix: "Delete file" },
   { severity: "medium", item: "wrangler.jsonc duplicate", fix: "Delete file" },
-  { severity: "medium", item: "Local dev env var mismatch (.env.local)", fix: "Rename VITE_SUPABASE_PUBLISHABLE_KEY → VITE_SUPABASE_ANON_KEY" },
   { severity: "low", item: "19 npm vulnerabilities", fix: "npm audit fix" },
-  { severity: "low", item: "Bundle 972KB", fix: "Lazy-load routes in App.tsx" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -726,12 +719,12 @@ export default function ProjectStatus() {
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Progress by Area</p>
           <ProgressBar label="Infrastructure & Deployment" value={100} />
-          <ProgressBar label="Database & Edge Functions" value={95} />
-          <ProgressBar label="Admin Dashboard" value={92} />
-          <ProgressBar label="Public Storefront" value={95} />
+          <ProgressBar label="Database & Edge Functions" value={98} />
+          <ProgressBar label="Admin Dashboard" value={97} />
+          <ProgressBar label="Public Storefront" value={97} />
           <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
-          <ProgressBar label="Fulfillment Pipeline" value={30} color="bg-orange-400" />
-          <ProgressBar label="Email & Notifications" value={75} color="bg-blue-400" />
+          <ProgressBar label="Fulfillment Pipeline" value={85} color="bg-yellow-400" />
+          <ProgressBar label="Email & Notifications" value={90} color="bg-blue-400" />
         </CardContent>
       </Card>
 

@@ -103,43 +103,30 @@
 
 ## 📋 Remaining Backlog
 
-### 🔴 Needs Manual Action
+### 🔴 Blocking — Manual Steps Before Going Live
 
-> ⛔ **BLOCKING: Resend domain verification** — until pournogravy.com is verified in Resend, order confirmation emails will not send. Opie must log into resend.com → Domains and verify. DKIM/SPF records are already in Cloudflare DNS — this may be a one-click confirm.
+> ⛔ **BLOCKING: Resend domain verification** — until pournogravy.com is verified in Resend, order confirmation emails will not send. DKIM/SPF records are already in Cloudflare DNS — may be a one-click confirm.
 
-- [ ] **Resend domain verify** — log in to resend.com → Domains → verify pournogravy.com (DKIM/SPF records already set in Cloudflare)
-- [ ] **CF Email routing rule** — CF Dashboard → pournogravy.com → Email → Email Routing → Routing Rules → edit `opie@pournogravy.com` → change Worker from `wild-mouse-2b64` → `pournogravy-receive-email`
-- [ ] **Place test order** — verify customer confirmation + printer email both land correctly (TEST banners confirmed ✅ on June 11 test — now need live order)
-- [ ] Move `opie@pournogravy.com` off GoDaddy → Resend inbound (non-urgent, outbound works)
+- [ ] **Resend domain verify** — log in to resend.com → Domains → verify pournogravy.com
+- [ ] **CF Email routing rule** — CF Dashboard → pournogravy.com → Email → Routing Rules → edit `opie@pournogravy.com` → change Worker from `wild-mouse-2b64` → `pournogravy-receive-email`
+- [ ] **Place test order** — verify customer confirmation + printer email both land correctly end-to-end
+- [ ] **Opie: update product costs** — Admin → Bookkeeping → Products before July 1st month close
 
-### 🟢 Dev: Run Migrations + Deploy Edge Functions
-- [ ] Run `20260616000010_fulfillment_vendors.sql` in Supabase SQL Editor
-- [ ] Run `20260616000010b_vendor_welcome_template.sql` in Supabase SQL Editor
-- [ ] Deploy `add-fulfillment-vendor` edge function: `supabase functions deploy add-fulfillment-vendor`
-- [ ] **Merge bookkeeping branch** → `master`: `git checkout master && git merge claude/optimistic-pasteur-2c8e14`
-- [ ] Run `20260617000010_bookkeeping_schema.sql` (monthly_snapshots, expenses, products.cost_cents)
-- [ ] Run `20260617000020_sync_stripe_fees_cron.sql` (daily Stripe fee sync cron)
-- [ ] Run `20260617000021_close_month_cron.sql` (monthly auto-close cron)
-- [ ] Run template seed migrations: `20260617000001_abandoned_cart_template.sql`, `20260617000002_vendor_welcome_template.sql`, `20260617000003_admin_alert_template.sql`
-- [ ] Deploy `sync-stripe-fees` edge function: `supabase functions deploy sync-stripe-fees`
-- [ ] Deploy `close-month` edge function: `supabase functions deploy close-month`
-- [ ] Deploy `generate-report` edge function: `supabase functions deploy generate-report`
-- [ ] **Have Opie update product costs** in Bookkeeping → Products before first month close
-- [ ] Run `close-month` manually for any past months that should have snapshots
+### ✅ Dev Work — All Done (June 17, 2026)
+- [x] All bookkeeping migrations applied (`20260617000010`, `000020`, `000021`, `000030`, `000001`, `000002`, `000003`)
+- [x] `add-fulfillment-vendor`, `sync-stripe-fees`, `close-month`, `generate-report` all deployed
+- [x] Dead code removed: `src/utils/supabase/`, `src/lib/fulfillment.ts`, `wrangler.jsonc`
+- [x] `main` branch deleted from GitHub
+- [x] `npm audit fix` run — down to 2 remaining (require `--force`, skipping to avoid breaking changes)
+- [x] ProjectStatus.tsx updated — progress bars corrected, stale backlog/issues removed, Apollo/Stripe EIN removed
 
-### 🟡 Code Hygiene
-
-- [ ] Delete `src/utils/supabase/` — dead second Supabase client
-- [ ] Fix `.env.local` — rename `VITE_SUPABASE_PUBLISHABLE_KEY` → `VITE_SUPABASE_ANON_KEY`
-- [ ] Delete deprecated `main` branch from GitHub
-- [ ] `npm audit fix` — 19 vulnerabilities (none critical)
-
-### 🟢 Phase 3
+### 🟢 Phase 3 (Post-Launch)
 
 - [ ] Cart merge on login (guest → auth)
 - [ ] Email marketing integration (Klaviyo or Mailchimp)
 - [ ] International shipping config
 - [ ] Wholesale portal (foundation at `/proposal`)
+- [ ] Printify/Printful API integration (optional — local printer model fully operational)
 
 ---
 
@@ -159,12 +146,10 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 
 | Priority | Task | Detail |
 |----------|------|--------|
-| CRITICAL | ⛔ Verify Sender Domain in Resend | **BLOCKING orders.** Log into resend.com → Domains → verify pournogravy.com. Adds 2–3 DNS TXT records in Cloudflare. Without this, order confirmation emails don't send or go to spam. DKIM/SPF may already be in Cloudflare DNS — check if it's a one-click confirm. |
-| CRITICAL | Enter EIN + Business Name in Stripe | Stripe Dashboard → Settings → Business Details. Enter EIN and legal business name. Without this, Stripe may hold payouts or flag the account. |
-| HIGH | Update Domain Registrar — Business Name (not EIN) | Log into the domain registrar and update WHOIS registrant from personal name to LLC/business name. EIN does not go here — DNS records don't change. |
-| HIGH | Fix Admin Login: Whitelist Supabase in Apollo Extension | Apollo Chrome extension → Settings → Excluded Domains → add *.supabase.co. Extension intercepts Supabase API calls and blocks profile fetch, causing spinner on admin login. 30-second fix. |
-| MEDIUM | Order Samples — PENDING-OPIE | Order at least 1 shirt from each printer before committing. Check: print quality, fabric, wash test, packaging, delivery time. |
-| LOW | Set Up Google Business Profile | Visit google.com/business and claim or create a profile for Pournogravy. Helps search visibility even for online-only brands. Takes ~10 minutes. |
+| CRITICAL | ⛔ Verify Sender Domain in Resend | **BLOCKING orders.** Log into resend.com → Domains → verify pournogravy.com. DKIM/SPF may already be in Cloudflare DNS — check if it's a one-click confirm. Without this, order confirmation emails won't send. |
+| HIGH | Update Bookkeeping → Products costs | Admin → Bookkeeping → Products — enter actual print cost per item before July 1st. Until then COGS falls back to $12/item default. |
+| MEDIUM | Order Samples | Order at least 1 shirt from each printer before committing. Check: print quality, fabric, wash test, packaging, delivery time. |
+| LOW | Set Up Google Business Profile | Visit google.com/business and claim or create a profile for Pournogravy. Helps search visibility even for online-only brands. |
 
 ---
 
@@ -172,12 +157,10 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
-| Resend domain not verified | 🔴 Critical | Open | Opie must verify pournogravy.com in resend.com dashboard |
-| CF email routing rule not updated | 🟡 Medium | Open | CF Dashboard → Email Routing → update rule (manual, 30 seconds) |
-| Test order (live) not placed | 🟡 Medium | Open | Test banners confirmed June 11; need live order test |
-| `src/utils/supabase/` dead code | 🟡 Medium | Open | Delete folder |
-| Local dev env var mismatch | 🟡 Medium | Open | Rename key in `.env.local` |
-| npm vulnerabilities | 🟡 Low | Open | `npm audit fix` |
+| Resend domain not verified | 🔴 Critical | Open | resend.com → Domains → verify pournogravy.com (DKIM/SPF already in CF DNS) |
+| CF email routing rule not updated | 🟡 Medium | Open | CF Dashboard → Email Routing → opie@pournogravy.com → pournogravy-receive-email worker |
+| Test order (live) not placed | 🟡 Medium | Open | Test banners confirmed June 11; need live order end-to-end |
+| npm vulnerabilities | 🟡 Low | Open | 2 remaining after `npm audit fix`; require `--force` (breaking changes risk — defer) |
 
 ---
 
