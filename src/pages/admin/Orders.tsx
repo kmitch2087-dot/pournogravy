@@ -210,7 +210,7 @@ const Orders = () => {
           relatedKind: "order",
           relatedId: detail.order.id,
           variables: {
-            customer_name: detail.order.email.split("@")[0],
+            customer_name: detail.order.email?.split("@")[0] ?? "Customer",
             order_number: detail.order.id.slice(0, 8),
             tracking_carrier: carrier,
             tracking_number: trackingInput.trim(),

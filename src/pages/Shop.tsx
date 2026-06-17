@@ -2,8 +2,8 @@ import SEO from "@/components/SEO";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { DropShopBanner } from "@/components/DropShopBanner";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/products";
 import { useEffect, useMemo, useState } from "react";
+import { useMergedProducts } from "@/lib/productSource";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
@@ -12,6 +12,7 @@ import { Search, X, ArrowUpDown } from "lucide-react";
 
 const Shop = () => {
   const { getValue } = useSiteContent();
+  const { data: mergedProducts } = useMergedProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "default");
@@ -48,11 +49,10 @@ const Shop = () => {
 
   const thresholdDollars = Math.round((shippingSettings?.free_shipping_threshold_cents ?? 7500) / 100);
 
-  // Only published products are visible to shoppers. Drafts (anything not
-  // explicitly `published: true`) are hidden from the catalog.
+  // Only published products are visible to shoppers. Drafts are hidden.
   const visible = useMemo(
-    () => products.filter((p) => p.published === true),
-    []
+    () => (mergedProducts ?? []).filter((p) => p.published === true),
+    [mergedProducts]
   );
 
   const filtered = useMemo(() => {

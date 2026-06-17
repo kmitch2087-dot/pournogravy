@@ -44,10 +44,9 @@ const ProductDetail = () => {
   const handleSubscribe = async () => {
     if (!subscribeEmail.trim()) return;
     setSubscribing(true);
-    await supabase.from("subscribers").insert({
+    await supabase.from("email_subscribers").insert({
       email: subscribeEmail.trim(),
       source: "product_drop",
-      product_slug: id,
     });
     setSubscribed(true);
     setSubscribing(false);
