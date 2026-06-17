@@ -430,8 +430,8 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Color swatch selector */}
-            {product.colors && product.colors.length >= 1 && (
+            {/* Color swatch selector — only shown when product has more than one color */}
+            {product.colors && product.colors.length > 1 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-display tracking-widest uppercase">Color</p>

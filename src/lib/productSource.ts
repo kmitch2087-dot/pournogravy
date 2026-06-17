@@ -89,8 +89,23 @@ export const useMergedProducts = () => {
         dbBySlug.set(r.slug, dbRowToProduct(r));
       }
 
-      // Merge: DB takes precedence; otherwise keep hardcoded
-      const merged: Product[] = hardcodedProducts.map((p) => dbBySlug.get(p.id) ?? p);
+      // Merge: DB takes precedence for scalar fields, but fall back to hardcoded
+      // for rich fields (colors, variants, images, humor, badAdvice) that were
+      // seeded empty and live in products.ts as the source of truth.
+      const merged: Product[] = hardcodedProducts.map((p) => {
+        const db = dbBySlug.get(p.id);
+        if (!db) return p;
+        return {
+          ...db,
+          colors: db.colors?.length ? db.colors : p.colors,
+          variants: db.variants?.length ? db.variants : p.variants,
+          images: db.images?.length ? db.images : p.images,
+          image: db.image ?? p.image,
+          humor: db.humor || p.humor,
+          badAdvice: db.badAdvice ?? p.badAdvice,
+          longDescription: db.longDescription?.length ? db.longDescription : p.longDescription,
+        };
+      });
       // Add any DB products that don't have a hardcoded equivalent
       const hardcodedIds = new Set(hardcodedProducts.map((p) => p.id));
       for (const [slug, p] of dbBySlug.entries()) {
