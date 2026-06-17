@@ -66,6 +66,13 @@ CREATE POLICY "admin_write_manual_expenses" ON public.expenses
       SELECT 1 FROM public.profiles
       WHERE profiles.id = auth.uid() AND profiles.is_admin = true
     )
+  )
+  WITH CHECK (
+    source = 'manual' AND
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
+    )
   );
 
 -- Admins can update amendment fields on snapshots
