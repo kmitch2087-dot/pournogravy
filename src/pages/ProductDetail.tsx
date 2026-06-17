@@ -655,7 +655,7 @@ const ProductDetail = () => {
                       type="button"
                       onClick={() => setReviewRating(n)}
                       aria-label={`Rate ${n} star${n !== 1 ? "s" : ""}`}
-                      className="p-2 transition-transform hover:scale-110 -m-1"
+                      className="p-3 transition-transform hover:scale-110 -m-1"
                     >
                       <Star
                         className="h-6 w-6"

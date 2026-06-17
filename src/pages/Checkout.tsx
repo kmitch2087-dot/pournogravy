@@ -251,7 +251,7 @@ const Checkout = () => {
 
         {/* Right: order summary */}
         <aside className="mt-10 lg:mt-0">
-          <div className="sticky top-8 border border-border bg-muted/20 p-6 space-y-4">
+          <div className="lg:sticky lg:top-8 border border-border bg-muted/20 p-6 space-y-4">
             <h2 className="font-display text-xs tracking-[0.25em] uppercase text-muted-foreground">Your Order</h2>
             <div className="space-y-3">
               {items.map((item) => {

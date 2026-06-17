@@ -254,7 +254,7 @@ const CartDrawer = () => {
                           updateQuantity(item.product.id, item.size, item.quantity - 1, item.variantId, item.colorId)
                         }
                         aria-label="Decrease quantity"
-                        className="h-6 w-6 flex items-center justify-center transition-opacity hover:opacity-60"
+                        className="h-10 w-10 flex items-center justify-center transition-opacity hover:opacity-60"
                         style={{ border: "1px solid rgba(120,70,20,0.3)", color: "#5a3010", borderRadius: 2 }}
                       >
                         <Minus className="h-2.5 w-2.5" />
@@ -264,7 +264,7 @@ const CartDrawer = () => {
                           updateQuantity(item.product.id, item.size, item.quantity + 1, item.variantId, item.colorId)
                         }
                         aria-label="Increase quantity"
-                        className="h-6 w-6 flex items-center justify-center transition-opacity hover:opacity-60"
+                        className="h-10 w-10 flex items-center justify-center transition-opacity hover:opacity-60"
                         style={{ border: "1px solid rgba(120,70,20,0.3)", color: "#5a3010", borderRadius: 2 }}
                       >
                         <Plus className="h-2.5 w-2.5" />
