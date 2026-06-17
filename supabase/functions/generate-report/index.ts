@@ -1,6 +1,6 @@
 // generate-report edge function
-// Returns structured JSON report data for one of five report types:
-//   pl | orders | expenses | products | stripe_fees
+// Returns CSV or HTML report data for one of five report types:
+//   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -21,7 +21,84 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl" | "orders" | "expenses" | "products" | "stripe_fees";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary";
+type ReportFormat = "csv" | "html";
+
+// ── Formatting helpers ───────────────────────────────────────────────────────
+
+function cents(n: number): string {
+  return `$${(n / 100).toFixed(2)}`;
+}
+
+function csvEscape(val: unknown): string {
+  const s = String(val ?? "");
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function formatCSV(headers: string[], rows: string[][]): string {
+  const lines = [headers.map(csvEscape).join(",")];
+  for (const row of rows) {
+    lines.push(row.map(csvEscape).join(","));
+  }
+  return lines.join("\n");
+}
+
+function formatHTML(
+  headers: string[],
+  rows: string[][],
+  title: string,
+  periodStart: string,
+  periodEnd: string,
+): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const thead = headers.map((h) => `<th>${h}</th>`).join("");
+  const tbody = rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
+    .join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} — POURnogravy</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 24px; }
+  .brand { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: #111; }
+  .report-title { font-size: 16px; font-weight: 600; margin-top: 4px; }
+  .period { color: #555; margin-top: 2px; font-size: 12px; }
+  header { border-bottom: 3px solid #fde047; padding-bottom: 12px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  thead { background: #fde047; }
+  thead th { padding: 8px 10px; text-align: left; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid #e5c500; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody td { padding: 7px 10px; border: 1px solid #e5e5e5; vertical-align: top; }
+  footer { margin-top: 24px; font-size: 11px; color: #888; border-top: 1px solid #e5e5e5; padding-top: 12px; }
+  @media print { body { margin: 0; padding: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">POURnogravy</div>
+  <div class="report-title">${title}</div>
+  <div class="period">Period: ${periodStart} – ${periodEnd}</div>
+</header>
+<table>
+  <thead><tr>${thead}</tr></thead>
+  <tbody>
+${tbody}
+  </tbody>
+</table>
+<footer>Generated ${today} — Cash basis accounting.</footer>
+</body>
+</html>`;
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
@@ -60,23 +137,32 @@ Deno.serve(async (req) => {
     // ── Parse and validate body ──────────────────────────────────────────────
     const body = (await req.json()) as {
       report_type: ReportType;
+      format: ReportFormat;
       period_start: string;
       period_end: string;
     };
 
-    const { report_type, period_start, period_end } = body;
+    const { report_type, format, period_start, period_end } = body;
 
-    if (!report_type || !period_start || !period_end) {
+    if (!report_type || !format || !period_start || !period_end) {
       return new Response(
-        JSON.stringify({ error: "report_type, period_start, period_end are required" }),
+        JSON.stringify({ error: "report_type, format, period_start, period_end are required" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
-    const validTypes: ReportType[] = ["pl", "orders", "expenses", "products", "stripe_fees"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    const validFormats: ReportFormat[] = ["csv", "html"];
+    if (!validFormats.includes(format)) {
+      return new Response(
+        JSON.stringify({ error: `Unknown format: ${format}. Must be one of: csv, html` }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
@@ -89,25 +175,24 @@ Deno.serve(async (req) => {
     endDate.setDate(endDate.getDate() + 1);
     const endTsExcl = endDate.toISOString().slice(0, 10) + "T00:00:00.000Z";
 
-    let result: unknown;
+    let headers: string[] = [];
+    let rows: string[][] = [];
+    let title = "";
 
     // ── P&L Statement ────────────────────────────────────────────────────────
-    if (report_type === "pl") {
-      // Use monthly_snapshots for closed months within the range.
-      // We find snapshots where the month falls within our date range.
+    if (report_type === "pl_statement") {
+      title = "Profit & Loss Statement";
+      headers = ["Month", "Gross Revenue", "Refunds", "Net Revenue", "COGS", "Expenses", "Stripe Fees", "Net Profit"];
+
       const startYear  = new Date(period_start).getUTCFullYear();
-      const startMonth = new Date(period_start).getUTCMonth() + 1; // 1-12
+      const startMonth = new Date(period_start).getUTCMonth() + 1;
       const endYear    = new Date(period_end).getUTCFullYear();
       const endMonth   = new Date(period_end).getUTCMonth() + 1;
 
       const { data: snaps, error: snapErr } = await supabase
         .from("monthly_snapshots")
         .select("year, month, revenue_cents, refunds_cents, cogs_cents, expenses_cents, stripe_fees_cents, net_profit_cents, amendment_note, amended_at")
-        .or(
-          // Rows where (year, month) falls in range
-          // Simplest: pull all in year range and filter in JS
-          `year.gte.${startYear},year.lte.${endYear}`
-        )
+        .or(`year.gte.${startYear},year.lte.${endYear}`)
         .order("year")
         .order("month");
 
@@ -115,7 +200,6 @@ Deno.serve(async (req) => {
 
       const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-      // Filter to only snapshots within the period
       const filtered = (snaps ?? []).filter((s) => {
         if (s.year < startYear || s.year > endYear) return false;
         if (s.year === startYear && s.month < startMonth) return false;
@@ -123,61 +207,64 @@ Deno.serve(async (req) => {
         return true;
       });
 
-      const months = filtered.map((s) => ({
-        label:       `${MONTH_NAMES[s.month - 1]} ${s.year}`,
-        revenue:     s.revenue_cents,
-        refunds:     s.refunds_cents,
-        cogs:        s.cogs_cents,
-        expenses:    s.expenses_cents,
-        stripe_fees: s.stripe_fees_cents,
-        net:         s.net_profit_cents,
-        amended:     !!s.amended_at,
-        note:        s.amendment_note ?? null,
-      }));
-
-      const totals = months.reduce(
-        (acc, m) => ({
-          revenue:     acc.revenue     + m.revenue,
-          refunds:     acc.refunds     + m.refunds,
-          cogs:        acc.cogs        + m.cogs,
-          expenses:    acc.expenses    + m.expenses,
-          stripe_fees: acc.stripe_fees + m.stripe_fees,
-          net:         acc.net         + m.net,
-        }),
-        { revenue: 0, refunds: 0, cogs: 0, expenses: 0, stripe_fees: 0, net: 0 },
-      );
-
-      result = { months, totals };
+      rows = filtered.map((s) => [
+        `${MONTH_NAMES[s.month - 1]} ${s.year}`,
+        cents(s.revenue_cents ?? 0),
+        cents(s.refunds_cents ?? 0),
+        cents((s.revenue_cents ?? 0) - (s.refunds_cents ?? 0)),
+        cents(s.cogs_cents ?? 0),
+        cents(s.expenses_cents ?? 0),
+        cents(s.stripe_fees_cents ?? 0),
+        cents(s.net_profit_cents ?? 0),
+      ]);
     }
 
     // ── Order Summary ────────────────────────────────────────────────────────
-    else if (report_type === "orders") {
+    else if (report_type === "order_summary") {
+      title = "Order Summary";
+      headers = ["Month", "Orders", "Gross Revenue", "Refunds", "Net Revenue"];
+
       const { data: orders, error: ordErr } = await supabase
         .from("orders")
-        .select("id, created_at, customer_email, status, subtotal_cents, shipping_cents, tax_cents, total_cents")
+        .select("id, created_at, status, total_cents")
         .gte("created_at", startTs)
         .lt("created_at", endTsExcl)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (ordErr) throw new Error(`Orders query failed: ${ordErr.message}`);
 
-      result = {
-        rows: (orders ?? []).map((o) => ({
-          date:           o.created_at.slice(0, 10),
-          order_id:       o.id,
-          customer_email: o.customer_email,
-          status:         o.status,
-          subtotal:       o.subtotal_cents ?? 0,
-          shipping:       o.shipping_cents ?? 0,
-          tax:            o.tax_cents ?? 0,
-          total:          o.total_cents ?? 0,
-          refunded:       o.status === "refunded",
-        })),
-      };
+      // Group by month
+      const byMonth: Record<string, { orders: number; gross: number; refunds: number }> = {};
+      const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      for (const o of orders ?? []) {
+        const d = new Date(o.created_at);
+        const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+        if (!byMonth[key]) byMonth[key] = { orders: 0, gross: 0, refunds: 0 };
+        byMonth[key].orders++;
+        byMonth[key].gross += o.total_cents ?? 0;
+        if (o.status === "refunded") byMonth[key].refunds += o.total_cents ?? 0;
+      }
+
+      rows = Object.entries(byMonth)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, m]) => {
+          const [year, mon] = key.split("-");
+          const label = `${MONTH_NAMES[parseInt(mon) - 1]} ${year}`;
+          return [
+            label,
+            String(m.orders),
+            cents(m.gross),
+            cents(m.refunds),
+            cents(m.gross - m.refunds),
+          ];
+        });
     }
 
     // ── Expense Detail ───────────────────────────────────────────────────────
-    else if (report_type === "expenses") {
+    else if (report_type === "expense_detail") {
+      title = "Expense Detail";
+      headers = ["Date", "Category", "Description", "Amount", "Source"];
+
       const { data: exps, error: expErr } = await supabase
         .from("expenses")
         .select("date, category, description, amount_cents, source")
@@ -187,28 +274,20 @@ Deno.serve(async (req) => {
 
       if (expErr) throw new Error(`Expenses query failed: ${expErr.message}`);
 
-      const byCategory: Record<string, number> = {};
-      for (const e of exps ?? []) {
-        byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount_cents;
-      }
-
-      result = {
-        rows: (exps ?? []).map((e) => ({
-          date:        e.date,
-          category:    e.category,
-          description: e.description,
-          amount:      e.amount_cents,
-          source:      e.source,
-        })),
-        by_category: Object.entries(byCategory)
-          .sort((a, b) => b[1] - a[1])
-          .map(([category, total]) => ({ category, total })),
-      };
+      rows = (exps ?? []).map((e) => [
+        e.date ?? "",
+        e.category ?? "",
+        e.description ?? "",
+        cents(e.amount_cents ?? 0),
+        e.source ?? "",
+      ]);
     }
 
     // ── Sales by Product ─────────────────────────────────────────────────────
-    else if (report_type === "products") {
-      // Step 1: get paid order IDs in range
+    else if (report_type === "sales_by_product") {
+      title = "Sales by Product";
+      headers = ["Product", "Units Sold", "Revenue", "COGS", "Gross Margin"];
+
       const { data: orderIdRows, error: oidErr } = await supabase
         .from("orders")
         .select("id")
@@ -220,10 +299,7 @@ Deno.serve(async (req) => {
 
       const idSet = (orderIdRows ?? []).map((o) => o.id);
 
-      if (!idSet.length) {
-        result = { rows: [] };
-      } else {
-        // Step 2: get order items for those orders
+      if (idSet.length) {
         const { data: allItems, error: itemErr } = await supabase
           .from("order_items")
           .select("product_name, product_slug, quantity, price_cents, order_id")
@@ -231,7 +307,6 @@ Deno.serve(async (req) => {
 
         if (itemErr) throw new Error(`Order items query failed: ${itemErr.message}`);
 
-        // Step 3: fetch cost_cents for each unique product slug
         const slugs = [...new Set((allItems ?? []).map((i) => i.product_slug).filter(Boolean))];
         let costMap: Record<string, number> = {};
         if (slugs.length) {
@@ -253,25 +328,22 @@ Deno.serve(async (req) => {
           agg[slug].cogs    += (costMap[item.product_slug] ?? 1200) * qty;
         }
 
-        result = {
-          rows: Object.entries(agg)
-            .sort((a, b) => b[1].revenue - a[1].revenue)
-            .map(([slug, d]) => ({
-              name:       d.name,
-              slug,
-              units_sold: d.units,
-              revenue:    d.revenue,
-              cogs:       d.cogs,
-              margin_pct: d.revenue > 0
-                ? Math.round(((d.revenue - d.cogs) / d.revenue) * 1000) / 10
-                : 0,
-            })),
-        };
+        rows = Object.entries(agg)
+          .sort((a, b) => b[1].revenue - a[1].revenue)
+          .map(([, d]) => {
+            const margin = d.revenue > 0
+              ? `${Math.round(((d.revenue - d.cogs) / d.revenue) * 1000) / 10}%`
+              : "0%";
+            return [d.name, String(d.units), cents(d.revenue), cents(d.cogs), margin];
+          });
       }
     }
 
     // ── Stripe Fee Summary ───────────────────────────────────────────────────
-    else if (report_type === "stripe_fees") {
+    else if (report_type === "stripe_fee_summary") {
+      title = "Stripe Fee Summary";
+      headers = ["Date", "Description", "Amount"];
+
       const { data: fees, error: feeErr } = await supabase
         .from("expenses")
         .select("date, stripe_charge_id, description, amount_cents")
@@ -282,22 +354,33 @@ Deno.serve(async (req) => {
 
       if (feeErr) throw new Error(`Stripe fees query failed: ${feeErr.message}`);
 
-      const total_fees = (fees ?? []).reduce((s, e) => s + (e.amount_cents ?? 0), 0);
-
-      result = {
-        rows: (fees ?? []).map((e) => ({
-          date:        e.date,
-          charge_id:   e.stripe_charge_id,
-          description: e.description,
-          fee:         e.amount_cents,
-        })),
-        total_fees,
-      };
+      rows = (fees ?? []).map((e) => [
+        e.date ?? "",
+        e.description ?? e.stripe_charge_id ?? "",
+        cents(e.amount_cents ?? 0),
+      ]);
     }
 
-    return new Response(JSON.stringify({ ok: true, data: result }), {
-      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-    });
+    // ── Render ───────────────────────────────────────────────────────────────
+    if (format === "csv") {
+      const csv = formatCSV(headers, rows);
+      return new Response(csv, {
+        headers: {
+          ...corsHeaders(req),
+          "Content-Type": "text/csv",
+          "Content-Disposition": `attachment; filename="report.csv"`,
+        },
+      });
+    } else {
+      // format === "html"
+      const html = formatHTML(headers, rows, title, period_start, period_end);
+      return new Response(html, {
+        headers: {
+          ...corsHeaders(req),
+          "Content-Type": "text/html",
+        },
+      });
+    }
   } catch (err) {
     console.error("[generate-report]", err);
     return new Response(
