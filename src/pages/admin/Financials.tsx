@@ -83,6 +83,44 @@ interface ItemRow {
   quantity: number;
 }
 
+interface MonthlySnapshotRow {
+  year: number;
+  month: number;
+  revenue_cents: number;
+  refunds_cents: number;
+  cogs_cents: number;
+  expenses_cents: number;
+  stripe_fees_cents: number;
+  net_profit_cents: number;
+}
+
+/** Aggregated totals derived from monthly_snapshots for a past year. */
+interface SnapshotTotals {
+  revenueCents: number;
+  refundsCents: number;
+  cogsCents: number;
+  expensesCents: number;
+  stripeFeesCents: number;
+  netProfitCents: number;
+}
+
+function useMonthlySnapshots(selectedYear: number, currentYear: number) {
+  const isPastYear = selectedYear !== currentYear;
+  return useQuery<MonthlySnapshotRow[]>({
+    queryKey: ["monthly_snapshots", selectedYear],
+    enabled: isPastYear,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("monthly_snapshots")
+        .select("year, month, revenue_cents, refunds_cents, cogs_cents, expenses_cents, stripe_fees_cents, net_profit_cents")
+        .eq("year", selectedYear);
+      if (error) throw error;
+      return (data ?? []) as MonthlySnapshotRow[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 function useFinancialsData(selectedYear: number) {
   const yearStart = `${selectedYear}-01-01T00:00:00.000Z`;
   const yearEnd   = `${selectedYear}-12-31T23:59:59.999Z`;
@@ -212,27 +250,57 @@ function Disclosure({ title, children }: { title: string; children: React.ReactN
 export default function Financials() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const { orders, refundedOrders, items, isLoading, refetch } = useFinancialsData(selectedYear);
+  const { orders, refundedOrders, items, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
+  const { data: snapshots, isLoading: snapshotsLoading } = useMonthlySnapshots(selectedYear, currentYear);
 
-  // ── Per-order item counts ──
+  const isPastYear = selectedYear !== currentYear;
+  // Use snapshots when viewing a past year that has closed months on record
+  const useSnapshots = isPastYear && (snapshots ?? []).length > 0;
+
+  // ── Per-order item counts (live path) ──
   const itemCountByOrder = new Map<string, number>();
   for (const it of items) {
     itemCountByOrder.set(it.order_id, (itemCountByOrder.get(it.order_id) ?? 0) + it.quantity);
   }
 
-  // ── Aggregate revenue ──
-  const grossRevenue      = orders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
-  const refundsTotalCents = refundedOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  // ── Aggregate revenue (snapshot path) ──
+  const snapshotTotals: SnapshotTotals | null = useSnapshots
+    ? (snapshots ?? []).reduce<SnapshotTotals>(
+        (acc, row) => ({
+          revenueCents:    acc.revenueCents    + row.revenue_cents,
+          refundsCents:    acc.refundsCents    + row.refunds_cents,
+          cogsCents:       acc.cogsCents       + row.cogs_cents,
+          expensesCents:   acc.expensesCents   + row.expenses_cents,
+          stripeFeesCents: acc.stripeFeesCents + row.stripe_fees_cents,
+          netProfitCents:  acc.netProfitCents  + row.net_profit_cents,
+        }),
+        { revenueCents: 0, refundsCents: 0, cogsCents: 0, expensesCents: 0, stripeFeesCents: 0, netProfitCents: 0 }
+      )
+    : null;
+
+  // ── Aggregate revenue (live path — also used as fallback for past years with no snapshots) ──
+  const grossRevenueLive      = orders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const refundsTotalLive      = refundedOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const netRevenueLive        = grossRevenueLive - refundsTotalLive;
+  const totalShippingLive     = orders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
+  const totalItemsLive        = orders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
+  const printCogsLive         = totalItemsLive * PRINT_COST_PER_ITEM_CENTS;
+  const productRevenueLive    = netRevenueLive - totalShippingLive;
+  const grossProfitLive       = productRevenueLive - printCogsLive;
+
+  // ── Final display values ──
+  const grossRevenue      = snapshotTotals ? snapshotTotals.revenueCents    : grossRevenueLive;
+  const refundsTotalCents = snapshotTotals ? snapshotTotals.refundsCents    : refundsTotalLive;
   const netRevenueCents   = grossRevenue - refundsTotalCents;
-  const totalShipping     = orders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
-  const productRevenue    = netRevenueCents - totalShipping; // shipping is pass-through
+  // For snapshot path: shipping is embedded in cogs; we approximate totalShipping as 0
+  // since snapshot data doesn't break it out separately.
+  const totalShipping     = snapshotTotals ? 0                              : totalShippingLive;
+  const productRevenue    = snapshotTotals ? (snapshotTotals.revenueCents - snapshotTotals.refundsCents) : productRevenueLive;
+  const totalItems        = snapshotTotals ? 0                              : totalItemsLive;
+  const printCogsCents    = snapshotTotals ? snapshotTotals.cogsCents       : printCogsLive;
+  const grossProfitCents  = snapshotTotals ? snapshotTotals.netProfitCents  : grossProfitLive;
 
-  // ── Print COGS ──
-  const totalItems     = orders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
-  const printCogsCents = totalItems * PRINT_COST_PER_ITEM_CENTS;
-
-  // ── Gross profit ──
-  const grossProfitCents = productRevenue - printCogsCents;
+  const isLoading = liveLoading || (isPastYear && snapshotsLoading);
 
   // ── Tax estimates (dollars for tax math) ──
   const netProfitDollars = grossProfitCents / 100;
@@ -271,13 +339,17 @@ export default function Financials() {
         <div>
           <h1 className="font-display text-2xl tracking-widest">FINANCIALS</h1>
           <p className="text-xs text-muted-foreground mt-1 font-marker tracking-widest">
-            {selectedYear} YTD · {orders.length} ORDERS
+            {selectedYear}{isPastYear ? " FULL YEAR" : " YTD"} ·{" "}
+            {useSnapshots
+              ? `${(snapshots ?? []).length} CLOSED MONTHS`
+              : `${orders.length} ORDERS`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
+            aria-label="Select year"
             className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
           >
             {Array.from({ length: currentYear - 2024 + 1 }, (_, i) => currentYear - i).map((y) => (
@@ -305,7 +377,7 @@ export default function Financials() {
         />
         <MetricCard
           delay={0.08} label="Print COGS"        value={fmt(printCogsCents)}
-          sub={`${totalItems} items × $12 est.`}
+          sub={useSnapshots ? "from closed month records" : `${totalItems} items × $12 est.`}
           icon={Receipt}       color="bg-orange-400/10 text-orange-400"
         />
         <MetricCard
@@ -322,11 +394,11 @@ export default function Financials() {
           <tbody className="divide-y divide-border">
             {([
               ["Gross Revenue",           fmt(grossRevenue),         "Total collected incl. shipping"],
-              ["Refunds Issued",          refundsTotalCents > 0 ? `(${fmt(refundsTotalCents)})` : fmt(0), "Returned to customers"],
+              ["Refunds Issued",          `(${fmt(refundsTotalCents)})`, "Returned to customers"],
               ["Net Revenue",             fmt(netRevenueCents),       "After refunds"],
               ["Shipping (pass-through)", `(${fmt(totalShipping)})`, "Goes to carrier — not your income"],
               ["Product Revenue",         fmt(productRevenue),        "What you actually keep from sales"],
-              ["Print COGS",              `(${fmt(printCogsCents)})`, `${totalItems} items × $12 est. print cost`],
+              ["Print COGS",              `(${fmt(printCogsCents)})`, useSnapshots ? "from closed month records" : `${totalItems} items × $12 est. print cost`],
               ["Gross Profit",            fmt(grossProfitCents),      "Before SE tax & income tax"],
             ] as [string, string, string][]).map(([label, value, note]) => (
               <tr key={label} className={label === "Gross Profit" ? "font-semibold" : ""}>
