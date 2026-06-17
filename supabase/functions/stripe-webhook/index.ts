@@ -159,24 +159,31 @@ Deno.serve(async (req) => {
     })();
     const mockImageUrl = firstSlug ? (imageBySlug.get(firstSlug) ?? "") : "";
 
-    // We render template at queue time inside send-notification, so kick it off:
-    await supabase.functions.invoke("send-notification", {
-      body: {
-        templateKey: "order_confirmation",
-        recipient: order.email,
-        relatedKind: "order",
-        relatedId: order.id,
-        variables: {
-          customer_name: order.email.split("@")[0],
-          order_number: order.id.slice(0, 8),
-          order_items: itemsList,
-          order_subtotal: orderSubtotal,
-          shipping_cost: shippingCostForEmail,
-          order_total: orderTotal,
-          mock_image_url: mockImageUrl,
+    // For test orders, redirect customer email to internal team instead of fake customer address
+    const TEST_RECIPIENTS = ["kmitch2087@gmail.com", "aopie91@gmail.com"];
+    const confirmationRecipients: string[] = order.is_test
+      ? TEST_RECIPIENTS
+      : [order.email];
+
+    for (const recipient of confirmationRecipients) {
+      await supabase.functions.invoke("send-notification", {
+        body: {
+          templateKey: "order_confirmation",
+          recipient,
+          relatedKind: "order",
+          relatedId: order.id,
+          variables: {
+            customer_name: order.is_test ? "TEST ORDER" : order.email.split("@")[0],
+            order_number: order.id.slice(0, 8).toUpperCase(),
+            order_items: itemsList,
+            order_subtotal: orderSubtotal,
+            shipping_cost: shippingCostForEmail,
+            order_total: orderTotal,
+            mock_image_url: mockImageUrl,
+          },
         },
-      },
-    });
+      });
+    }
 
     // 2) Pour Points — 1 point per $1 spent on products only (auth users only; shipping excluded)
     if (order.user_id && (order.total_cents ?? 0) > 0) {
@@ -322,17 +329,19 @@ Deno.serve(async (req) => {
         },
       });
 
-      // CC: send same printer notification to Kristin for test review
-      await supabase.functions.invoke("send-notification", {
-        body: {
-          templateKey: "printer_notification",
-          recipient: "kmitch2087@gmail.com",
-          relatedKind: "order",
-          relatedId: order.id,
-          variables: printerVars,
-          attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
-        },
-      });
+      // CC both Kristin and Opie on every printer notification
+      for (const cc of ["kmitch2087@gmail.com", "aopie91@gmail.com"]) {
+        await supabase.functions.invoke("send-notification", {
+          body: {
+            templateKey: "printer_notification",
+            recipient: cc,
+            relatedKind: "order",
+            relatedId: order.id,
+            variables: printerVars,
+            attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
+          },
+        });
+      }
     }
   } // end if (orderId)
 
