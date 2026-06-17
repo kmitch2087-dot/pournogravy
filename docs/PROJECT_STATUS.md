@@ -107,7 +107,7 @@
 
 > ⛔ **BLOCKING: Resend domain verification** — until pournogravy.com is verified in Resend, order confirmation emails will not send. DKIM/SPF records are already in Cloudflare DNS — may be a one-click confirm.
 
-- [ ] **Resend domain verify** — log in to resend.com → Domains → verify pournogravy.com
+- [x] **Resend domain verify** — ✅ Verified June 16, 2026
 - [ ] **CF Email routing rule** — CF Dashboard → pournogravy.com → Email → Routing Rules → edit `opie@pournogravy.com` → change Worker from `wild-mouse-2b64` → `pournogravy-receive-email`
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly end-to-end
 - [ ] **Opie: update product costs** — Admin → Bookkeeping → Products before July 1st month close
@@ -146,7 +146,7 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 
 | Priority | Task | Detail |
 |----------|------|--------|
-| CRITICAL | ⛔ Verify Sender Domain in Resend | **BLOCKING orders.** Log into resend.com → Domains → verify pournogravy.com. DKIM/SPF may already be in Cloudflare DNS — check if it's a one-click confirm. Without this, order confirmation emails won't send. |
+| ~~CRITICAL~~ | ✅ Resend Domain Verified | Done June 16, 2026. pournogravy.com is verified and ready to send emails. |
 | HIGH | Update Bookkeeping → Products costs | Admin → Bookkeeping → Products — enter actual print cost per item before July 1st. Until then COGS falls back to $12/item default. |
 | MEDIUM | Order Samples | Order at least 1 shirt from each printer before committing. Check: print quality, fabric, wash test, packaging, delivery time. |
 | LOW | Set Up Google Business Profile | Visit google.com/business and claim or create a profile for Pournogravy. Helps search visibility even for online-only brands. |
@@ -157,7 +157,7 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
-| Resend domain not verified | 🔴 Critical | Open | resend.com → Domains → verify pournogravy.com (DKIM/SPF already in CF DNS) |
+| Resend domain verified | ✅ Done | Closed | Verified June 16, 2026 — domain ready to send emails |
 | CF email routing rule not updated | 🟡 Medium | Open | CF Dashboard → Email Routing → opie@pournogravy.com → pournogravy-receive-email worker |
 | Test order (live) not placed | 🟡 Medium | Open | Test banners confirmed June 11; need live order end-to-end |
 | npm vulnerabilities | 🟡 Low | Open | 2 remaining after `npm audit fix`; require `--force` (breaking changes risk — defer) |

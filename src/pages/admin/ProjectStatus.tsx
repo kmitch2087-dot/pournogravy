@@ -280,7 +280,6 @@ const SESSION_LOG = [
 // ---------------------------------------------------------------------------
 const BACKLOG = {
   critical: [
-    { text: "Verify opie@pournogravy.com as Resend sender domain (BLOCKING — order emails won't send without this)" },
     { text: "CF Email Routing rule — CF Dashboard → pournogravy.com → Email → Routing Rules → set opie@pournogravy.com → pournogravy-receive-email worker" },
     { text: "Place live test order to verify full fulfillment email flow end-to-end" },
     { text: "Opie: update product costs in Admin → Bookkeeping → Products (before July 1st month close)" },
@@ -305,7 +304,6 @@ const BACKLOG = {
 };
 
 const KNOWN_ISSUES = [
-  { severity: "critical", item: "Resend domain not verified", fix: "resend.com → Domains → verify pournogravy.com (DKIM/SPF already in CF DNS)" },
   { severity: "high", item: "CF email routing rule not updated", fix: "CF Dashboard → Email Routing → opie@pournogravy.com → switch to pournogravy-receive-email worker" },
   { severity: "medium", item: "Live test order not placed", fix: "Place a real order to confirm confirmation + printer emails land correctly" },
   { severity: "medium", item: "src/utils/supabase/ dead code", fix: "Delete folder" },
@@ -724,7 +722,7 @@ export default function ProjectStatus() {
           <ProgressBar label="Public Storefront" value={97} />
           <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
           <ProgressBar label="Fulfillment Pipeline" value={85} color="bg-yellow-400" />
-          <ProgressBar label="Email & Notifications" value={90} color="bg-blue-400" />
+          <ProgressBar label="Email & Notifications" value={95} color="bg-blue-400" />
         </CardContent>
       </Card>
 
