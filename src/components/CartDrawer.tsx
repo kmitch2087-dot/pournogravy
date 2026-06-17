@@ -151,7 +151,7 @@ const CartDrawer = () => {
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
       <SheetContent
         className="flex w-full flex-col sm:max-w-md p-0 overflow-hidden"
-        style={{ background: TAB_BG, position: "relative", border: "none" }}
+        style={{ background: TAB_BG, border: "none" }}
       >
         {/* Beer ring stain — CSS-only decoration */}
         <div aria-hidden="true" style={RING_STYLE} />
