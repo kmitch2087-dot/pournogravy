@@ -17,6 +17,7 @@
 
 | Date | Summary | Completed | Next Up |
 |------|---------|-----------|---------| 
+| June 17, 2026 | **Security fixes, dead code audit, full Bookkeeping Module shipped (11 tasks).** Security: fixed payment intent ID verification bypass in `refund-order`, path traversal in `get-print-file`, hardcoded fallback password removed, timing attack fixed with HMAC constant-time compare. Dead links: removed broken `/merch-drops` footer link, fixed `to:` → `recipient:` in `refund-order` and `refresh-market-rates` edge functions. Missing email templates seeded: `abandoned_cart`, `vendor_welcome`, `admin_alert`. **Bookkeeping Module** (branch `claude/optimistic-pasteur-2c8e14`, 16 commits): DB schema (monthly_snapshots, expenses, products.cost_cents), Financials page fixes (year selector, refund netting, monthly_snapshots for past years), Bookkeeping nav + 5 routes, Products COGS editor, Expenses ledger, sync-stripe-fees edge function (daily cron), close-month edge function (monthly cron), Bookkeeping Overview (monthly grid + amendment drawer), generate-report edge function (CSV + HTML output), Reports page (period selector + download), Tax Packet page (ZIP export with all files). All 11 tasks reviewed; 3 blocking integration bugs found and fixed at final review (order_items schema, Reports format param, close-month cron auth). Branch ready to merge. | Security fixes, email template seeds, Bookkeeping Module 11 tasks complete | Merge branch + push to CF Pages; run bookkeeping migrations in Supabase; deploy 3 new edge functions (sync-stripe-fees, close-month, generate-report) |
 | June 16, 2026 | **Parallel 7-agent build: ~30 features in flight.** Fulfillment Partners UI added to admin Settings — vendor table, Set as Active, Add New Vendor Sheet with full intake form (services, turnaround, min qty, file formats, notes), `add-fulfillment-vendor` edge function sends vendor_welcome email via send-notification. Migrations: `20260616000010_fulfillment_vendors.sql`, `20260616000010b_vendor_welcome_template.sql`. Other agents: abandoned-cart-reminder, refund-order, archive-orders, blast-email edge functions; order_archive table; abandoned cart last_updated_at column; additional UI features. | Fulfillment Partners panel, vendor edge function, migrations | Run migrations in Supabase; deploy add-fulfillment-vendor edge function |
 | June 16, 2026 | **Blog posts, homepage reviews, custom request archive, shipping rates.** Blog: seeded 3 published posts in DB — `/blog` page now shows content. Homepage: added "WHAT THE BAR SAYS" reviews section (3-col grid, star rating, truncated body, author, product name) — seeded 3 bartender-voice reviews with `is_approved=true`. Admin Custom Requests: full overhaul — added `archived_at` column to `custom_requests`; added tabs (Active / Done / Archived with counts); per-row "Mark Done" (→ status='completed') and "Archive" (→ archived_at=now()) buttons; Archived tab has "Unarchive" button. Shipping: added `shipping_standard_cents` (default 799), `shipping_express_cents` (default 1499) columns to settings; Settings.tsx Shipping tab now has Standard + Express inputs; CartDrawer shows live shipping estimate ("SHIPPING: $X.XX" or "FREE") from settings with React Query; Shop page shows "🚚 Free shipping on orders over $X" banner. 4 migrations applied (006–009). Build passes clean. | Blog seeded, homepage reviews, custom requests archive + tabs, shipping rates editable + displayed | Deploy to CF Pages; approve Supabase MCP in session settings to allow future SQL via MCP |
 | June 15, 2026 | **Shipping overhaul:** stripe-webhook now captures shipping_cents from Stripe session. Printer cost summary shows print cost + shipping as separate lines with "TOTAL TO INVOICE US". Loyalty points now awarded on subtotal only (excludes shipping). New `resend-printer-notification` edge function (admin-callable, regenerates HMAC magic link). Orders.tsx: shipping address formatted cleanly, one-click "Mark as Shipped & Notify Customer", Resend Printer Email button, clickable tracking URL in customer email. InvoiceTracker: printer bill totals include shipping pass-through, CSV expanded to 9 columns. **Bug fixes:** ProductCard easter egg column was `value` but table uses `text` — DB eggs now load correctly. useLoyalty hook hardcoded `100` threshold — now reads from loyalty_rules table. PrintFiles page slug mismatch fixed — now lists files directly from Supabase Storage. Double points toggle: "Activate Now" button writes directly to DB. **Logo uploads:** logo_back_white.png and logo_back_black.png uploaded to Supabase Storage print-files bucket. | Shipping pipeline complete, printer invoice with shipping pass-through, one-click Mark as Shipped, bug fixes (easter egg column, loyalty threshold, PrintFiles slugs, double points toggle), back logo PNGs uploaded | Place test order to verify full fulfillment email flow; CF email routing rule (manual) |
@@ -52,6 +53,8 @@
 - [x] Products seeded (24 products, migration 20260504000003)
 - [x] `site_content` seeded (~60 rows, migrations 20260522000001 + 20260525000001)
 - [x] `email_templates` — `vendor_welcome` template seeded (migration 20260616000010b)
+- [x] `monthly_snapshots` — locked monthly P&L snapshots; auto-closed by cron on 1st of month (migration 20260617000010)
+- [x] `expenses` — manual + Stripe auto-synced expenses (migration 20260617000010)
 
 ### Supabase Storage
 - [x] `print-files` bucket — **74 PNGs** (37 black + 37 white), public read, temp policies cleaned up
@@ -63,6 +66,9 @@
 - [x] `validate-discount`, `admin-contact`, `notify-project-status`, `redeem-points`, `track-event`
 - [x] `receive-email` (v11) — inbound email webhook; `verify_jwt: false`; stores in `inbox_messages`; alerts aopie91@gmail.com via Resend
 - [x] `add-fulfillment-vendor` — inserts to fulfillment_vendors, sends vendor_welcome email
+- [x] `sync-stripe-fees` — daily cron (02:00 UTC) syncs Stripe processing fees into expenses table (migration 20260617000020)
+- [x] `close-month` — monthly cron (00:05 on 1st) auto-closes books into monthly_snapshots (migration 20260617000021)
+- [x] `generate-report` — HTTP-callable; returns CSV or HTML for 5 report types (pl_statement, order_summary, expense_detail, sales_by_product, stripe_fee_summary)
 
 ### Frontend — Public Pages
 - [x] Homepage, Shop, Product detail, Collections, About, Contact, FAQ, 404, `/proposal`, `/wishlist`, `/privacy`, `/terms`
@@ -79,6 +85,13 @@
 - [x] **Invoice Tracker (`/admin/invoices`)** — auto-calculated financial dashboard: Profit Margin (revenue, printer cost, gross profit, margin %), Shipping Collected, Printer Bill (unpaid list, Mark All Paid, CSV export, paid history)
 - [x] **Blog Admin (`/admin/blog`)** — blog post CRUD: create/edit/delete, publish toggle, slug auto-gen, image URL, tag management
 - [x] **Fulfillment Partners panel** (Settings → Fulfillment tab) — vendor table, Set as Active, Add New Vendor sheet with full intake form
+- [x] **Financials page** — year selector (2024–present), refund netting (gross revenue → refunds → net), historical data from monthly_snapshots
+- [x] **Bookkeeping section** (`/admin/bookkeeping/*`) — 5 sub-pages:
+  - Overview: monthly grid with Open/Closed/Amended status, amendment drawer, annual summary cards
+  - Expenses: manual expense entry + Stripe auto-sync ledger with lock badges and filters
+  - Products (COGS): inline cost editor, margin badges sorted ascending
+  - Reports: period/type/format selectors, CSV download + print-to-PDF
+  - Tax Packet: year-end ZIP export (P&L HTML + 4 CSVs + summary + README)
 
 ### CF Email Worker
 - [x] `cloudflare-workers/receive-email/src/index.ts` — postal-mime parser → posts to `receive-email` Supabase fn
@@ -99,10 +112,20 @@
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly (TEST banners confirmed ✅ on June 11 test — now need live order)
 - [ ] Move `opie@pournogravy.com` off GoDaddy → Resend inbound (non-urgent, outbound works)
 
-### 🟢 Dev: Run Migrations + Deploy Edge Function
+### 🟢 Dev: Run Migrations + Deploy Edge Functions
 - [ ] Run `20260616000010_fulfillment_vendors.sql` in Supabase SQL Editor
 - [ ] Run `20260616000010b_vendor_welcome_template.sql` in Supabase SQL Editor
 - [ ] Deploy `add-fulfillment-vendor` edge function: `supabase functions deploy add-fulfillment-vendor`
+- [ ] **Merge bookkeeping branch** → `master`: `git checkout master && git merge claude/optimistic-pasteur-2c8e14`
+- [ ] Run `20260617000010_bookkeeping_schema.sql` (monthly_snapshots, expenses, products.cost_cents)
+- [ ] Run `20260617000020_sync_stripe_fees_cron.sql` (daily Stripe fee sync cron)
+- [ ] Run `20260617000021_close_month_cron.sql` (monthly auto-close cron)
+- [ ] Run template seed migrations: `20260617000001_abandoned_cart_template.sql`, `20260617000002_vendor_welcome_template.sql`, `20260617000003_admin_alert_template.sql`
+- [ ] Deploy `sync-stripe-fees` edge function: `supabase functions deploy sync-stripe-fees`
+- [ ] Deploy `close-month` edge function: `supabase functions deploy close-month`
+- [ ] Deploy `generate-report` edge function: `supabase functions deploy generate-report`
+- [ ] **Have Opie update product costs** in Bookkeeping → Products before first month close
+- [ ] Run `close-month` manually for any past months that should have snapshots
 
 ### 🟡 Code Hygiene
 
