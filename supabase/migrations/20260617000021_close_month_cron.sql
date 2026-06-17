@@ -7,10 +7,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://emtjkawcmsfgjyimnncf.supabase.co/functions/v1/close-month',
-    headers := json_build_object(
-      'Content-Type',  'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true)
-    )::jsonb,
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdGprYXdjbXNmZ2p5aW1ubmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDY2MDksImV4cCI6MjA5MjI4MjYwOX0.Kb8hwzqCfdDdvpmXKWtSXW5m3wzC3_sBhML6bCJyRgY"}'::jsonb,
     body    := '{}'::jsonb
   );
   $$

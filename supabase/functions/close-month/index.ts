@@ -108,28 +108,28 @@ Deno.serve(async (req) => {
       // Step 2: get order items for those orders
       const { data: items, error: itemErr } = await supabase
         .from("order_items")
-        .select("quantity, product_slug")
+        .select("quantity, product_id")
         .in("order_id", ids);
 
       if (itemErr) throw new Error(`Order items query failed: ${itemErr.message}`);
 
       if (items?.length) {
-        // Step 3: fetch cost_cents for each unique slug
-        const slugs = [...new Set(items.map((i) => i.product_slug).filter(Boolean))];
+        // Step 3: fetch cost_cents for each unique product_id
+        const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean))];
         const { data: costs, error: costErr } = await supabase
           .from("products")
-          .select("slug, cost_cents")
-          .in("slug", slugs);
+          .select("id, cost_cents")
+          .in("id", productIds);
 
         if (costErr) throw new Error(`Products cost query failed: ${costErr.message}`);
 
         const costMap: Record<string, number> = Object.fromEntries(
-          (costs ?? []).map((p) => [p.slug, p.cost_cents ?? 0]),
+          (costs ?? []).map((p) => [p.id, p.cost_cents ?? 0]),
         );
 
         cogs_cents = items.reduce((s, item) => {
           // Fall back to $12.00 (1200 cents) if product cost is missing
-          const cost = costMap[item.product_slug] ?? 1200;
+          const cost = costMap[item.product_id] ?? 1200;
           return s + (item.quantity ?? 1) * cost;
         }, 0);
       }

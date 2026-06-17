@@ -302,30 +302,31 @@ Deno.serve(async (req) => {
       if (idSet.length) {
         const { data: allItems, error: itemErr } = await supabase
           .from("order_items")
-          .select("product_name, product_slug, quantity, price_cents, order_id")
+          .select("product_id, quantity, unit_price_cents, order_id")
           .in("order_id", idSet.slice(0, 1000));
 
         if (itemErr) throw new Error(`Order items query failed: ${itemErr.message}`);
 
-        const slugs = [...new Set((allItems ?? []).map((i) => i.product_slug).filter(Boolean))];
-        let costMap: Record<string, number> = {};
-        if (slugs.length) {
-          const { data: costs, error: costErr } = await supabase
+        const productIds = [...new Set((allItems ?? []).map((i) => i.product_id).filter(Boolean))];
+        let productMap: Record<string, { name: string; cost_cents: number }> = {};
+        if (productIds.length) {
+          const { data: prods, error: prodErr } = await supabase
             .from("products")
-            .select("slug, cost_cents")
-            .in("slug", slugs);
-          if (costErr) throw new Error(`Products cost query failed: ${costErr.message}`);
-          costMap = Object.fromEntries((costs ?? []).map((p) => [p.slug, p.cost_cents ?? 0]));
+            .select("id, name, cost_cents")
+            .in("id", productIds);
+          if (prodErr) throw new Error(`Products query failed: ${prodErr.message}`);
+          productMap = Object.fromEntries((prods ?? []).map((p) => [p.id, { name: p.name ?? p.id, cost_cents: p.cost_cents ?? 0 }]));
         }
 
         const agg: Record<string, { name: string; units: number; revenue: number; cogs: number }> = {};
         for (const item of allItems ?? []) {
-          const slug = item.product_slug ?? item.product_name ?? "unknown";
-          if (!agg[slug]) agg[slug] = { name: item.product_name ?? slug, units: 0, revenue: 0, cogs: 0 };
+          const pid = item.product_id ?? "unknown";
+          const prod = productMap[pid];
+          if (!agg[pid]) agg[pid] = { name: prod?.name ?? pid, units: 0, revenue: 0, cogs: 0 };
           const qty = item.quantity ?? 1;
-          agg[slug].units   += qty;
-          agg[slug].revenue += (item.price_cents ?? 0) * qty;
-          agg[slug].cogs    += (costMap[item.product_slug] ?? 1200) * qty;
+          agg[pid].units   += qty;
+          agg[pid].revenue += (item.unit_price_cents ?? 0) * qty;
+          agg[pid].cogs    += (prod?.cost_cents ?? 1200) * qty;
         }
 
         rows = Object.entries(agg)

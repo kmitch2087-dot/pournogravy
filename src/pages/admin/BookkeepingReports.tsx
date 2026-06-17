@@ -15,7 +15,6 @@ import {
   subQuarters,
   subMonths,
 } from "date-fns";
-import { toCSV, downloadCSV, centsToStr, printHTML } from "@/lib/reportDownload";
 
 type ReportType = "pl" | "orders" | "expenses" | "products" | "stripe_fees";
 type PeriodType =
@@ -100,77 +99,34 @@ export default function BookkeepingReports() {
   const [period, setPeriod] = useState<PeriodType>("this_year");
   const [loading, setLoading] = useState(false);
 
-  async function fetchReport() {
+  async function fetchReportRaw(fmt: "csv" | "html"): Promise<string> {
     const { start, end } = getPeriodDates(period);
     const res = await supabase.functions.invoke("generate-report", {
       body: {
         report_type: REPORT_TYPE_MAP[reportType],
         period_start: start,
         period_end: end,
+        format: fmt,
       },
+      headers: { Accept: fmt === "html" ? "text/html" : "text/csv" },
     });
     if (res.error) throw new Error(res.error.message);
-    return res.data?.data;
+    const raw = res.data;
+    return raw instanceof Blob ? await raw.text() : (raw as string);
   }
 
   async function handleDownloadCSV() {
     setLoading(true);
     try {
-      const data = await fetchReport();
+      const csvText = await fetchReportRaw("csv");
       const { label } = getPeriodDates(period);
       const filename = `PG_${reportType}_${label.replace(/\s/g, "_")}.csv`;
-
-      let rows: Record<string, unknown>[] = [];
-      if (reportType === "pl") {
-        rows = (data.months as Record<string, unknown>[]).map((m) => ({
-          Month: m.label,
-          Revenue: centsToStr(m.revenue as number),
-          Refunds: centsToStr(m.refunds as number),
-          COGS: centsToStr(m.cogs as number),
-          Expenses: centsToStr(m.expenses as number),
-          "Stripe Fees": centsToStr(m.stripe_fees as number),
-          "Net Profit": centsToStr(m.net as number),
-          Note: m.note ?? "",
-        }));
-      } else if (reportType === "orders") {
-        rows = (data.rows as Record<string, unknown>[]).map((r) => ({
-          Date: r.date,
-          "Order ID": (r.order_id as string).slice(0, 8).toUpperCase(),
-          Email: r.customer_email,
-          Status: r.status,
-          Subtotal: centsToStr(r.subtotal as number),
-          Shipping: centsToStr(r.shipping as number),
-          Tax: centsToStr(r.tax as number),
-          Total: centsToStr(r.total as number),
-          Refunded: r.refunded ? "Yes" : "No",
-        }));
-      } else if (reportType === "expenses") {
-        rows = (data.rows as Record<string, unknown>[]).map((r) => ({
-          Date: r.date,
-          Category: r.category,
-          Description: r.description,
-          Amount: centsToStr(r.amount as number),
-          Source: r.source,
-        }));
-      } else if (reportType === "products") {
-        rows = (data.rows as Record<string, unknown>[]).map((r) => ({
-          Product: r.name,
-          Slug: r.slug,
-          "Units Sold": r.units_sold,
-          Revenue: centsToStr(r.revenue as number),
-          COGS: centsToStr(r.cogs as number),
-          "Margin %": r.margin_pct,
-        }));
-      } else if (reportType === "stripe_fees") {
-        rows = (data.rows as Record<string, unknown>[]).map((r) => ({
-          Date: r.date,
-          "Charge ID": r.charge_id,
-          Description: r.description,
-          "Fee ($)": centsToStr(r.fee as number),
-        }));
-      }
-
-      downloadCSV(toCSV(rows), filename);
+      const url = URL.createObjectURL(new Blob([csvText], { type: "text/csv" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
       toast.success("CSV downloaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate report");
@@ -182,52 +138,18 @@ export default function BookkeepingReports() {
   async function handlePrint() {
     setLoading(true);
     try {
-      const data = await fetchReport();
-      const { label } = getPeriodDates(period);
-      const title = `${REPORT_LABELS[reportType]} — ${label}`;
-      const fmt$ = (cents: number) =>
-        new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-        }).format(cents / 100);
-
-      let bodyHTML = `<h1>${title}</h1>`;
-
-      if (reportType === "pl") {
-        bodyHTML += `<table><thead><tr>
-          <th>Month</th><th class="right">Revenue</th><th class="right">Refunds</th>
-          <th class="right">COGS</th><th class="right">Expenses</th>
-          <th class="right">Stripe Fees</th><th class="right">Net Profit</th>
-        </tr></thead><tbody>`;
-        for (const m of data.months as Record<string, unknown>[]) {
-          bodyHTML += `<tr>
-            <td>${m.label}</td>
-            <td class="right">${fmt$(m.revenue as number)}</td>
-            <td class="right">(${fmt$(m.refunds as number)})</td>
-            <td class="right">(${fmt$(m.cogs as number)})</td>
-            <td class="right">(${fmt$(m.expenses as number)})</td>
-            <td class="right">(${fmt$(m.stripe_fees as number)})</td>
-            <td class="right">${fmt$(m.net as number)}</td>
-          </tr>`;
-          if (m.note)
-            bodyHTML += `<tr><td colspan="7"><div class="note">Note: ${m.note}</div></td></tr>`;
-        }
-        const t = data.totals as Record<string, number>;
-        bodyHTML += `<tr class="total">
-          <td>TOTAL</td>
-          <td class="right">${fmt$(t.revenue)}</td>
-          <td class="right">(${fmt$(t.refunds)})</td>
-          <td class="right">(${fmt$(t.cogs)})</td>
-          <td class="right">(${fmt$(t.expenses)})</td>
-          <td class="right">(${fmt$(t.stripe_fees)})</td>
-          <td class="right">${fmt$(t.net)}</td>
-        </tr></tbody></table>
-        <footer>POURnogravy · Cash-basis accounting · Generated ${new Date().toLocaleDateString()}</footer>`;
+      const htmlText = await fetchReportRaw("html");
+      const url = URL.createObjectURL(new Blob([htmlText], { type: "text/html" }));
+      const win = window.open(url, "_blank");
+      if (win) {
+        win.onload = () => {
+          win.print();
+          URL.revokeObjectURL(url);
+        };
       } else {
-        bodyHTML += `<p>Use CSV download for tabular reports. This view is optimised for P&amp;L statements.</p>`;
+        URL.revokeObjectURL(url);
+        toast.error("Pop-up blocked — please allow pop-ups for this site.");
       }
-
-      printHTML(bodyHTML, title);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate report");
     } finally {
