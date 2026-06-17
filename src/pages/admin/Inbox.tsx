@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import {
   Mail, MailOpen, Send, Loader2, RefreshCw, ArrowLeft, User,
   Inbox as InboxIcon, Clock, Trash2, PenLine, RotateCcw,
-  ChevronDown, ChevronRight, AlertCircle, Users,
+  AlertCircle, Users,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import EmailTemplates from "./EmailTemplates";
@@ -445,7 +445,8 @@ const InboxTab = () => {
 // ── SentTab ───────────────────────────────────────────────────────────────────
 
 const SentTab = () => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   const { data: sent = [], isLoading, refetch } = useQuery<SentNotification[]>({
     queryKey: ["sent-notifications"],
@@ -453,7 +454,6 @@ const SentTab = () => {
       const { data, error } = await supabase
         .from("notifications")
         .select("id, recipient, template_key, subject, status, created_at, sent_at, error, body_html, body_text")
-        .in("status", ["sent", "queued_no_sender"])
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -461,99 +461,123 @@ const SentTab = () => {
     },
   });
 
+  const selected = sent.find((n) => n.id === selectedId) ?? null;
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border h-11 shrink-0">
-        <span className="font-display tracking-widest text-xs text-muted-foreground">SENT</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
-          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-        </Button>
+    <div className="flex h-full overflow-hidden">
+      {/* List panel */}
+      <div className={`flex flex-col border-r border-border bg-card w-full md:w-72 lg:w-80 shrink-0 ${showDetail ? "hidden md:flex" : "flex"}`}>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border h-11 shrink-0">
+          <span className="font-display tracking-widest text-xs text-muted-foreground">SENT</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : sent.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-3">
+              <Send className="h-10 w-10 opacity-20" />
+              <p className="text-sm">No sent messages yet.</p>
+            </div>
+          ) : (
+            sent.map((n) => (
+              <button
+                key={n.id}
+                className={`w-full text-left flex flex-col gap-0.5 px-4 py-3 border-b border-border/50 hover:bg-muted/30 transition-colors ${
+                  selectedId === n.id ? "bg-muted/50 border-l-2 border-l-[#fde047]" : ""
+                }`}
+                onClick={() => { setSelectedId(n.id); setShowDetail(true); }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium truncate text-foreground">{n.recipient}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{formatDate(n.created_at)}</span>
+                </div>
+                <p className="text-xs truncate text-muted-foreground">{n.subject || "(no subject)"}</p>
+                <Badge variant="outline" className={`text-[10px] w-fit mt-0.5 ${statusColor(n.status)}`}>
+                  {n.status}
+                </Badge>
+              </button>
+            ))
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-32">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : sent.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-3">
-            <Send className="h-10 w-10 opacity-20" />
-            <p className="text-sm">No sent messages yet.</p>
-          </div>
+      {/* Detail panel */}
+      <div className={`flex-1 flex flex-col min-w-0 ${showDetail ? "flex" : "hidden md:flex"}`}>
+        {selected ? (
+          <>
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border h-12 shrink-0">
+              <Button variant="ghost" size="icon" className="md:hidden h-7 w-7" onClick={() => setShowDetail(false)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{selected.subject || "(no subject)"}</p>
+                <p className="text-[10px] text-muted-foreground">To: {selected.recipient}</p>
+              </div>
+              <Badge variant="outline" className={`text-[10px] shrink-0 ${statusColor(selected.status)}`}>
+                {selected.status}
+              </Badge>
+            </div>
+
+            {/* Meta */}
+            <div className="px-4 py-3 border-b border-border bg-muted/20 text-xs space-y-1 shrink-0">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-16 shrink-0">From:</span>
+                <span>opie@pournogravy.com</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-16 shrink-0">To:</span>
+                <span>{selected.recipient}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-16 shrink-0">Date:</span>
+                <span>{format(new Date(selected.sent_at ?? selected.created_at), "MMMM d, yyyy h:mm a")}</span>
+              </div>
+              {selected.template_key && (
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground w-16 shrink-0">Template:</span>
+                  <span className="font-mono">{selected.template_key}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Error banner */}
+            {selected.error && (
+              <div className="mx-4 mt-3 flex items-start gap-2 text-destructive bg-destructive/10 border border-destructive/20 rounded px-3 py-2 text-xs shrink-0">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p>{selected.error}</p>
+              </div>
+            )}
+
+            {/* Body — render HTML in sandboxed iframe, fallback to plain text */}
+            <div className="flex-1 overflow-hidden p-4">
+              {selected.body_html ? (
+                <iframe
+                  srcDoc={selected.body_html}
+                  title="Email preview"
+                  className="w-full h-full border-0 rounded bg-white"
+                  sandbox="allow-same-origin"
+                />
+              ) : selected.body_text ? (
+                <pre className="text-sm whitespace-pre-wrap leading-relaxed font-sans text-foreground/90">
+                  {selected.body_text}
+                </pre>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">(No message body)</p>
+              )}
+            </div>
+          </>
         ) : (
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border bg-muted/30 text-muted-foreground font-display tracking-widest">
-                <th className="px-4 py-2 text-left">RECIPIENT</th>
-                <th className="px-4 py-2 text-left hidden md:table-cell">TEMPLATE</th>
-                <th className="px-4 py-2 text-left hidden lg:table-cell">DATE</th>
-                <th className="px-4 py-2 text-left">STATUS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sent.map((n) => (
-                <>
-                  <tr
-                    key={n.id}
-                    className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors"
-                    onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
-                  >
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {expandedId === n.id
-                          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                        <span className="truncate max-w-[200px]">{n.recipient}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground font-mono">
-                      {n.template_key ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">
-                      {format(new Date(n.created_at), "MMM d, h:mm a")}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant="outline" className={`text-[10px] ${statusColor(n.status)}`}>
-                        {n.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                  {expandedId === n.id && (
-                    <tr key={`${n.id}-detail`} className="bg-muted/10 border-b border-border">
-                      <td colSpan={4} className="px-6 py-4">
-                        <div className="space-y-3 max-w-2xl">
-                          <div>
-                            <p className="text-[10px] font-marker tracking-widest text-muted-foreground mb-0.5">SUBJECT</p>
-                            <p className="text-sm">{n.subject}</p>
-                          </div>
-                          {n.error && (
-                            <div className="flex items-start gap-2 text-destructive">
-                              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                              <p className="text-xs">{n.error}</p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-[10px] font-marker tracking-widest text-muted-foreground mb-0.5">BODY</p>
-                            <Textarea
-                              value={n.body_text || n.body_html || ""}
-                              readOnly
-                              className="min-h-[200px] max-h-[400px] overflow-y-auto resize-y font-mono text-xs opacity-80"
-                            />
-                          </div>
-                          {n.sent_at && (
-                            <p className="text-[10px] text-muted-foreground">
-                              Sent at {format(new Date(n.sent_at), "MMM d yyyy, h:mm:ss a")}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <Send className="h-10 w-10 opacity-20" />
+            <p className="text-sm">Select a message to read</p>
+          </div>
         )}
       </div>
     </div>
