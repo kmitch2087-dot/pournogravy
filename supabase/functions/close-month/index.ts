@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
       .from("orders")
       .select("total_cents")
       .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+      .eq("is_test", false)
       .gte("created_at", monthStart)
       .lt("created_at", monthEnd);
 
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
       .from("orders")
       .select("total_cents")
       .eq("status", "refunded")
+      .eq("is_test", false)
       .gte("created_at", monthStart)
       .lt("created_at", monthEnd);
 
@@ -91,11 +93,12 @@ Deno.serve(async (req) => {
     const refunds_cents = (refundRows ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
 
     // ── COGS: order items × product cost ──────────────────────────────────────
-    // Step 1: get order IDs for the month (non-refunded)
+    // Step 1: get order IDs for the month (non-refunded, non-test)
     const { data: orderIdRows, error: oidErr } = await supabase
       .from("orders")
       .select("id")
       .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+      .eq("is_test", false)
       .gte("created_at", monthStart)
       .lt("created_at", monthEnd);
 

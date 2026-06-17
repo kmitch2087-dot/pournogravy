@@ -132,6 +132,7 @@ function useFinancialsData(selectedYear: number) {
         .from("orders")
         .select("id, total_cents, shipping_cents, status, created_at")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+        .eq("is_test", false)
         .gte("created_at", yearStart)
         .lte("created_at", yearEnd)
         .order("created_at", { ascending: false });
@@ -148,6 +149,7 @@ function useFinancialsData(selectedYear: number) {
         .from("orders")
         .select("total_cents")
         .eq("status", "refunded")
+        .eq("is_test", false)
         .gte("created_at", yearStart)
         .lte("created_at", yearEnd);
       if (error) throw error;

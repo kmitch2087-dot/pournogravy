@@ -227,6 +227,7 @@ Deno.serve(async (req) => {
       const { data: orders, error: ordErr } = await supabase
         .from("orders")
         .select("id, created_at, status, total_cents")
+        .eq("is_test", false)
         .gte("created_at", startTs)
         .lt("created_at", endTsExcl)
         .order("created_at", { ascending: true });
@@ -292,6 +293,7 @@ Deno.serve(async (req) => {
         .from("orders")
         .select("id")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+        .eq("is_test", false)
         .gte("created_at", startTs)
         .lt("created_at", endTsExcl);
 
