@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import JSZip from "jszip";
-import { toCSV, centsToStr } from "@/lib/reportDownload";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -17,19 +16,21 @@ interface Snapshot {
   closed_at: string; amended_at: string | null; amendment_note: string | null;
 }
 
-const fmt$ = (cents: number) =>
-  new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(cents/100);
 
-async function callReport(type: string, year: number) {
+async function callReport(type: string, year: number, format: "csv" | "html"): Promise<string> {
+  const acceptHeader = format === "html" ? "text/html" : "text/csv";
   const res = await supabase.functions.invoke("generate-report", {
     body: {
-      report_type:   type,
-      period_start:  `${year}-01-01`,
-      period_end:    `${year}-12-31`,
+      report_type:  type,
+      period_start: `${year}-01-01`,
+      period_end:   `${year}-12-31`,
+      format,
     },
+    headers: { Accept: acceptHeader },
   });
   if (res.error) throw new Error(res.error.message);
-  return res.data?.data;
+  const raw = res.data;
+  return raw instanceof Blob ? await raw.text() : (raw as string);
 }
 
 export default function BookkeepingTaxPacket() {
@@ -60,162 +61,54 @@ export default function BookkeepingTaxPacket() {
     try {
       toast.info("Generating tax packet…");
 
-      const [plData, ordersData, expData, prodData, feesData] = await Promise.all([
-        callReport("pl",          selectedYear),
-        callReport("orders",      selectedYear),
-        callReport("expenses",    selectedYear),
-        callReport("products",    selectedYear),
-        callReport("stripe_fees", selectedYear),
+      const [plHTML, ordersCSV, expCSV, cogsCSV, feesCSV] = await Promise.all([
+        callReport("pl_statement",      selectedYear, "html"),
+        callReport("order_summary",     selectedYear, "csv"),
+        callReport("expense_detail",    selectedYear, "csv"),
+        callReport("sales_by_product",  selectedYear, "csv"),
+        callReport("stripe_fee_summary",selectedYear, "csv"),
       ]);
 
       const zip = new JSZip();
       const y   = selectedYear;
 
-      // 1. Orders CSV
-      zip.file(`PG_${y}_Orders.csv`, toCSV(
-        (ordersData.rows as Record<string,unknown>[]).map((r) => ({
-          Date:       r.date,
-          "Order ID": (r.order_id as string).slice(0,8).toUpperCase(),
-          Email:      r.customer_email,
-          Status:     r.status,
-          Subtotal:   centsToStr(r.subtotal as number),
-          Shipping:   centsToStr(r.shipping as number),
-          Tax:        centsToStr(r.tax as number),
-          Total:      centsToStr(r.total as number),
-          Refunded:   r.refunded ? "Yes" : "No",
-        }))
-      ));
-
-      // 2. Expenses CSV
-      zip.file(`PG_${y}_Expenses.csv`, toCSV(
-        (expData.rows as Record<string,unknown>[]).map((r) => ({
-          Date:         r.date,
-          Category:     r.category,
-          Description:  r.description,
-          "Amount ($)": centsToStr(r.amount as number),
-          Source:       r.source,
-        }))
-      ));
-
-      // 3. Stripe Fees CSV
-      zip.file(`PG_${y}_Stripe_Fees.csv`, toCSV(
-        (feesData.rows as Record<string,unknown>[]).map((r) => ({
-          Date:        r.date,
-          "Charge ID": r.charge_id,
-          Description: r.description,
-          "Fee ($)":   centsToStr(r.fee as number),
-        }))
-      ));
-
-      // 4. COGS by Product CSV
-      zip.file(`PG_${y}_COGS_by_Product.csv`, toCSV(
-        (prodData.rows as Record<string,unknown>[]).map((r) => ({
-          Product:       r.name,
-          "Units Sold":  r.units_sold,
-          "Revenue ($)": centsToStr(r.revenue as number),
-          "COGS ($)":    centsToStr(r.cogs as number),
-          "Margin %":    r.margin_pct,
-        }))
-      ));
-
-      // 5. P&L Statement as HTML (print to PDF manually)
-      const totals = plData.totals as Record<string,number>;
-      let plHTML = `<!DOCTYPE html><html><head><title>PG ${y} P&L</title>
-      <style>
-        body{font-family:'Courier New',monospace;font-size:12px;max-width:720px;margin:40px auto;color:#000}
-        h1{font-size:18px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px}
-        table{width:100%;border-collapse:collapse;margin-bottom:20px}
-        th{background:#f0f0f0;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;font-size:11px}
-        td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}
-        .right{text-align:right}.total{font-weight:bold;background:#f9f9f9}
-        .note{background:#fffbe6;border-left:3px solid #f0c040;padding:8px 12px;margin:4px 0;font-size:11px}
-        footer{margin-top:40px;font-size:10px;color:#888;border-top:1px solid #eee;padding-top:8px}
-        .summary{background:#f9f9f9;border:1px solid #ddd;padding:16px;margin-bottom:24px}
-        .summary-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
-        .summary-total{font-weight:bold;border-top:1px solid #ccc;margin-top:8px;padding-top:8px}
-      </style></head><body>
-      <h1>POURnogravy — ${y} Profit &amp; Loss Statement</h1>
-      <div class="summary">
-        <div class="summary-row"><span>Gross Revenue</span><span>${fmt$(totals.revenue)}</span></div>
-        <div class="summary-row"><span>Refunds Issued</span><span>(${fmt$(totals.refunds)})</span></div>
-        <div class="summary-row"><span>Cost of Goods Sold</span><span>(${fmt$(totals.cogs)})</span></div>
-        <div class="summary-row"><span>Operating Expenses</span><span>(${fmt$(totals.expenses)})</span></div>
-        <div class="summary-row summary-total"><span>Net Profit</span><span>${fmt$(totals.net)}</span></div>
-      </div>
-      <h2 style="font-size:14px;margin-bottom:8px">Monthly Breakdown</h2>
-      <table><thead><tr>
-        <th>Month</th><th class="right">Revenue</th><th class="right">Refunds</th>
-        <th class="right">COGS</th><th class="right">Expenses</th><th class="right">Net</th>
-      </tr></thead><tbody>`;
-
-      for (const m of plData.months as Record<string,unknown>[]) {
-        plHTML += `<tr>
-          <td>${m.label}</td>
-          <td class="right">${fmt$(m.revenue as number)}</td>
-          <td class="right">(${fmt$(m.refunds as number)})</td>
-          <td class="right">(${fmt$(m.cogs as number)})</td>
-          <td class="right">(${fmt$(m.expenses as number)})</td>
-          <td class="right">${fmt$(m.net as number)}</td>
-        </tr>`;
-        if (m.note) plHTML += `<tr><td colspan="6"><div class="note">Note: ${m.note}</div></td></tr>`;
-      }
-      plHTML += `<tr class="total">
-        <td>TOTAL</td>
-        <td class="right">${fmt$(totals.revenue)}</td>
-        <td class="right">(${fmt$(totals.refunds)})</td>
-        <td class="right">(${fmt$(totals.cogs)})</td>
-        <td class="right">(${fmt$(totals.expenses)})</td>
-        <td class="right">${fmt$(totals.net)}</td>
-      </tr></tbody></table>
-      <footer>
-        POURnogravy · Cash-basis accounting · Generated ${new Date().toLocaleDateString()} ·
-        Please review all figures with your accountant before filing.
-      </footer></body></html>`;
-
+      // 1. P&L Statement HTML (returned directly from edge function)
       zip.file(`PG_${y}_PL_Statement.html`, plHTML);
 
-      // 6. Cover sheet
-      const coverHTML = `<!DOCTYPE html><html><head><title>PG ${y} Tax Summary</title>
-      <style>
-        body{font-family:'Courier New',monospace;font-size:13px;max-width:600px;margin:60px auto;color:#000}
-        h1{font-size:22px;margin-bottom:4px}
-        .sub{color:#666;font-size:13px;margin-bottom:32px}
-        .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}
-        .total-row{display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;font-size:15px;border-top:2px solid #000;margin-top:8px}
-        .note{background:#fffbe6;border-left:3px solid #f0c040;padding:12px 16px;margin-top:32px;font-size:12px;line-height:1.6}
-        footer{margin-top:40px;font-size:11px;color:#888}
-      </style></head><body>
-      <h1>POURnogravy</h1>
-      <div class="sub">Tax Year ${y} · Cash-Basis Summary</div>
-      <div class="row"><span>Gross Revenue</span><span>${fmt$(totals.revenue)}</span></div>
-      <div class="row"><span>Refunds Issued</span><span>(${fmt$(totals.refunds)})</span></div>
-      <div class="row"><span>Cost of Goods Sold</span><span>(${fmt$(totals.cogs)})</span></div>
-      <div class="row"><span>Operating Expenses</span><span>(${fmt$(totals.expenses)})</span></div>
-      <div class="row"><span>&nbsp;&nbsp;of which: Stripe Processing Fees</span><span>(${fmt$(totals.stripe_fees)})</span></div>
-      <div class="total-row"><span>Net Profit (Loss)</span><span>${fmt$(totals.net)}</span></div>
-      <div class="note">
-        <strong>Note to accountant:</strong> This packet was generated from POURnogravy's sales dashboard.
-        All figures reflect cash-basis accounting. Stripe fee data sourced directly from Stripe Balance
-        Transactions API. The P&amp;L HTML file can be opened in any browser and printed to PDF.
-        Please review all figures before filing.
-      </div>
-      <footer>Generated ${new Date().toLocaleString()} · pournogravy.com</footer>
-      </body></html>`;
+      // 2. Orders CSV
+      zip.file(`PG_${y}_Orders.csv`, ordersCSV);
 
-      zip.file(`PG_${y}_Summary.html`, coverHTML);
+      // 3. Expenses CSV
+      zip.file(`PG_${y}_Expenses.csv`, expCSV);
+
+      // 4. Stripe Fees CSV
+      zip.file(`PG_${y}_Stripe_Fees.csv`, feesCSV);
+
+      // 5. COGS by Product CSV
+      zip.file(`PG_${y}_COGS_by_Product.csv`, cogsCSV);
+
+      // 6. Summary text
+      zip.file(`PG_${y}_Summary.txt`,
+        `POURnogravy\n` +
+        `Tax Year: ${y}\n\n` +
+        `This packet was generated from POURnogravy's sales dashboard.\n` +
+        `All figures reflect cash-basis accounting.\n` +
+        `Stripe fee data sourced directly from Stripe Balance Transactions API.\n` +
+        `Please review all figures with your accountant before filing.\n\n` +
+        `Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}\n`
+      );
 
       // README
       zip.file("README.txt",
-        `POURnogravy Tax Packet — ${y}\n\n` +
-        `Files included:\n` +
-        `  PG_${y}_PL_Statement.html  — Open in browser, use File → Print → Save as PDF\n` +
-        `  PG_${y}_Orders.csv         — All orders for the year\n` +
-        `  PG_${y}_Expenses.csv       — Itemized expenses (Schedule C aligned)\n` +
-        `  PG_${y}_Stripe_Fees.csv    — Stripe processing fees\n` +
-        `  PG_${y}_COGS_by_Product.csv — Cost of goods by product\n` +
-        `  PG_${y}_Summary.html       — Year-end summary cover sheet\n\n` +
-        `All figures reflect cash-basis accounting.\n` +
-        `Please review all figures with your accountant before filing.\n`
+        `TAX PACKET — POURnogravy ${y}\n\n` +
+        `Files in this ZIP:\n` +
+        `- PG_${y}_PL_Statement.html  ← Open in browser, File → Print → Save as PDF\n` +
+        `- PG_${y}_Orders.csv\n` +
+        `- PG_${y}_Expenses.csv\n` +
+        `- PG_${y}_Stripe_Fees.csv\n` +
+        `- PG_${y}_COGS_by_Product.csv\n` +
+        `- PG_${y}_Summary.txt\n\n` +
+        `For your accountant: Please send all files in this ZIP.\n`
       );
 
       const blob = await zip.generateAsync({ type: "blob" });
@@ -307,7 +200,7 @@ export default function BookkeepingTaxPacket() {
               `PG_${selectedYear}_Expenses.csv`,
               `PG_${selectedYear}_Stripe_Fees.csv`,
               `PG_${selectedYear}_COGS_by_Product.csv`,
-              `PG_${selectedYear}_Summary.html`,
+              `PG_${selectedYear}_Summary.txt`,
               "README.txt",
             ].map((f) => <li key={f}>• {f}</li>)}
           </ul>
