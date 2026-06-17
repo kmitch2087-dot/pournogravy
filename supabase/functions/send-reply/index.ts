@@ -1,6 +1,7 @@
 // Send a reply from opie@pournogravy.com via Resend.
 // Stores a copy in inbox_messages (kind='reply') and marks the parent as 'replied'.
 // Auth: admin JWT required.
+// Replies use the same branded dark-theme wrapper as all other outgoing mail.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -12,6 +13,38 @@ function corsHeaders(req: Request) {
     "Access-Control-Allow-Credentials": "true",
     "Vary": "Origin",
   };
+}
+
+function brandedEmail(bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #f0f0f0; }
+  .wrapper { max-width: 600px; margin: 0 auto; background: #111; border: 1px solid #222; }
+  .header { background: #000; border-bottom: 3px solid #fde047; padding: 24px 32px; text-align: center; }
+  .header img { height: 64px; width: auto; display: block; margin: 0 auto; }
+  .check-rule { height: 2px; background: repeating-linear-gradient(90deg, #fde047 0, #fde047 8px, transparent 8px, transparent 16px); margin: 0; }
+  .body { padding: 32px; color: #e8e8e8; line-height: 1.6; }
+  .body a { color: #fde047; }
+  .footer { padding: 16px 32px; background: #000; border-top: 1px solid #222; text-align: center; font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <img src="https://pournogravy.com/logo.webp" alt="POURnogravy" />
+  </div>
+  <div class="check-rule"></div>
+  <div class="body">${bodyHtml}</div>
+  <div class="check-rule"></div>
+  <div class="footer">POURnogravy · opie@pournogravy.com · pournogravy.com</div>
+</div>
+</body>
+</html>`;
 }
 
 interface Body {
@@ -75,14 +108,8 @@ Deno.serve(async (req) => {
       .eq("id", parentId)
       .maybeSingle();
 
-    const htmlBody = `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222;">
-        <div style="white-space:pre-wrap;font-size:15px;line-height:1.6;">${body}</div>
-        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:12px;color:#888;">
-          Sent from POURnogravy — pournogravy.com
-        </div>
-      </div>
-    `;
+    const innerHtml = `<div style="white-space:pre-wrap;font-size:15px;line-height:1.6;">${body}</div>`;
+    const htmlBody = brandedEmail(innerHtml);
 
     const sendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",

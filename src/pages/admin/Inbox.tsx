@@ -713,6 +713,23 @@ const TrashTab = () => {
 
 // ── ComposeDialog ─────────────────────────────────────────────────────────────
 
+// Extract the real error message from a Supabase FunctionsHttpError.
+// The raw error.message is just "Edge Function returned a non-2xx status code".
+// The actual detail lives in the response body JSON.
+async function extractFnErrorMsg(error: unknown): Promise<string> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body = await (error as any).context?.json?.();
+    if (body?.error) return body.error;
+    if (body?.message) return body.message;
+  } catch { /* ignore */ }
+  return error instanceof Error ? error.message : "Send failed";
+}
+
+async function extractFnError(error: unknown): Promise<Error> {
+  return new Error(await extractFnErrorMsg(error));
+}
+
 const HARDCODED_EMAILS = ["kmitch2087@gmail.com", "aopie91@gmail.com"];
 
 const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
@@ -756,11 +773,12 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
       });
   }, [templateKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced To: autocomplete
+  // Debounced To: autocomplete — searches only the last comma-separated token
   useEffect(() => {
-    const q = to.trim().toLowerCase();
-    if (!q || q.startsWith("@")) { setSuggestions([]); setShowSuggestions(false); return; }
+    const lastToken = to.split(",").pop()?.trim().toLowerCase() ?? "";
+    if (!lastToken || lastToken.startsWith("@")) { setSuggestions([]); setShowSuggestions(false); return; }
 
+    const q = lastToken;
     const timer = setTimeout(async () => {
       const matched: string[] = HARDCODED_EMAILS.filter((e) => e.includes(q));
 
@@ -821,42 +839,61 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
     setBlastResult(null);
     try {
       if (everyoneMode) {
-        if (!templateKey) return toast.error("Select a template for blast sends.");
+        if (!templateKey) {
+          toast.error("Select a template for blast sends.");
+          return;
+        }
         if (!confirm(`Send to all ${everyoneCount ?? "?"} subscribers? This can't be undone.`)) {
-          setSending(false);
           return;
         }
         const { data, error } = await supabase.functions.invoke("blast-email", {
           body: { templateKey, subject: subject.trim() || undefined, variables: {} },
         });
-        if (error) throw error;
+        if (error) throw await extractFnError(error);
         setBlastResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 });
         toast.success(`Blast sent: ${data.sent} delivered, ${data.failed} failed.`);
       } else {
-        const payload: Record<string, unknown> = {
-          recipient: to.trim(),
+        // Parse comma-separated recipients — send to each individually
+        const recipients = to.trim().split(",").map(e => e.trim()).filter(Boolean);
+        if (recipients.length === 0) { toast.error("Enter at least one recipient."); return; }
+
+        const basePayload: Record<string, unknown> = {
           subject: subject.trim(),
           variables: {},
         };
         if (templateKey) {
-          payload.templateKey = templateKey;
+          basePayload.templateKey = templateKey;
         } else {
-          // Free-form: wrap plain text body in simple <p> tags for HTML
           const htmlBody = body.trim()
             .split(/\n\n+/)
             .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
             .join("\n");
-          payload.bodyHtml = htmlBody;
-          payload.bodyText = body.trim();
+          basePayload.bodyHtml = htmlBody;
+          basePayload.bodyText = body.trim();
         }
-        const { data: sendData, error } = await supabase.functions.invoke("send-notification", {
-          body: payload,
-        });
-        if (error) throw error;
-        if (sendData?.queued) {
+
+        let queued = false;
+        const failures: string[] = [];
+        for (const recipient of recipients) {
+          const { data: sendData, error } = await supabase.functions.invoke("send-notification", {
+            body: { ...basePayload, recipient },
+          });
+          if (error) {
+            failures.push(`${recipient}: ${await extractFnErrorMsg(error)}`);
+          } else if (sendData?.queued) {
+            queued = true;
+          }
+        }
+
+        if (failures.length > 0 && failures.length === recipients.length) {
+          throw new Error(failures.join("\n"));
+        } else if (failures.length > 0) {
+          toast.warning(`Sent to ${recipients.length - failures.length}/${recipients.length}. Failed: ${failures.join(", ")}`);
+        } else if (queued) {
           toast.warning("Email queued — Resend sender not configured yet.");
         } else {
-          toast.success(`Email sent to ${to.trim()}.`);
+          const label = recipients.length === 1 ? recipients[0] : `${recipients.length} recipients`;
+          toast.success(`Email sent to ${label}.`);
         }
         handleClose();
       }
@@ -884,7 +921,7 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
                 value={to}
                 onChange={(e) => { setTo(e.target.value); setShowSuggestions(true); }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                placeholder='Email address or @everyone'
+                placeholder='Email address, multiple separated by commas, or @everyone'
                 className="h-8 text-xs"
                 autoComplete="off"
               />
@@ -895,7 +932,13 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
                       key={email}
                       type="button"
                       className="w-full text-left px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
-                      onMouseDown={() => { setTo(email); setShowSuggestions(false); }}
+                      onMouseDown={() => {
+                      // Append selected email to the end of the comma-separated list
+                      const parts = to.split(",").map(p => p.trim()).filter(Boolean);
+                      parts[parts.length > 0 ? parts.length - 1 : 0] = email;
+                      setTo(parts.join(", ") + ", ");
+                      setShowSuggestions(false);
+                    }}
                     >
                       {email}
                     </button>
