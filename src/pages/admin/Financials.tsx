@@ -83,21 +83,37 @@ interface ItemRow {
   quantity: number;
 }
 
-function useFinancialsData() {
-  const now = new Date();
-  const yearStart = startOfYear(now).toISOString();
+function useFinancialsData(selectedYear: number) {
+  const yearStart = `${selectedYear}-01-01T00:00:00.000Z`;
+  const yearEnd   = `${selectedYear}-12-31T23:59:59.999Z`;
 
   const { data: orders, isLoading: ordersLoading, refetch } = useQuery<OrderRow[]>({
-    queryKey: ["financials-orders"],
+    queryKey: ["financials-orders", selectedYear],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
         .select("id, total_cents, shipping_cents, status, created_at")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
         .gte("created_at", yearStart)
+        .lte("created_at", yearEnd)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as OrderRow[];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: refundedOrders } = useQuery<{ total_cents: number }[]>({
+    queryKey: ["financials-refunds", selectedYear],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("total_cents")
+        .eq("status", "refunded")
+        .gte("created_at", yearStart)
+        .lte("created_at", yearEnd);
+      if (error) throw error;
+      return (data ?? []) as { total_cents: number }[];
     },
     staleTime: 60_000,
   });
@@ -120,6 +136,7 @@ function useFinancialsData() {
 
   return {
     orders: orders ?? [],
+    refundedOrders: refundedOrders ?? [],
     items: items ?? [],
     isLoading: ordersLoading || (orderIds.length > 0 && itemsLoading),
     refetch,
@@ -193,7 +210,9 @@ function Disclosure({ title, children }: { title: string; children: React.ReactN
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Financials() {
-  const { orders, items, isLoading, refetch } = useFinancialsData();
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const { orders, refundedOrders, items, isLoading, refetch } = useFinancialsData(selectedYear);
 
   // ── Per-order item counts ──
   const itemCountByOrder = new Map<string, number>();
@@ -202,12 +221,14 @@ export default function Financials() {
   }
 
   // ── Aggregate revenue ──
-  const grossRevenue   = orders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
-  const totalShipping  = orders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
-  const productRevenue = grossRevenue - totalShipping; // shipping is pass-through
+  const grossRevenue      = orders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const refundsTotalCents = refundedOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const netRevenueCents   = grossRevenue - refundsTotalCents;
+  const totalShipping     = orders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
+  const productRevenue    = netRevenueCents - totalShipping; // shipping is pass-through
 
   // ── Print COGS ──
-  const totalItems    = orders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
+  const totalItems     = orders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
   const printCogsCents = totalItems * PRINT_COST_PER_ITEM_CENTS;
 
   // ── Gross profit ──
@@ -231,8 +252,6 @@ export default function Financials() {
   const adjustedTotal         = seTaxDollars + adjustedIncomeTax;
   const adjustedQuarterly     = adjustedTotal / 4;
 
-  const year = new Date().getFullYear();
-
   if (isLoading) {
     return (
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -252,13 +271,24 @@ export default function Financials() {
         <div>
           <h1 className="font-display text-2xl tracking-widest">FINANCIALS</h1>
           <p className="text-xs text-muted-foreground mt-1 font-marker tracking-widest">
-            {year} YTD · {orders.length} ORDERS
+            {selectedYear} YTD · {orders.length} ORDERS
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} className="gap-1.5 text-xs">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
+          >
+            {Array.from({ length: currentYear - 2024 + 1 }, (_, i) => currentYear - i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <Button variant="ghost" size="sm" onClick={() => refetch()} className="gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* P&L KPI row */}
@@ -290,13 +320,15 @@ export default function Financials() {
       <SectionCard title="Profit & Loss Summary — YTD">
         <table className="w-full text-sm">
           <tbody className="divide-y divide-border">
-            {[
-              ["Gross Revenue",        fmt(grossRevenue),         "Total collected incl. shipping"],
+            {([
+              ["Gross Revenue",           fmt(grossRevenue),         "Total collected incl. shipping"],
+              ["Refunds Issued",          refundsTotalCents > 0 ? `(${fmt(refundsTotalCents)})` : fmt(0), "Returned to customers"],
+              ["Net Revenue",             fmt(netRevenueCents),       "After refunds"],
               ["Shipping (pass-through)", `(${fmt(totalShipping)})`, "Goes to carrier — not your income"],
-              ["Product Revenue",      fmt(productRevenue),        "What you actually keep from sales"],
-              ["Print COGS",           `(${fmt(printCogsCents)})`, `${totalItems} items × $12 est. print cost`],
-              ["Gross Profit",         fmt(grossProfitCents),     "Before SE tax & income tax"],
-            ].map(([label, value, note]) => (
+              ["Product Revenue",         fmt(productRevenue),        "What you actually keep from sales"],
+              ["Print COGS",              `(${fmt(printCogsCents)})`, `${totalItems} items × $12 est. print cost`],
+              ["Gross Profit",            fmt(grossProfitCents),      "Before SE tax & income tax"],
+            ] as [string, string, string][]).map(([label, value, note]) => (
               <tr key={label} className={label === "Gross Profit" ? "font-semibold" : ""}>
                 <td className="py-3 pr-4 text-muted-foreground">{label}</td>
                 <td className={`py-3 pr-4 text-right font-mono tabular-nums ${
@@ -418,7 +450,7 @@ export default function Financials() {
       </SectionCard>
 
       {/* YTD order table */}
-      <SectionCard title={`${year} Orders`}>
+      <SectionCard title={`${selectedYear} Orders`}>
         {orders.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No orders yet this year.</p>
         ) : (
