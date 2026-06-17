@@ -38,20 +38,8 @@ const ProductDetail = () => {
   const [subscribing, setSubscribing] = useState(false);
 
   // Stripe purchasability check
-  const { data: stripeData, isLoading: stripeLoading } = useQuery({
-    queryKey: ["product-stripe", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("stripe_price_id")
-        .eq("slug", id ?? "")
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!id,
-  });
-  const canPurchase = !!stripeData?.stripe_price_id;
-  const showDropComingSoon = !stripeLoading && !canPurchase;
+  const stripeLoading = false;
+  const showDropComingSoon = false;
 
   const handleSubscribe = async () => {
     if (!subscribeEmail.trim()) return;
