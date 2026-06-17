@@ -9,7 +9,7 @@
 
 ## Current Phase
 **Phase:** Post-launch (soft) — Active Build  
-**Status:** Site is live. Real payment processing active. Admin dashboard fully operational. CF Email Worker **deployed** (via CF REST API) + both secrets set. Print files **74/74** uploaded to Supabase Storage. One manual step remaining: update CF email routing rule to point `opie@pournogravy.com → pournogravy-receive-email` worker.
+**Status:** Site is live. Real payment processing active. Admin dashboard fully operational. CF Email Worker deployed + routing rule set. Resend domain verified. Print files 74/74 uploaded. Full email pipeline operational. Remaining: place live test order + Opie to enter product costs in Bookkeeping.
 
 ---
 
@@ -108,7 +108,7 @@
 > ⛔ **BLOCKING: Resend domain verification** — until pournogravy.com is verified in Resend, order confirmation emails will not send. DKIM/SPF records are already in Cloudflare DNS — may be a one-click confirm.
 
 - [x] **Resend domain verify** — ✅ Verified June 16, 2026
-- [ ] **CF Email routing rule** — CF Dashboard → pournogravy.com → Email → Routing Rules → edit `opie@pournogravy.com` → change Worker from `wild-mouse-2b64` → `pournogravy-receive-email`
+- [x] **CF Email routing rule** — ✅ Set June 16, 2026 (`opie@pournogravy.com` → `pournogravy-receive-email` worker)
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly end-to-end
 - [ ] **Opie: update product costs** — Admin → Bookkeeping → Products before July 1st month close
 
@@ -158,7 +158,7 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 | Issue | Severity | Status | Fix |
 |-------|---------|--------|-----|
 | Resend domain verified | ✅ Done | Closed | Verified June 16, 2026 — domain ready to send emails |
-| CF email routing rule not updated | 🟡 Medium | Open | CF Dashboard → Email Routing → opie@pournogravy.com → pournogravy-receive-email worker |
+| CF email routing rule | ✅ Done | Closed | Set June 16, 2026 — opie@pournogravy.com → pournogravy-receive-email worker |
 | Test order (live) not placed | 🟡 Medium | Open | Test banners confirmed June 11; need live order end-to-end |
 | npm vulnerabilities | 🟡 Low | Open | 2 remaining after `npm audit fix`; require `--force` (breaking changes risk — defer) |
 

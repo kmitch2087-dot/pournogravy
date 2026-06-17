@@ -304,7 +304,6 @@ const BACKLOG = {
 };
 
 const KNOWN_ISSUES = [
-  { severity: "high", item: "CF email routing rule not updated", fix: "CF Dashboard → Email Routing → opie@pournogravy.com → switch to pournogravy-receive-email worker" },
   { severity: "medium", item: "Live test order not placed", fix: "Place a real order to confirm confirmation + printer emails land correctly" },
   { severity: "medium", item: "src/utils/supabase/ dead code", fix: "Delete folder" },
   { severity: "medium", item: "src/lib/fulfillment.ts dead code", fix: "Delete file" },
@@ -722,7 +721,7 @@ export default function ProjectStatus() {
           <ProgressBar label="Public Storefront" value={97} />
           <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
           <ProgressBar label="Fulfillment Pipeline" value={85} color="bg-yellow-400" />
-          <ProgressBar label="Email & Notifications" value={95} color="bg-blue-400" />
+          <ProgressBar label="Email & Notifications" value={98} color="bg-blue-400" />
         </CardContent>
       </Card>
 
