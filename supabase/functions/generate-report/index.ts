@@ -68,10 +68,11 @@ function formatHTML(
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 24px; }
-  .brand { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: #111; }
-  .report-title { font-size: 16px; font-weight: 600; margin-top: 4px; }
-  .period { color: #555; margin-top: 2px; font-size: 12px; }
-  header { border-bottom: 3px solid #fde047; padding-bottom: 12px; margin-bottom: 20px; }
+  header { display: flex; align-items: center; gap: 20px; border-bottom: 3px solid #fde047; padding-bottom: 14px; margin-bottom: 20px; }
+  .logo { height: 52px; width: auto; display: block; }
+  .header-text { flex: 1; }
+  .report-title { font-size: 16px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #111; }
+  .period { color: #555; margin-top: 3px; font-size: 12px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
   thead { background: #fde047; }
   thead th { padding: 8px 10px; text-align: left; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid #e5c500; }
@@ -83,9 +84,11 @@ function formatHTML(
 </head>
 <body>
 <header>
-  <div class="brand">POURnogravy</div>
-  <div class="report-title">${title}</div>
-  <div class="period">Period: ${periodStart} – ${periodEnd}</div>
+  <img class="logo" src="https://pournogravy.com/logo.webp" alt="POURnogravy" />
+  <div class="header-text">
+    <div class="report-title">${title}</div>
+    <div class="period">Period: ${periodStart} – ${periodEnd}</div>
+  </div>
 </header>
 <table>
   <thead><tr>${thead}</tr></thead>

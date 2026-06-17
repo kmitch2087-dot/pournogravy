@@ -789,13 +789,15 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
   const handleClose = () => { reset(); onClose(); };
 
   const handleSend = async () => {
-    if (!templateKey) return toast.error("Select a template first.");
     if (!everyoneMode && !to.trim()) return toast.error("Enter a recipient.");
+    if (!subject.trim()) return toast.error("Enter a subject.");
+    if (!body.trim() && !templateKey) return toast.error("Enter a message or select a template.");
 
     setSending(true);
     setBlastResult(null);
     try {
       if (everyoneMode) {
+        if (!templateKey) return toast.error("Select a template for blast sends.");
         if (!confirm(`Send to all ${everyoneCount ?? "?"} subscribers? This can't be undone.`)) {
           setSending(false);
           return;
@@ -807,16 +809,28 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
         setBlastResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 });
         toast.success(`Blast sent: ${data.sent} delivered, ${data.failed} failed.`);
       } else {
+        const payload: Record<string, unknown> = {
+          recipient: to.trim(),
+          subject: subject.trim(),
+          variables: {},
+        };
+        if (templateKey) {
+          payload.templateKey = templateKey;
+        } else {
+          // Free-form: wrap plain text body in simple <p> tags for HTML
+          const htmlBody = body.trim()
+            .split(/\n\n+/)
+            .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+            .join("\n");
+          payload.bodyHtml = htmlBody;
+          payload.bodyText = body.trim();
+        }
         const { data: sendData, error } = await supabase.functions.invoke("send-notification", {
-          body: {
-            templateKey,
-            recipient: to.trim(),
-            variables: {},
-          },
+          body: payload,
         });
         if (error) throw error;
         if (sendData?.queued) {
-          toast.warning("Email queued — Resend sender not configured yet. Check Settings → Resend API key.");
+          toast.warning("Email queued — Resend sender not configured yet.");
         } else {
           toast.success(`Email sent to ${to.trim()}.`);
         }
@@ -886,14 +900,19 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
             />
           </div>
 
-          {/* Template */}
+          {/* Template (optional) */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Template</Label>
-            <Select value={templateKey} onValueChange={setTemplateKey}>
+            <Label className="text-xs">
+              Template <span className="text-muted-foreground">(optional — or write free-form below)</span>
+            </Label>
+            <Select value={templateKey} onValueChange={(v) => setTemplateKey(v === "__none__" ? "" : v)}>
               <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Select a template…" />
+                <SelectValue placeholder="No template — write your own" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__" className="text-xs text-muted-foreground">
+                  — No template —
+                </SelectItem>
                 {templates.map((t) => (
                   <SelectItem key={t.key} value={t.key} className="text-xs">
                     {t.name} <span className="text-muted-foreground font-mono ml-1">({t.key})</span>
@@ -903,24 +922,28 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
             </Select>
           </div>
 
-          {/* Body preview */}
+          {/* Body */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Body <span className="text-muted-foreground">(template preview)</span></Label>
+            <Label className="text-xs">
+              {templateKey ? "Body (template preview — editable)" : "Message"}
+            </Label>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Select a template to preview…"
-              className="min-h-[200px] max-h-[400px] overflow-y-auto resize-y font-mono text-xs"
+              placeholder={templateKey ? "Loading template…" : "Write your message here…"}
+              className="min-h-[200px] max-h-[400px] overflow-y-auto resize-y text-xs"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  // Allow normal Enter for newlines — only Cmd/Ctrl+Enter submits
-                }
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
                   handleSend();
                 }
               }}
             />
+            {!templateKey && (
+              <p className="text-[10px] text-muted-foreground">
+                Plain text — blank lines become paragraphs. The Pournogravy logo header is added automatically.
+              </p>
+            )}
           </div>
 
           {blastResult && (
@@ -939,7 +962,7 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
             size="sm"
             className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest gap-1.5"
             onClick={handleSend}
-            disabled={sending || !templateKey || (!everyoneMode && !to.trim())}
+            disabled={sending || (!everyoneMode && !to.trim()) || !subject.trim()}
           >
             {sending
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>

@@ -27,16 +27,54 @@ interface Attachment {
 }
 
 interface Body {
-  templateKey: string;
+  templateKey?: string;
   recipient: string;
   relatedKind?: string;
   relatedId?: string;
   variables?: Record<string, string>;
   attachments?: Attachment[];
+  // Free-form (no template) compose fields
+  subject?: string;
+  bodyHtml?: string;
+  bodyText?: string;
 }
 
 const render = (template: string, vars: Record<string, string>) =>
   template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => vars[k] ?? "");
+
+// Branded email wrapper — wraps any body HTML in the guest-check header.
+// The logo is served from the public CDN so it renders in email clients.
+function brandedEmail(bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #f0f0f0; }
+  .wrapper { max-width: 600px; margin: 0 auto; background: #111; border: 1px solid #222; }
+  .header { background: #000; border-bottom: 3px solid #fde047; padding: 24px 32px; text-align: center; }
+  .header img { height: 64px; width: auto; display: block; margin: 0 auto; }
+  .check-rule { height: 2px; background: repeating-linear-gradient(90deg, #fde047 0, #fde047 8px, transparent 8px, transparent 16px); margin: 0; }
+  .body { padding: 32px; color: #e8e8e8; line-height: 1.6; }
+  .body a { color: #fde047; }
+  .footer { padding: 16px 32px; background: #000; border-top: 1px solid #222; text-align: center; font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <img src="https://pournogravy.com/logo.webp" alt="POURnogravy" />
+  </div>
+  <div class="check-rule"></div>
+  <div class="body">${bodyHtml}</div>
+  <div class="check-rule"></div>
+  <div class="footer">POURnogravy · opie@pournogravy.com · pournogravy.com</div>
+</div>
+</body>
+</html>`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
@@ -79,11 +117,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { templateKey, recipient, relatedKind, relatedId, variables = {}, attachments } =
-      (await req.json()) as Body;
+    const {
+      templateKey, recipient, relatedKind, relatedId, variables = {}, attachments,
+      subject: freeSubject, bodyHtml: freeBodyHtml, bodyText: freeBodyText,
+    } = (await req.json()) as Body;
 
-    if (!templateKey || !recipient) {
-      return new Response(JSON.stringify({ error: "templateKey and recipient required" }), {
+    if (!recipient) {
+      return new Response(JSON.stringify({ error: "recipient required" }), {
+        status: 400,
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    if (!templateKey && !freeSubject) {
+      return new Response(JSON.stringify({ error: "templateKey or subject required" }), {
         status: 400,
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
@@ -91,22 +137,29 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Look up template + settings in parallel
-    const [{ data: tpl, error: tplError }, { data: settings }] = await Promise.all([
-      supabase.from("email_templates").select("*").eq("key", templateKey).maybeSingle(),
+    // Look up template + settings in parallel (template optional for free-form sends)
+    const [tplResult, { data: settings }] = await Promise.all([
+      templateKey
+        ? supabase.from("email_templates").select("*").eq("key", templateKey).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
     ]);
 
-    if (tplError || !tpl) {
+    if (templateKey && (tplResult.error || !tplResult.data)) {
       return new Response(JSON.stringify({ error: `Unknown template: ${templateKey}` }), {
         status: 404,
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
-    const subject = render(tpl.subject, variables);
-    const bodyHtml = render(tpl.body_html, variables);
-    const bodyText = render(tpl.body_text, variables);
+    const tpl = tplResult.data;
+    const subject = tpl ? render(tpl.subject, variables) : (freeSubject ?? "");
+    const rawBodyHtml = tpl ? render(tpl.body_html, variables) : (freeBodyHtml ?? "");
+    const bodyText = tpl ? render(tpl.body_text, variables) : (freeBodyText ?? "");
+    // Always wrap in branded chrome unless body is already a full HTML doc
+    const bodyHtml = rawBodyHtml.trimStart().startsWith("<!DOCTYPE")
+      ? rawBodyHtml
+      : brandedEmail(rawBodyHtml);
 
     // Always log the notification first (audit trail)
     const { data: notification, error: insertError } = await supabase
