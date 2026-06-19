@@ -373,6 +373,15 @@ const ProductDetail = () => {
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
               </h1>
+              {product.subheading && (
+                <p
+                  className="font-marker text-sm md:text-base tracking-[0.15em] text-[#fde047] italic mt-3"
+                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.4)" }}
+                >
+                  {product.subheading}
+                </p>
+              )}
+
               {avgRating !== null && (
                 <div className="flex items-center gap-1.5 mt-2">
                   <StarRow rating={avgRating} />
