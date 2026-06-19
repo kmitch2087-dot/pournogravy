@@ -394,6 +394,12 @@ const ProductDetail = () => {
 
             </div>
 
+            {product.description && (
+              <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                {product.description}
+              </p>
+            )}
+
             {product.longDescription?.map((para, i) => (
               <p
                 key={i}
