@@ -115,7 +115,7 @@ export const products: Product[] = [
   {
     id: "i-would-totally-tap-that-keg-tee",
     published: true,
-    name: "I Would Totally Tap That - Keg",
+    name: "I Would Totally Tap That",
     price: 27.99,
     description: "However, be careful when tapping.  It might spray!",
     humor: "Don't Make it Weird.  It's just a Keg.",
@@ -232,7 +232,7 @@ export const products: Product[] = [
   {
     id: "pournogravy-og-tee-the-official-uniform-for-bartender-legends",
     published: true,
-    name: "Pournogravy Logo Tee",
+    name: "OG Branded Tee",
     price: 27.99,
     description: "Rep the brand that's repping you!  For the bartender who stands up to any Karen regardless of the situation.  Stand up for yourself and your fellow bartender by pointing out Karen's social failures in such an embarrassing way that they are silenced before the thought of asking for a manager hits their signature haircut.",
     humor: "It's my logo!  But It's Your Logo too",
@@ -465,7 +465,7 @@ export const products: Product[] = [
   {
     id: "the-finger-tee",
     published: true,
-    name: "The Finger",
+    name: "The Finger - Male",
     price: 27.99,
     description: "This shirt is for bartenders who put the \"B\" in \"subtle\".  And should continue to do so by yelling \"cheers\" to our favorite Karens and remind them that they're number 1!",
     humor: "Wear It as a Badge of Honor",

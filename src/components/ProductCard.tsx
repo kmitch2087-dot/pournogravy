@@ -69,6 +69,18 @@ const useEasterEggs = () =>
 // ─── Constants ─────────────────────────────────────────────────────────────
 const NEW_BADGE_MS = 14 * 24 * 60 * 60 * 1000;
 
+const CTA_PHRASES = [
+  "RING IT UP",
+  "ADD TO BAG",
+  "ADD TO MY TAB",
+  "TAKE IT TO-GO",
+  "FIRE",
+  "PUT IT ON THE BOOKS",
+  "RUN IT",
+  "CLOSE ME OUT",
+  "ONE MORE ROUND",
+];
+
 const ProductCard = ({ product }: { product: Product }) => {
   const { isSaved, toggle } = useWishlist();
   const ratings = useProductRatings();
@@ -251,7 +263,7 @@ const ProductCard = ({ product }: { product: Product }) => {
             to={`/product/${product.id}`}
             className="flex items-center justify-between w-full bg-[#fde047] text-black px-3 py-2 font-mono text-[10px] font-bold tracking-widest uppercase hover:bg-[#fbbf24] transition-colors rounded-none"
           >
-            <span>RING IT UP</span>
+            <span>{seededPick(CTA_PHRASES, seed + 5)}</span>
             <span>${product.price.toFixed(2)}</span>
           </Link>
         </div>
