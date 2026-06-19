@@ -361,40 +361,6 @@ const ProductDetail = () => {
               {product.description}
             </p>
 
-            {product.longDescription?.map((para, i) => (
-              <p
-                key={i}
-                className="text-muted-foreground text-sm md:text-base leading-relaxed"
-              >
-                {para}
-              </p>
-            ))}
-
-            {/* Bad Bartender Advice — yellow box only, no white duplicate (8b) */}
-            {product.badAdvice && product.badAdvice.paragraphs.length > 0 && (
-              <div
-                className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
-                style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
-              >
-                <p
-                  className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
-                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
-                >
-                  ☠ Bad Bartender Advice
-                </p>
-                <div className="space-y-3">
-                  {product.badAdvice.paragraphs.map((para, i) => (
-                    <p
-                      key={i}
-                      className="text-lg text-foreground/80 leading-relaxed"
-                    >
-                      {para}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Fit / gender variant selector — only shown when product has variants */}
             {product.variants && product.variants.length > 1 && (
               <div>
@@ -584,6 +550,40 @@ const ProductDetail = () => {
                 <span>30-day returns</span>
               </div>
             </div>
+
+            {product.longDescription?.map((para, i) => (
+              <p
+                key={i}
+                className="text-muted-foreground text-sm md:text-base leading-relaxed"
+              >
+                {para}
+              </p>
+            ))}
+
+            {/* Bad Bartender Advice — yellow box only, no white duplicate (8b) */}
+            {product.badAdvice && product.badAdvice.paragraphs.length > 0 && (
+              <div
+                className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
+                style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
+              >
+                <p
+                  className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
+                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
+                >
+                  ☠ Bad Bartender Advice
+                </p>
+                <div className="space-y-3">
+                  {product.badAdvice.paragraphs.map((para, i) => (
+                    <p
+                      key={i}
+                      className="text-lg text-foreground/80 leading-relaxed"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Custom garment request — "pain in the ass" CTA */}
             <div className="pt-2 text-xs text-muted-foreground leading-relaxed">
