@@ -374,9 +374,6 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              <p className="text-2xl md:text-3xl font-display tracking-wider mt-4">
-                ${product.price.toFixed(2)}
-              </p>
             </div>
 
             <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
@@ -432,6 +429,9 @@ const ProductDetail = () => {
             </div>
 
             <div className="border-t border-border/40 pt-6 space-y-6">
+              <p className="text-2xl md:text-3xl font-display tracking-wider">
+                ${product.price.toFixed(2)}
+              </p>
               {/* Fit / gender variant selector — only shown when product has variants */}
               {product.variants && product.variants.length > 1 && (
                 <div>
