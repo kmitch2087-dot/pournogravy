@@ -344,9 +344,6 @@ const ProductDetail = () => {
             className="space-y-6"
           >
             <div>
-              <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3">
-                "Bartender Apparel"
-              </p>
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
               </h1>
