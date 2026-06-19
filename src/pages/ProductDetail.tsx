@@ -398,14 +398,25 @@ const ProductDetail = () => {
               {product.description}
             </p>
 
-            {product.longDescription?.map((para, i) => (
-              <p
-                key={i}
-                className="text-muted-foreground text-sm md:text-base leading-relaxed"
-              >
-                <RichText html={para} />
-              </p>
-            ))}
+            {product.longDescription?.map((para, i) => {
+              const isSubheading = i === 0 && !product.subheading;
+              return isSubheading ? (
+                <p
+                  key={i}
+                  className="font-marker text-sm md:text-base tracking-[0.15em] text-[#fde047] italic"
+                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.4)" }}
+                >
+                  <RichText html={para} />
+                </p>
+              ) : (
+                <p
+                  key={i}
+                  className="text-muted-foreground text-sm md:text-base leading-relaxed"
+                >
+                  <RichText html={para} />
+                </p>
+              );
+            })}
 
             {/* Bad Bartender Advice — yellow box only, no white duplicate (8b) */}
             {product.badAdvice && product.badAdvice.paragraphs.length > 0 && (
