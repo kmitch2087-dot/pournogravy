@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
+import { RichText } from "@/components/RichText";
 
 const TICKER_ITEMS = Array(10).fill("Drink more, Bitch less, Tip big, Stay moist!");
 
@@ -190,7 +191,7 @@ const Index = () => {
             OFFENSIVE BARTENDER.
           </h1>
           <p className="font-marker text-sm md:text-base text-white mt-2 tracking-wider italic">
-            {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
+            <RichText html={getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")} />
           </p>
           {/* CTA button: desktop only — mobile CTA lives in its own section below */}
           <Link to="/shop" className="mt-3 hidden md:inline-block">
@@ -456,7 +457,7 @@ const Index = () => {
                 className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-5"
                 style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
               >
-                {getValue("home", "superpowers", "label", "Super Powers include:")}
+                <RichText html={getValue("home", "superpowers", "label", "Super Powers include:")} />
               </p>
               <ul className="space-y-3">
                 {([
@@ -473,7 +474,7 @@ const Index = () => {
                     className="flex items-start gap-3 text-base md:text-lg text-white leading-relaxed"
                   >
                     <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
-                    {getValue("home", "superpowers", `item_${i + 1}`, fallback)}
+                    <RichText html={getValue("home", "superpowers", `item_${i + 1}`, fallback)} />
                   </motion.li>
                 ))}
               </ul>
@@ -488,12 +489,12 @@ const Index = () => {
                 className="font-display text-xl md:text-2xl tracking-wider text-[#fde047] mb-1"
                 style={{ textShadow: "0 0 10px rgba(253,224,71,0.4)" }}
               >
-                {getValue("home", "extras", "heading", "BUT WAIT, THERE'S MORE:")}
+                <RichText html={getValue("home", "extras", "heading", "BUT WAIT, THERE'S MORE:")} />
               </p>
               <p
                 className="font-marker text-xs tracking-[0.3em] text-white/75 uppercase mb-5"
               >
-                {getValue("home", "extras", "label", "Also included:")}
+                <RichText html={getValue("home", "extras", "label", "Also included:")} />
               </p>
               <ul className="space-y-3">
                 {([
@@ -510,7 +511,7 @@ const Index = () => {
                     className="flex items-start gap-3 text-base md:text-lg text-white/90 leading-relaxed"
                   >
                     <span className="text-[#ff1744] font-marker mt-0.5 shrink-0">★</span>
-                    {getValue("home", "extras", `item_${i + 1}`, fallback)}
+                    <RichText html={getValue("home", "extras", `item_${i + 1}`, fallback)} />
                   </motion.li>
                 ))}
               </ul>
@@ -523,7 +524,7 @@ const Index = () => {
               viewport={{ once: true }}
               className="font-marker text-lg md:text-xl text-center text-white italic tracking-wider"
             >
-              {getValue("home", "manifesto", "text", "Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!")}
+              <RichText html={getValue("home", "manifesto", "text", "Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!")} />
             </motion.p>
 
             {/* CTAs */}
@@ -555,13 +556,13 @@ const Index = () => {
           <div className="flex items-end justify-between mb-10 md:mb-14">
             <div>
               <p className="font-marker text-xs md:text-sm tracking-widest text-[#fde047] mb-2 uppercase">
-                {getValue("home", "featured", "label", "The lineup")}
+                <RichText html={getValue("home", "featured", "label", "The lineup")} />
               </p>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider leading-none">
-                {getValue("home", "featured", "heading", "FEATURED")}
+                <RichText html={getValue("home", "featured", "heading", "FEATURED")} />
               </h2>
               <p className="text-muted-foreground text-sm md:text-base mt-3 max-w-md">
-                {getValue("home", "featured", "subheading", "The shirts that start conversations. And bar fights.")}
+                <RichText html={getValue("home", "featured", "subheading", "The shirts that start conversations. And bar fights.")} />
               </p>
             </div>
             <Link
@@ -678,7 +679,7 @@ const Index = () => {
         />
         <div className="container mx-auto px-4 py-24 md:py-32 text-center relative">
           <p className="font-marker text-xs tracking-[0.3em] text-[#fde047] mb-6 uppercase">
-            {getValue("home", "quotes", "label", "Bad Bartender Advice")}
+            <RichText html={getValue("home", "quotes", "label", "Bad Bartender Advice")} />
           </p>
           <div className="relative min-h-[140px] md:min-h-[200px] flex items-center justify-center">
             <AnimatePresence mode="wait">
@@ -688,14 +689,14 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5 }}
-                className="font-marker text-2xl md:text-4xl lg:text-5xl tracking-wider leading-tight max-w-4xl mx-auto stamp-rotate"
+                className="font-marker text-2xl md:text-4xl lg:text-5xl tracking-wider leading-tight max-w-4xl mx-auto stamp-rotate uppercase"
               >
-                "{activeQuotes[quoteIndex].toUpperCase()}"
+                "<RichText html={activeQuotes[quoteIndex]} />"
               </motion.blockquote>
             </AnimatePresence>
           </div>
           <p className="text-muted-foreground text-xs md:text-sm mt-8 font-display tracking-widest uppercase">
-            {getValue("home", "quotes", "attribution", "— Every Bartender Ever")}
+            <RichText html={getValue("home", "quotes", "attribution", "— Every Bartender Ever")} />
           </p>
 
           {/* dot indicators */}
@@ -750,17 +751,17 @@ const Index = () => {
                 textShadow: "0 0 10px rgba(253,224,71,0.6)",
               }}
             >
-              {getValue("home", "newsletter", "disclaimer", "No spam. Just shift notes.")}
+              <RichText html={getValue("home", "newsletter", "disclaimer", "No spam. Just shift notes.")} />
             </p>
             <h2 className="font-display text-4xl md:text-5xl tracking-wider mb-4">
-              {getValue("home", "newsletter", "heading", "JOIN THE SHIFT")}
+              <RichText html={getValue("home", "newsletter", "heading", "JOIN THE SHIFT")} />
             </h2>
             <p className="text-white/60 text-sm md:text-base mb-8">
-              {getValue("home", "newsletter", "subheading", "Early drops, industry humor, and discounts that actually feel like ones.")}
+              <RichText html={getValue("home", "newsletter", "subheading", "Early drops, industry humor, and discounts that actually feel like ones.")} />
             </p>
             {subscribed ? (
               <p className="font-marker text-sm tracking-widest text-[#fde047] uppercase">
-                {getValue("home", "newsletter", "success", "You're on the list. Don't embarrass us.")}
+                <RichText html={getValue("home", "newsletter", "success", "You're on the list. Don't embarrass us.")} />
               </p>
             ) : (
               <form

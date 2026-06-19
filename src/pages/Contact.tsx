@@ -1,5 +1,6 @@
 import SEO from "@/components/SEO";
 import { useSiteContent } from "@/context/SiteContentContext";
+import { RichText } from "@/components/RichText";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,13 +47,13 @@ const Contact = () => {
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              {getValue("contact", "hero", "label", "We're listening")}
+              <RichText html={getValue("contact", "hero", "label", "We're listening")} />
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-              {getValue("contact", "header", "heading", "CONTACT")}
+              <RichText html={getValue("contact", "header", "heading", "CONTACT")} />
             </h1>
             <p className="text-white text-sm md:text-base mt-3 max-w-lg">
-              {getValue("contact", "hero", "subheading", "Got a question, complaint, or a good bartender horror story? Slide it over.")}
+              <RichText html={getValue("contact", "hero", "subheading", "Got a question, complaint, or a good bartender horror story? Slide it over.")} />
             </p>
           </motion.div>
         </div>
@@ -223,9 +224,9 @@ const Contact = () => {
                 <p className="font-marker text-xs tracking-[0.3em] text-muted-foreground uppercase mb-2">
                   Response time
                 </p>
-                <p className="text-sm text-foreground">{getValue("contact", "sidebar", "response_time", "24–48 hrs on weekdays.")}</p>
+                <p className="text-sm text-foreground"><RichText html={getValue("contact", "sidebar", "response_time", "24–48 hrs on weekdays.")} /></p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {getValue("contact", "sidebar", "response_note", "Weekends we're usually working doubles.")}
+                  <RichText html={getValue("contact", "sidebar", "response_note", "Weekends we're usually working doubles.")} />
                 </p>
               </div>
             </aside>

@@ -3,6 +3,7 @@ import { useSiteContent } from "@/context/SiteContentContext";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { RichText } from "@/components/RichText";
 
 const faqs = [
   {
@@ -72,13 +73,13 @@ const FAQ = () => {
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
               style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
             >
-              {getValue("faq", "hero", "label", 'Asked more than "one more drink?"')}
+              <RichText html={getValue("faq", "hero", "label", 'Asked more than "one more drink?"')} />
             </p>
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-              {getValue("faq", "header", "heading", "FAQ")}
+              <RichText html={getValue("faq", "header", "heading", "FAQ")} />
             </h1>
             <p className="text-white text-sm md:text-base mt-3 max-w-md">
-              {getValue("faq", "hero", "subheading", "The stuff everyone wants to know. Answered with minimal sarcasm.")}
+              <RichText html={getValue("faq", "hero", "subheading", "The stuff everyone wants to know. Answered with minimal sarcasm.")} />
             </p>
           </motion.div>
         </div>
@@ -100,15 +101,15 @@ const FAQ = () => {
                 className="border-2 border-border data-[state=open]:border-[#fde047]/60 px-4 md:px-6 transition-colors bg-muted/20"
               >
                 <AccordionTrigger className="font-display text-sm md:text-base tracking-widest text-left hover:no-underline group">
-                  <span className="flex items-center gap-3">
-                    <span className="font-marker text-[#fde047] text-xs opacity-60 group-data-[state=open]:opacity-100 transition-opacity">
+                  <span className="flex items-center gap-3 uppercase">
+                    <span className="font-marker text-[#fde047] text-xs opacity-60 group-data-[state=open]:opacity-100 transition-opacity normal-case">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    {faq.q.toUpperCase()}
+                    <RichText html={faq.q} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground text-sm md:text-base leading-relaxed pl-8 md:pl-10">
-                  {faq.a}
+                  <RichText html={faq.a} />
                 </AccordionContent>
               </AccordionItem>
             </motion.div>

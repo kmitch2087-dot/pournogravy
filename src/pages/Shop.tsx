@@ -1,5 +1,6 @@
 import SEO from "@/components/SEO";
 import { useSiteContent } from "@/context/SiteContentContext";
+import { RichText } from "@/components/RichText";
 import { DropShopBanner } from "@/components/DropShopBanner";
 import ProductCard from "@/components/ProductCard";
 import { useEffect, useMemo, useState } from "react";
@@ -109,13 +110,13 @@ const Shop = () => {
         />
         <div className="container mx-auto px-4 pt-5 pb-6 md:pt-8 md:pb-10 relative">
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
-            {getValue("shop", "header", "heading", "SHOP")}
+            <RichText html={getValue("shop", "header", "heading", "SHOP")} />
           </h1>
           <p
             className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mt-3"
             style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
           >
-            {getValue("shop", "header", "subheading", "Wear your frustration. Literally.")}
+            <RichText html={getValue("shop", "header", "subheading", "Wear your frustration. Literally.")} />
           </p>
         </div>
       </section>
