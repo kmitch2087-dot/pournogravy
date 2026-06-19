@@ -105,7 +105,7 @@ const Footer = () => {
                 <Facebook className="h-4 w-4" />
               </a>
               <a
-                href="https://www.tiktok.com/pournogravy"
+                href="https://www.tiktok.com/@pournogravy"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Pournogravy on TikTok"
