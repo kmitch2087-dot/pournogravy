@@ -215,7 +215,7 @@ const ProductCard = ({ product }: { product: Product }) => {
         {/* ── ITEM LINE: name left, price right ── */}
         <Link to={`/product/${product.id}`} className="group block">
           <div className="relative z-10 flex items-baseline justify-between px-3 py-1">
-            <span className="text-[11px] font-bold text-gray-900 truncate pr-2 leading-tight">
+            <span className="text-[11px] font-bold text-gray-900 pr-2 leading-tight">
               {product.name.toUpperCase()}
             </span>
             <span className="text-[11px] font-bold text-gray-900 whitespace-nowrap">
@@ -240,17 +240,6 @@ const ProductCard = ({ product }: { product: Product }) => {
             </div>
           )}
 
-          {/* ── SVR LINE ── */}
-          <div className="relative z-10 px-3 pb-0.5">
-            <span className="text-[9px] text-gray-500">
-              SVR: {serverName}
-            </span>
-          </div>
-
-          {/* ── SPECIAL INSTRUCTIONS ── */}
-          <div className="relative z-10 px-3 pb-1">
-            <span className="text-[9px] italic text-gray-400">{specialInstruction}</span>
-          </div>
         </Link>
 
         {/* ── DASHED SEPARATOR ── */}
