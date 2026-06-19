@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { RichTextInput } from "@/components/admin/RichTextInput";
 
 // Curated Google Fonts on-brand for Pournogravy
 const GOOGLE_FONTS = [
@@ -152,21 +153,11 @@ export function FieldInput({
     return <ImageUploadField current={current} onChange={onChange} row={row} />;
   }
 
-  // text / default
-  const isLong = row.value_type === "text" && (current.length > 60);
-  return isLong ? (
-    <textarea
+  // text / default — rich text editor
+  return (
+    <RichTextInput
       value={current}
-      onChange={(e) => onChange(e.target.value)}
-      rows={3}
-      className="w-full text-xs bg-transparent border border-border px-2 py-1.5 focus:outline-none focus:border-[#fde047] resize-y"
-    />
-  ) : (
-    <input
-      type="text"
-      value={current}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full text-xs bg-transparent border border-border px-2 py-1.5 focus:outline-none focus:border-[#fde047]"
+      onChange={onChange}
       placeholder={row.default_value ?? ""}
     />
   );
