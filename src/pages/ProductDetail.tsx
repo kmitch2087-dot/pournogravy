@@ -362,12 +362,6 @@ const ProductDetail = () => {
                   className="relative border-2 border-[#fde047]/60 bg-black/40 p-5 mt-4 rough-border"
                   style={{ boxShadow: "0 0 20px rgba(253,224,71,0.12), inset 0 0 24px rgba(253,224,71,0.05)" }}
                 >
-                  <p
-                    className="font-marker text-sm tracking-[0.2em] text-[#fde047] uppercase mb-3"
-                    style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
-                  >
-                    ☠ My name is Opie...
-                  </p>
                   <p className="text-sm md:text-base text-foreground/90 leading-relaxed whitespace-pre-line">
                     {product.humor}
                   </p>
