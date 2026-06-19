@@ -1,5 +1,5 @@
 import SEO from "@/components/SEO";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { type ProductVariant, type ProductColor } from "@/data/products";
 import { useMergedProducts } from "@/lib/productSource";
 import { useCart } from "@/context/CartContext";
@@ -16,8 +16,22 @@ import { format } from "date-fns";
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get("preview") === "1";
+
   const { data: mergedProducts, isLoading: productsLoading } = useMergedProducts();
-  const product = mergedProducts?.find((p) => p.id === id && p.published === true);
+
+  // In preview mode, try sessionStorage first; otherwise require published
+  const previewProduct = isPreview && id
+    ? (() => {
+        try {
+          const raw = sessionStorage.getItem(`preview_product_${id}`);
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      })()
+    : null;
+
+  const product = previewProduct ?? mergedProducts?.find((p) => p.id === id && (isPreview || p.published === true));
   const { addItem } = useCart();
   const { trackAddToCart } = useAnalytics();
   const [selectedSize, setSelectedSize] = useState("");
@@ -222,7 +236,18 @@ const ProductDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 md:pt-28">
+    <div className={`min-h-screen pt-24 md:pt-28 ${isPreview ? "mt-10" : ""}`}>
+      {isPreview && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-[#fde047] text-black py-2 px-4 flex items-center justify-center gap-3 text-sm font-display tracking-widest">
+          <span>⚠ PREVIEW MODE — not live</span>
+          <button
+            onClick={() => window.close()}
+            className="text-xs underline underline-offset-2 opacity-70 hover:opacity-100"
+          >
+            close
+          </button>
+        </div>
+      )}
       <SEO
         title={product.name}
         description={`${product.humor} — ${product.name}. Unisex tee. Shop Pournogravy.`}

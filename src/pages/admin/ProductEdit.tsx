@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 
@@ -476,6 +476,41 @@ const ProductEdit = () => {
     if (isNew) navigate("/admin/products");
   };
 
+  // ── Preview ────────────────────────────────────────────────────────────────
+  const openPreview = () => {
+    const slug = form.slug || slugify(form.name);
+    if (!slug) return toast.error("Add a name or slug first");
+
+    const longDesc = form.longDescription.split("\n").filter(Boolean);
+    const badParagraphs = form.badAdviceParagraphs.split("\n").filter(Boolean);
+    const images = [form.mainImageUrl, ...form.additionalImages].filter(Boolean);
+
+    const previewProduct = {
+      id: slug,
+      name: form.name,
+      price: Number(form.price_dollars) || 0,
+      description: form.description,
+      humor: form.humor,
+      longDescription: longDesc,
+      badAdvice: (form.badAdviceTitle || badParagraphs.length > 0)
+        ? { title: form.badAdviceTitle, paragraphs: badParagraphs }
+        : undefined,
+      badge: form.badge || undefined,
+      published: true,
+      featured: form.featured,
+      images,
+      image: images[0],
+      sizes: form.sizes,
+      colors: form.colors.length > 0
+        ? form.colors.map((c) => ({ id: c.name.toLowerCase(), label: c.name, hex: c.hex }))
+        : [{ id: "black", label: "Black", hex: "#0a0a0a" }, { id: "white", label: "White", hex: "#ffffff" }],
+      variants: [{ id: "unisex", label: "Unisex", images }],
+    };
+
+    sessionStorage.setItem(`preview_product_${slug}`, JSON.stringify(previewProduct));
+    window.open(`/product/${slug}?preview=1`, "_blank", "noopener");
+  };
+
   // ── Loading state ──────────────────────────────────────────────────────────
   if (!isNew && isLoading) {
     return (
@@ -495,13 +530,23 @@ const ProductEdit = () => {
         <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
           <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
         </Button>
-        {form.slug && (
-          <a href={`/product/${form.slug}`} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm" className="text-xs font-display tracking-widest">
-              <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View on Site
-            </Button>
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs font-display tracking-widest"
+            onClick={openPreview}
+          >
+            <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
+          </Button>
+          {form.slug && form.isLive && (
+            <a href={`/product/${form.slug}`} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="text-xs font-display tracking-widest">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View on Site
+              </Button>
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
