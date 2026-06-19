@@ -322,8 +322,8 @@ export const products: Product[] = [
     published: true,
     name: "Service Bartender, Do Not Approach",
     price: 27.99,
-    description: "For bartenders running service bar — dedicated cocktail makers for the wait staff. No small talk. No phone charging. No Pina Coladas (blender's broken).",
-    humor: "Excuse me?!  Can I Order From You?!",
+    description: "\"Excuse me?!  Can I Order From You?!\"  —  \"New Phone.  Who's this?\"",
+    humor: "",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
     image: "/products/service-bartender-do-not-approach-tee-0.png",
     images: [
@@ -353,7 +353,7 @@ export const products: Product[] = [
       },
     ],
     longDescription: [
-      "Service Bartender:  A dedicated bartender tasked with mixing cocktails for the entire wait staff.  This bartender is quick, has a serious workflow, and is not available to the public.  Why would one want this position as opposed to working with the public?  Because they’re over it and need a mental break. It’s the perfect position for someone who loves the work but hates the noise.  And if they do have a minute to breathe after a rush, it’s to be used to reset their bar top and not to be hassled by someone trying to skip the line.",
+      "<strong>Service Bartender:</strong>  A dedicated bartender tasked with mixing cocktails for the entire wait staff.  This bartender is quick, has a serious workflow, and is not available to the public.  Why would one want this position as opposed to working with the public?  Because they’re over it and need a mental break. It’s the perfect position for someone who loves the work but hates the noise.  And if they do have a minute to breathe after a rush, it’s to be used to reset their bar top and not to be hassled by someone trying to skip the line.",
       "Hey service bartenders!! Have you ever had a drink sent back to you because the guest thought it was made incorrectly?  So, you stick your finger in it, swirl it around and send it back out to the guest as is?  Yeah, me neither.",
       "In memory of Cricket, my soul pup.",
     ],

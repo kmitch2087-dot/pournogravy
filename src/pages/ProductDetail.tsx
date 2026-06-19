@@ -1,5 +1,6 @@
 import SEO from "@/components/SEO";
 import { useParams, Link, useSearchParams } from "react-router-dom";
+import { RichText } from "@/components/RichText";
 import { type ProductVariant, type ProductColor } from "@/data/products";
 import { useMergedProducts } from "@/lib/productSource";
 import { useCart } from "@/context/CartContext";
@@ -379,7 +380,7 @@ const ProductDetail = () => {
                 key={i}
                 className="text-muted-foreground text-sm md:text-base leading-relaxed"
               >
-                {para}
+                <RichText html={para} />
               </p>
             ))}
 
