@@ -184,10 +184,7 @@ const ProductCard = ({ product }: { product: Product }) => {
               <img
                 src={cardImage}
                 alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover scale-[1.35] group-hover:scale-[1.45] transition-transform duration-500"
-                style={{
-                  transformOrigin: `${product.thumbnailFocalX ?? 40}% ${product.thumbnailFocalY ?? 40}%`,
-                }}
+                className="absolute inset-0 w-full h-full object-contain"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center p-6">
