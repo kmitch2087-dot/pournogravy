@@ -269,8 +269,8 @@ const ProductDetail = () => {
         </Link>
 
         <div className="grid md:grid-cols-2 gap-8 md:gap-16 pb-12">
-          {/* Gallery */}
-          <div className="space-y-4">
+          {/* Gallery — sticky so it travels with the user while they read copy */}
+          <div className="space-y-4 md:sticky md:top-28 md:self-start">
             <motion.div
               key={activeImage}
               initial={{ opacity: 0.4 }}
@@ -386,196 +386,6 @@ const ProductDetail = () => {
               {product.description}
             </p>
 
-            {/* Fit / gender variant selector — only shown when product has variants */}
-            {product.variants && product.variants.length > 1 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-display tracking-widest uppercase">Fit</p>
-                  {selectedVariant && (
-                    <p className="text-xs text-muted-foreground">
-                      Selected: <span className="text-foreground font-display">{selectedVariant.label}</span>
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setSelectedVariant(v)}
-                      className={`h-12 px-5 border-2 text-sm font-display tracking-wider transition-all ${
-                        selectedVariant?.id === v.id
-                          ? "bg-[#fde047] text-black border-[#fde047]"
-                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-                      }`}
-                      style={
-                        selectedVariant?.id === v.id
-                          ? { boxShadow: "0 0 16px rgba(253,224,71,0.4)" }
-                          : undefined
-                      }
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Color swatch selector — only shown when product has more than one color */}
-            {product.colors && product.colors.length > 1 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-display tracking-widest uppercase">Color</p>
-                  {selectedColor && (
-                    <p className="text-xs text-muted-foreground">
-                      Selected: <span className="text-foreground font-display">{selectedColor.label}</span>
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {product.colors.map((c) => {
-                    const active = selectedColor?.id === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelectedColor(c)}
-                        aria-label={`Color: ${c.label}`}
-                        aria-pressed={active}
-                        title={c.label}
-                        className={`relative h-10 w-10 rounded-full border-2 transition-all ${
-                          active
-                            ? "border-[#fde047]"
-                            : "border-border hover:border-foreground/40"
-                        }`}
-                        style={{
-                          backgroundColor: c.hex,
-                          boxShadow: active
-                            ? "0 0 14px rgba(253,224,71,0.45)"
-                            : undefined,
-                        }}
-                      >
-                        {active && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute inset-0 rounded-full ring-2 ring-offset-2 ring-offset-background ring-[#fde047]/60"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Size selector */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-display tracking-widest uppercase">Size</p>
-                {selectedSize && (
-                  <p className="text-xs text-muted-foreground">
-                    Selected: <span className="text-foreground font-display">{selectedSize}</span>
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`h-12 min-w-[56px] px-3 border-2 text-sm font-display tracking-wider transition-all ${
-                      selectedSize === size
-                        ? "bg-[#fde047] text-black border-[#fde047]"
-                        : "border-white/30 text-white/70 hover:border-white hover:text-white"
-                    }`}
-                    style={
-                      selectedSize === size
-                        ? { boxShadow: "0 0 16px rgba(253,224,71,0.4)" }
-                        : undefined
-                    }
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Add to bag — or drop coming soon */}
-            {showDropComingSoon ? (
-              <div className="space-y-3 border border-border/50 rounded p-4 bg-muted/10">
-                <p className="text-sm font-display tracking-widest text-muted-foreground">
-                  Drop coming soon — get on the list
-                </p>
-                {subscribed ? (
-                  <p className="text-sm text-[#fde047] font-marker tracking-wider">
-                    You're on the list.
-                  </p>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="your@email.com"
-                      value={subscribeEmail}
-                      onChange={(e) => setSubscribeEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
-                      className="flex-1 bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60"
-                    />
-                    <Button
-                      onClick={handleSubscribe}
-                      disabled={!subscribeEmail.trim() || subscribing}
-                      className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest text-xs px-4 disabled:opacity-40"
-                    >
-                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : "NOTIFY ME"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Button
-                onClick={handleAdd}
-                disabled={!selectedSize || stripeLoading}
-                className={`w-full h-14 font-display text-lg tracking-widest transition-all ${selectedSize ? "bg-[#fde047] text-black hover:bg-[#fde047]/90" : "bg-transparent border-2 border-[#fde047]/60 text-[#fde047]"}`}
-                style={
-                  selectedSize && !justAdded
-                    ? { boxShadow: "0 0 20px rgba(253,224,71,0.25)" }
-                    : undefined
-                }
-              >
-                <AnimatePresence mode="wait">
-                  {justAdded ? (
-                    <motion.span
-                      key="added"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Check className="h-5 w-5" /> ADDED
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="add"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      {selectedSize ? "PUT IT ON MY TAB" : "SELECT A SIZE"}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Button>
-            )}
-
-            {/* Shipping perks */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Truck className="h-4 w-4 text-[#fde047]" />
-                <span>Free ship over $75</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <RotateCcw className="h-4 w-4 text-[#fde047]" />
-                <span>30-day returns</span>
-              </div>
-            </div>
-
             {product.longDescription?.map((para, i) => (
               <p
                 key={i}
@@ -622,6 +432,198 @@ const ProductDetail = () => {
                 click here
               </button>
               .
+            </div>
+
+            <div className="border-t border-border/40 pt-6 space-y-6">
+              {/* Fit / gender variant selector — only shown when product has variants */}
+              {product.variants && product.variants.length > 1 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-display tracking-widest uppercase">Fit</p>
+                    {selectedVariant && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: <span className="text-foreground font-display">{selectedVariant.label}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {product.variants.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVariant(v)}
+                        className={`h-12 px-5 border-2 text-sm font-display tracking-wider transition-all ${
+                          selectedVariant?.id === v.id
+                            ? "bg-[#fde047] text-black border-[#fde047]"
+                            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                        }`}
+                        style={
+                          selectedVariant?.id === v.id
+                            ? { boxShadow: "0 0 16px rgba(253,224,71,0.4)" }
+                            : undefined
+                        }
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color swatch selector — only shown when product has more than one color */}
+              {product.colors && product.colors.length > 1 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-display tracking-widest uppercase">Color</p>
+                    {selectedColor && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: <span className="text-foreground font-display">{selectedColor.label}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {product.colors.map((c) => {
+                      const active = selectedColor?.id === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedColor(c)}
+                          aria-label={`Color: ${c.label}`}
+                          aria-pressed={active}
+                          title={c.label}
+                          className={`relative h-10 w-10 rounded-full border-2 transition-all ${
+                            active
+                              ? "border-[#fde047]"
+                              : "border-border hover:border-foreground/40"
+                          }`}
+                          style={{
+                            backgroundColor: c.hex,
+                            boxShadow: active
+                              ? "0 0 14px rgba(253,224,71,0.45)"
+                              : undefined,
+                          }}
+                        >
+                          {active && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-0 rounded-full ring-2 ring-offset-2 ring-offset-background ring-[#fde047]/60"
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Size selector */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-display tracking-widest uppercase">Size</p>
+                  {selectedSize && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: <span className="text-foreground font-display">{selectedSize}</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`h-12 min-w-[56px] px-3 border-2 text-sm font-display tracking-wider transition-all ${
+                        selectedSize === size
+                          ? "bg-[#fde047] text-black border-[#fde047]"
+                          : "border-white/30 text-white/70 hover:border-white hover:text-white"
+                      }`}
+                      style={
+                        selectedSize === size
+                          ? { boxShadow: "0 0 16px rgba(253,224,71,0.4)" }
+                          : undefined
+                      }
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add to bag — or drop coming soon */}
+              {showDropComingSoon ? (
+                <div className="space-y-3 border border-border/50 rounded p-4 bg-muted/10">
+                  <p className="text-sm font-display tracking-widest text-muted-foreground">
+                    Drop coming soon — get on the list
+                  </p>
+                  {subscribed ? (
+                    <p className="text-sm text-[#fde047] font-marker tracking-wider">
+                      You're on the list.
+                    </p>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={subscribeEmail}
+                        onChange={(e) => setSubscribeEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+                        className="flex-1 bg-transparent border border-border rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-[#fde047]/60"
+                      />
+                      <Button
+                        onClick={handleSubscribe}
+                        disabled={!subscribeEmail.trim() || subscribing}
+                        className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest text-xs px-4 disabled:opacity-40"
+                      >
+                        {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : "NOTIFY ME"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  onClick={handleAdd}
+                  disabled={!selectedSize || stripeLoading}
+                  className={`w-full h-14 font-display text-lg tracking-widest transition-all ${selectedSize ? "bg-[#fde047] text-black hover:bg-[#fde047]/90" : "bg-transparent border-2 border-[#fde047]/60 text-[#fde047]"}`}
+                  style={
+                    selectedSize && !justAdded
+                      ? { boxShadow: "0 0 20px rgba(253,224,71,0.25)" }
+                      : undefined
+                  }
+                >
+                  <AnimatePresence mode="wait">
+                    {justAdded ? (
+                      <motion.span
+                        key="added"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Check className="h-5 w-5" /> ADDED
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="add"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        {selectedSize ? "PUT IT ON MY TAB" : "SELECT A SIZE"}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Button>
+              )}
+
+              {/* Shipping perks */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Truck className="h-4 w-4 text-[#fde047]" />
+                  <span>Free ship over $75</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RotateCcw className="h-4 w-4 text-[#fde047]" />
+                  <span>30-day returns</span>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
