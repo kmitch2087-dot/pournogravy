@@ -18,6 +18,13 @@ const StarRow = ({ rating }: { rating: number }) => (
   </div>
 );
 
+function shortProductName(slug: string) {
+  return slug
+    .replace(/-(tee|hoodie|tank|shirt|hat|cap|tshirt|t-shirt)$/, "")
+    .replace(/-/g, " ")
+    .toUpperCase();
+}
+
 const Reviews = () => {
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["public-reviews"],
@@ -102,16 +109,16 @@ const Reviews = () => {
                   </p>
                 )}
 
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
-                  <span className="font-marker text-sm tracking-wider">
+                <div className="mt-auto pt-2 border-t border-border/50 space-y-1">
+                  <span className="font-marker text-sm tracking-wider block">
                     — {r.reviewer_name as string}
                   </span>
                   {r.product_slug && (
                     <Link
                       to={`/product/${r.product_slug}`}
-                      className="text-xs font-mono text-[#fde047] hover:underline"
+                      className="text-xs font-mono text-[#fde047] hover:underline block"
                     >
-                      {(r.product_slug as string).replace(/-/g, " ").toUpperCase()}
+                      {shortProductName(r.product_slug as string)}
                     </Link>
                   )}
                 </div>
