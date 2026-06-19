@@ -107,17 +107,14 @@ const Shop = () => {
             boxShadow: "0 0 20px rgba(253,224,71,0.5)",
           }}
         />
-        <div className="container mx-auto px-4 py-14 md:py-20 relative">
-          <p
-            className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
-            style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
-          >
-            {getValue("shop", "hero", "label", "The whole catalog")}
-          </p>
+        <div className="container mx-auto px-4 py-8 md:py-12 relative">
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
             {getValue("shop", "header", "heading", "SHOP")}
           </h1>
-          <p className="text-white/70 text-sm md:text-base mt-3 max-w-md">
+          <p
+            className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mt-3"
+            style={{ textShadow: "0 0 10px rgba(253,224,71,0.5)" }}
+          >
             {getValue("shop", "header", "subheading", "Wear your frustration. Literally.")}
           </p>
         </div>
