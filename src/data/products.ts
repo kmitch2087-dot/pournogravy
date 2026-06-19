@@ -109,7 +109,7 @@ export const products: Product[] = [
         "Opie: Well...Why don’t you get a real job!?",
         "Chad looks confused.",
       ],
-      title: "My Name is Opie and I'll Be Your Bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -162,7 +162,7 @@ export const products: Product[] = [
         "Dude:  Dude!  You’re fucked up.",
         "Opie:  But seriously though…Thanks for asking.",
       ],
-      title: "My Name is Opie and I'll Be Your Bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -225,7 +225,7 @@ export const products: Product[] = [
         "Dude: Thanks Buddy.",
         "Opie: You mean Bud?",
       ],
-      title: "My Name is Opie and I'll Be Your Bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -412,7 +412,7 @@ export const products: Product[] = [
         "Lady: I'll tip you $5 If you smile.",
         "Opie: Make it $10 and I'll give you paw.",
       ],
-      title: "Hi, My Name is Opie and I'll Be Your Bartender:",
+      title: "Bad Bartender Advice:",
     },
     featured: true,
   },
@@ -458,7 +458,7 @@ export const products: Product[] = [
         "Lady: I'll tip you $5 If you smile.",
         "Opie: Make it $10 and I'll give you paw.",
       ],
-      title: "Hi, My Name is Opie and I'll Be Your Bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -781,7 +781,7 @@ export const products: Product[] = [
         "Dude: Yeah?",
         "Opie: Same repair guy.",
       ],
-      title: "My name is Opie and I will be your bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -843,7 +843,7 @@ export const products: Product[] = [
         "Dude has a blank stare and says nothing.",
         "Opie: Good teaching moment?",
       ],
-      title: "My name is Opie and I will be your bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
@@ -1151,7 +1151,7 @@ export const products: Product[] = [
         "Dude has a blank stare and says nothing.",
         "Opie: Good teaching moment?",
       ],
-      title: "My name is Opie and I will be your bartender:",
+      title: "Bad Bartender Advice:",
     },
   },
   {
