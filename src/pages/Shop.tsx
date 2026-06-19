@@ -107,7 +107,7 @@ const Shop = () => {
             boxShadow: "0 0 20px rgba(253,224,71,0.5)",
           }}
         />
-        <div className="container mx-auto px-4 py-8 md:py-12 relative">
+        <div className="container mx-auto px-4 pt-5 pb-6 md:pt-8 md:pb-10 relative">
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
             {getValue("shop", "header", "heading", "SHOP")}
           </h1>

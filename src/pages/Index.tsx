@@ -470,7 +470,7 @@ const Index = () => {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-start gap-3 text-base md:text-lg text-foreground leading-relaxed"
+                    className="flex items-start gap-3 text-base md:text-lg text-white leading-relaxed"
                   >
                     <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
                     {getValue("home", "superpowers", `item_${i + 1}`, fallback)}
@@ -491,7 +491,7 @@ const Index = () => {
                 {getValue("home", "extras", "heading", "BUT WAIT, THERE'S MORE:")}
               </p>
               <p
-                className="font-marker text-xs tracking-[0.3em] text-white/50 uppercase mb-5"
+                className="font-marker text-xs tracking-[0.3em] text-white/75 uppercase mb-5"
               >
                 {getValue("home", "extras", "label", "Also included:")}
               </p>
@@ -507,7 +507,7 @@ const Index = () => {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-start gap-3 text-base md:text-lg text-foreground/90 leading-relaxed"
+                    className="flex items-start gap-3 text-base md:text-lg text-white/90 leading-relaxed"
                   >
                     <span className="text-[#ff1744] font-marker mt-0.5 shrink-0">★</span>
                     {getValue("home", "extras", `item_${i + 1}`, fallback)}

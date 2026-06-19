@@ -287,10 +287,10 @@ const ProductDetail = () => {
                     key={i}
                     onClick={() => setActiveImage(i)}
                     aria-label={`View image ${i + 1}`}
-                    className={`relative h-20 w-20 border-2 overflow-hidden transition-all ${
+                    className={`relative h-20 w-20 border-2 overflow-hidden transition-all bg-muted ${
                       i === activeImage
                         ? "border-[#fde047]"
-                        : "border-border hover:border-foreground/40"
+                        : "border-white/20 hover:border-white/50"
                     }`}
                     style={
                       i === activeImage
@@ -301,7 +301,7 @@ const ProductDetail = () => {
                     <img
                       src={img}
                       alt=""
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                       loading="lazy"
                       decoding="async"
                     />
@@ -493,7 +493,7 @@ const ProductDetail = () => {
                     className={`h-12 min-w-[56px] px-3 border-2 text-sm font-display tracking-wider transition-all ${
                       selectedSize === size
                         ? "bg-[#fde047] text-black border-[#fde047]"
-                        : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                        : "border-white/30 text-white/70 hover:border-white hover:text-white"
                     }`}
                     style={
                       selectedSize === size
@@ -541,7 +541,7 @@ const ProductDetail = () => {
               <Button
                 onClick={handleAdd}
                 disabled={!selectedSize || stripeLoading}
-                className="w-full h-14 font-display text-lg tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+                className={`w-full h-14 font-display text-lg tracking-widest transition-all ${selectedSize ? "bg-[#fde047] text-black hover:bg-[#fde047]/90" : "bg-transparent border-2 border-[#fde047]/60 text-[#fde047]"}`}
                 style={
                   selectedSize && !justAdded
                     ? { boxShadow: "0 0 20px rgba(253,224,71,0.25)" }
