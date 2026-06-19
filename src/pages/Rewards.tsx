@@ -97,7 +97,7 @@ const Rewards = () => {
   return (
     <div className="min-h-screen bg-background text-foreground pt-24 pb-24">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-black border-b border-white/10 py-20">
+      <div className="relative overflow-hidden bg-black border-b border-white/10 pt-5 pb-6 md:pt-8 md:pb-10">
         <div
           aria-hidden
           className="absolute inset-0 pointer-events-none"

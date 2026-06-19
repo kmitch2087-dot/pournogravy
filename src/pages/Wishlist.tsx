@@ -28,7 +28,7 @@ const Wishlist = () => {
               "radial-gradient(ellipse at 20% 50%, rgba(255,23,68,0.18), transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(253,224,71,0.1), transparent 50%)",
           }}
         />
-        <div className="container mx-auto px-4 py-14 md:py-20 relative">
+        <div className="container mx-auto px-4 pt-5 pb-6 md:pt-8 md:pb-10 relative">
           <p className="font-marker text-xs tracking-[0.3em] text-[#ff1744] uppercase mb-3">
             Your list
           </p>

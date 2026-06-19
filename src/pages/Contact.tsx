@@ -40,7 +40,7 @@ const Contact = () => {
             boxShadow: "0 0 20px rgba(253,224,71,0.5)",
           }}
         />
-        <div className="container mx-auto px-4 py-14 md:py-20 relative">
+        <div className="container mx-auto px-4 pt-5 pb-6 md:pt-8 md:pb-10 relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <p
               className="font-marker text-xs tracking-[0.3em] text-[#fde047] uppercase mb-3"
