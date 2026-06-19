@@ -394,10 +394,6 @@ const ProductDetail = () => {
 
             </div>
 
-            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
-              {product.description}
-            </p>
-
             {product.longDescription?.map((para, i) => {
               const isSubheading = i === 0 && !product.subheading;
               return isSubheading ? (
