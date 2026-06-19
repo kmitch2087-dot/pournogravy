@@ -391,17 +391,6 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* "My name is Opie..." conversation — above price (8a + 8c) */}
-              {product.humor && (
-                <div
-                  className="relative border-2 border-[#fde047]/60 bg-black/40 p-5 mt-4 rough-border"
-                  style={{ boxShadow: "0 0 20px rgba(253,224,71,0.12), inset 0 0 24px rgba(253,224,71,0.05)" }}
-                >
-                  <p className="text-sm md:text-base text-foreground/90 leading-relaxed whitespace-pre-line">
-                    {product.humor}
-                  </p>
-                </div>
-              )}
 
             </div>
 
