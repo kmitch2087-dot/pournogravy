@@ -104,6 +104,7 @@ export const useMergedProducts = () => {
           humor: db.humor || p.humor,
           badAdvice: db.badAdvice ?? p.badAdvice,
           longDescription: db.longDescription?.length ? db.longDescription : p.longDescription,
+          subheading: p.subheading,
         };
       });
       // Add any DB products that don't have a hardcoded equivalent
