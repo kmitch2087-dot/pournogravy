@@ -7,7 +7,7 @@ import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
 import CustomGarmentRequestModal from "@/components/CustomGarmentRequestModal";
@@ -33,6 +33,11 @@ const ProductDetail = () => {
     : null;
 
   const product = previewProduct ?? mergedProducts?.find((p) => p.id === id && (isPreview || p.published === true));
+
+  const publishedProducts = (mergedProducts ?? []).filter((p) => p.published === true);
+  const currentIndex = publishedProducts.findIndex((p) => p.id === id);
+  const prevProduct = currentIndex > 0 ? publishedProducts[currentIndex - 1] : null;
+  const nextProduct = currentIndex !== -1 && currentIndex < publishedProducts.length - 1 ? publishedProducts[currentIndex + 1] : null;
   const { addItem } = useCart();
   const { trackAddToCart } = useAnalytics();
   const [selectedSize, setSelectedSize] = useState("");
@@ -249,6 +254,26 @@ const ProductDetail = () => {
           </button>
         </div>
       )}
+      {/* Prev/Next product navigation arrows */}
+      {prevProduct && (
+        <Link
+          to={`/product/${prevProduct.id}`}
+          aria-label={`Previous: ${prevProduct.name}`}
+          className="fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/20 hover:bg-black/50 border border-white/10 hover:border-[#fde047]/40 text-white/50 hover:text-[#fde047] transition-all duration-200 backdrop-blur-sm"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+      )}
+      {nextProduct && (
+        <Link
+          to={`/product/${nextProduct.id}`}
+          aria-label={`Next: ${nextProduct.name}`}
+          className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/20 hover:bg-black/50 border border-white/10 hover:border-[#fde047]/40 text-white/50 hover:text-[#fde047] transition-all duration-200 backdrop-blur-sm"
+        >
+          <ArrowRight className="w-5 h-5" />
+        </Link>
+      )}
+
       <SEO
         title={product.name}
         description={`${product.humor} — ${product.name}. Unisex tee. Shop Pournogravy.`}
