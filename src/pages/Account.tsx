@@ -233,7 +233,7 @@ const Account = () => {
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-widest font-marker mb-3">Recent Activity</p>
                   {transactions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No activity yet — make your first order to earn points.</p>
+                    <p className="text-base text-white italic">No activity yet — make your first order to earn points.</p>
                   ) : (
                     <ul className="space-y-2">
                       {transactions.map((tx) => (
@@ -270,7 +270,7 @@ const Account = () => {
             </div>
           ) : orders.length === 0 ? (
             <div className="p-10 text-center space-y-3">
-              <p className="font-marker text-muted-foreground italic">
+              <p className="font-marker text-base text-white italic">
                 "No tab open yet. Go pour yourself something."
               </p>
               <Link to="/shop">

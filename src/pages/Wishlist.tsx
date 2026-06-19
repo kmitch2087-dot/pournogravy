@@ -36,7 +36,7 @@ const Wishlist = () => {
             WISHLIST
             <Heart className="w-10 h-10 fill-[#ff1744] text-[#ff1744]" />
           </h1>
-          <p className="text-white/70 text-sm md:text-base mt-3">
+          <p className="text-white text-sm md:text-base mt-3">
             {loading ? "Loading…" : saved.length === 0 ? "Nothing saved yet." : `${saved.length} item${saved.length === 1 ? "" : "s"} saved`}
           </p>
         </div>

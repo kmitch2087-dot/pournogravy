@@ -189,7 +189,7 @@ const Index = () => {
             <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
             OFFENSIVE BARTENDER.
           </h1>
-          <p className="font-marker text-[11px] md:text-sm lg:text-base text-white/80 mt-2 tracking-wider italic">
+          <p className="font-marker text-sm md:text-base text-white mt-2 tracking-wider italic">
             {getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")}
           </p>
           {/* CTA button: desktop only — mobile CTA lives in its own section below */}
@@ -323,7 +323,7 @@ const Index = () => {
                       {product.name.toUpperCase()}
                     </h2>
                     {product.humor && (
-                      <p className="font-marker text-sm lg:text-base text-white/80 italic mb-4">
+                      <p className="font-marker text-sm lg:text-base text-white italic mb-4">
                         "{product.humor}"
                       </p>
                     )}
@@ -521,7 +521,7 @@ const Index = () => {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="font-marker text-lg md:text-xl text-center text-white/80 italic tracking-wider"
+              className="font-marker text-lg md:text-xl text-center text-white italic tracking-wider"
             >
               {getValue("home", "manifesto", "text", "Made by a dark humored, sarcastic bartender, for a dark humored, sarcastic bartender!")}
             </motion.p>
@@ -653,7 +653,7 @@ const Index = () => {
                         />
                       ))}
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{snippet}"</p>
+                    <p className="text-base text-white leading-relaxed italic">"{snippet}"</p>
                     <div className="pt-1 border-t border-border/50">
                       <p className="font-marker text-xs tracking-widest text-foreground">{review.reviewer_name}</p>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{productName}</p>

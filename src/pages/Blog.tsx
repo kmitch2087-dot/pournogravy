@@ -128,7 +128,7 @@ const Blog = () => {
           <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none mb-4">
             LAST CALL<br />FOR CONTENT
           </h1>
-          <p className="font-marker text-base text-muted-foreground italic tracking-wider max-w-md">
+          <p className="font-marker text-base md:text-lg text-white italic tracking-wider max-w-md">
             Opinions. Rants. Recipes for disaster.
           </p>
         </div>
@@ -152,7 +152,7 @@ const Blog = () => {
           </div>
         ) : !posts?.length ? (
           <div className="py-24 text-center">
-            <p className="font-marker text-lg text-muted-foreground italic tracking-wider">
+            <p className="font-marker text-lg text-white italic tracking-wider">
               Nothing posted yet. Check back when the shift slows down.
             </p>
           </div>

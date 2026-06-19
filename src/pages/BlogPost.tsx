@@ -55,7 +55,7 @@ const BlogPost = () => {
       <div className="min-h-screen pt-16 md:pt-20 flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="font-display text-4xl tracking-widest text-muted-foreground">404</p>
-          <p className="font-marker text-base italic tracking-wider text-muted-foreground">
+          <p className="font-marker text-lg italic tracking-wider text-white">
             That shift ended early. Post not found.
           </p>
           <Link
@@ -140,7 +140,7 @@ const BlogPost = () => {
           </h1>
 
           {post.excerpt && (
-            <p className="font-marker text-base md:text-lg text-muted-foreground italic tracking-wider border-l-2 border-[#fde047]/40 pl-4">
+            <p className="font-marker text-base md:text-lg text-white italic tracking-wider border-l-2 border-[#fde047]/40 pl-4">
               {post.excerpt}
             </p>
           )}

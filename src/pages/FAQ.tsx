@@ -77,7 +77,7 @@ const FAQ = () => {
             <h1 className="font-display text-5xl md:text-7xl tracking-wider leading-none">
               {getValue("faq", "header", "heading", "FAQ")}
             </h1>
-            <p className="text-white/70 text-sm md:text-base mt-3 max-w-md">
+            <p className="text-white text-sm md:text-base mt-3 max-w-md">
               {getValue("faq", "hero", "subheading", "The stuff everyone wants to know. Answered with minimal sarcasm.")}
             </p>
           </motion.div>
