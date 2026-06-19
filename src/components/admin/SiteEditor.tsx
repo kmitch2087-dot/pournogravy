@@ -259,7 +259,7 @@ export function SectionGroup({
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-display tracking-widest uppercase bg-[#fde047] text-black hover:bg-[#fbbf24] transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-display tracking-widest uppercase bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5" />
                   {saving ? "Saving…" : "Save Changes"}
