@@ -352,11 +352,13 @@ export const products: Product[] = [
         hex: "#ffffff",
       },
     ],
+    longDescription: [
+      "Service Bartender:  A dedicated bartender tasked with mixing cocktails for the entire wait staff.  This bartender is quick, has a serious workflow, and is not available to the public.  Why would one want this position as opposed to working with the public?  Because they’re over it and need a mental break. It’s the perfect position for someone who loves the work but hates the noise.  And if they do have a minute to breathe after a rush, it’s to be used to reset their bar top and not to be hassled by someone trying to skip the line.",
+      "Hey service bartenders!! Have you ever had a drink sent back to you because the guest thought it was made incorrectly?  So, you stick your finger in it, swirl it around and send it back out to the guest as is?  Yeah, me neither.",
+      "In memory of Cricket, my soul pup.",
+    ],
     badAdvice: {
       paragraphs: [
-        "Service Bartender:  A dedicated bartender tasked with mixing cocktails for the entire wait staff.  This bartender is quick, has a serious workflow, and is not available to the public.  Why would one want this position as opposed to working with the public?  Because they're over it and need a mental break. It's the perfect position for someone who loves the work but hates the noise.  And if they do have a minute to breathe after a rush, it's to be used to reset their bar top and not to be hassled by someone trying to skip the line.",
-        "Hey service bartenders!! Have you ever had a drink sent back to you because the guest thought it was made incorrectly?  So, you stick your finger in it, swirl it around and send it back out to the guest as is?  Yeah, me neither.",
-        "In memory of Cricket, my soul pup.",
         "Dude: Can you charge my phone for me?",
         "Opie: No.",
         "Dude: You don’t have an outlet back there?",
@@ -366,7 +368,7 @@ export const products: Product[] = [
         "Dude: No, I’m good.",
         "Opie: Good.  Blenders broken.",
       ],
-      title: "New Phone. Who's this?",
+      title: "New Phone. Who’s this?",
     },
     featured: true,
   },

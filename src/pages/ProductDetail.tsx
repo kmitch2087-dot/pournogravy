@@ -399,7 +399,7 @@ const ProductDetail = () => {
                   className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
                   style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
                 >
-                  ☠ Bad Bartender Advice
+                  ☠ {product.badAdvice.title || "Bad Bartender Advice"}
                 </p>
                 <div className="space-y-3">
                   {product.badAdvice.paragraphs.map((para, i) => (
