@@ -1,3 +1,4 @@
+import React from "react";
 import SEO from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -462,20 +463,21 @@ const Index = () => {
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((q, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
-              style={{ textShadow: '0 0 8px rgba(253,224,71,0.8), 0 0 20px rgba(253,224,71,0.4)' }}
-            >
-              {q}
+            <React.Fragment key={i}>
+              <span
+                className="inline-flex items-center font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
+                style={{ textShadow: '0 0 8px rgba(253,224,71,0.8), 0 0 20px rgba(253,224,71,0.4)' }}
+              >
+                {q}
+              </span>
               <img
                 src="/karen_ticker.png"
                 alt=""
                 aria-hidden="true"
-                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-8"
+                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-10"
                 style={{ imageRendering: 'crisp-edges' }}
               />
-            </span>
+            </React.Fragment>
           ))}
         </div>
       </section>
