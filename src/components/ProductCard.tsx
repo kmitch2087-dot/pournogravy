@@ -67,6 +67,12 @@ const useEasterEggs = () =>
     throwOnError: false,
   });
 
+// ─── Zoom image map — keyed by product.id ──────────────────────────────────
+const ZOOM_IMAGES: Record<string, string> = {
+  'last-call-for-karen-tee':          '/karen_graphic_zoom.png',
+  'i-would-totally-tap-that-keg-tee': '/keg_graphic_zoom.png',
+};
+
 // ─── Constants ─────────────────────────────────────────────────────────────
 const NEW_BADGE_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -131,7 +137,8 @@ const ProductCard = ({ product }: { product: Product }) => {
   const cardImages = product.images && product.images.length > 0
     ? product.images
     : product.image ? [product.image] : [];
-  const imgIdx = useCardImageFlip(cardImages.length);
+  const zoomSrc = ZOOM_IMAGES[product.id];
+  const showZoom = useCardImageFlip(!!zoomSrc);
 
   const isNew = product.wentLiveAt
     ? Date.now() - new Date(product.wentLiveAt).getTime() < NEW_BADGE_MS
@@ -196,28 +203,30 @@ const ProductCard = ({ product }: { product: Product }) => {
         <div className="relative z-10 aspect-square bg-[#111] overflow-hidden">
           <Link to={`/product/${product.id}`} className="group block w-full h-full">
             {cardImages.length > 0 ? (
-              cardImages.map((src, i, arr) => (
-                src && (
+              <>
+                {cardImages[0] && (
                   <img
-                    key={src}
-                    src={src}
-                    alt={i === 0 ? product.name : `${product.name} view ${i + 1}`}
-                    className="absolute inset-0 w-full h-full"
-                    style={{
-                      objectFit: i === arr.length - 1 && arr.length > 1 ? 'cover' : 'contain',
-                      opacity: imgIdx === i ? 1 : 0,
-                      transition: 'opacity 0.8s ease-in-out',
-                    }}
-                    loading={i === 0 ? 'eager' : 'lazy'}
+                    src={cardImages[0]}
+                    alt={product.name}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ opacity: showZoom ? 0 : 1, transition: 'opacity 0.8s ease-in-out' }}
+                    loading="eager"
                     onError={(e) => {
                       const el = e.target as HTMLImageElement;
-                      if (el.src.endsWith('.webp')) {
-                        el.src = el.src.replace('.webp', '.png');
-                      }
+                      if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.png');
                     }}
                   />
-                )
-              ))
+                )}
+                {zoomSrc && (
+                  <img
+                    src={zoomSrc}
+                    alt={`${product.name} graphic detail`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ opacity: showZoom ? 1 : 0, transition: 'opacity 0.8s ease-in-out' }}
+                    loading="lazy"
+                  />
+                )}
+              </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center p-6">
                 <span className="font-mono text-center text-xs leading-tight text-gray-400 group-hover:text-gray-200 transition-colors">

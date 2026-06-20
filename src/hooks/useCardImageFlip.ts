@@ -1,34 +1,34 @@
 import { useEffect, useState } from 'react';
 
-// Singleton: all cards on the page flip simultaneously
-let listeners: Array<(idx: number) => void> = [];
+// Singleton — all subscribing cards flip simultaneously
+let listeners: Array<(show: boolean) => void> = [];
 let timer: ReturnType<typeof setInterval> | null = null;
-let currentIdx = 0;
+let current = false;
 
-function startTimer(imageCount: number) {
-  if (timer) return;
-  timer = setInterval(() => {
-    currentIdx = (currentIdx + 1) % imageCount;
-    listeners.forEach(fn => fn(currentIdx));
-  }, 3500);
-}
-
-export function useCardImageFlip(imageCount: number) {
-  const [imgIdx, setImgIdx] = useState(0);
+export function useCardImageFlip(hasZoom: boolean): boolean {
+  const [showZoom, setShowZoom] = useState(false);
 
   useEffect(() => {
-    if (imageCount < 2) return;
-    listeners.push(setImgIdx);
-    startTimer(imageCount);
+    if (!hasZoom) return; // no zoom → never subscribes, always returns false
+
+    listeners.push(setShowZoom);
+
+    if (!timer) {
+      timer = setInterval(() => {
+        current = !current;
+        listeners.forEach(fn => fn(current));
+      }, 3500);
+    }
+
     return () => {
-      listeners = listeners.filter(fn => fn !== setImgIdx);
+      listeners = listeners.filter(fn => fn !== setShowZoom);
       if (listeners.length === 0 && timer) {
         clearInterval(timer);
         timer = null;
-        currentIdx = 0;
+        current = false;
       }
     };
-  }, [imageCount]);
+  }, [hasZoom]);
 
-  return imgIdx;
+  return showZoom;
 }
