@@ -135,32 +135,28 @@
   100% { transform: translateX(-50%); }
 }
 
-/* Hero logo glow breathing effect */
+/* ── Hero carousel animation ── */
+
 @keyframes logoGlow {
-  0%   { opacity: 0.12; filter: drop-shadow(0 0 0px #cddc39); }
-  100% { opacity: 0.55; filter: drop-shadow(0 0 18px #cddc39) drop-shadow(0 0 35px rgba(205,220,57,0.4)); }
+  0%   { opacity: 0.08; filter: drop-shadow(0 0 0px #cddc39); }
+  100% { opacity: 0.5;  filter: drop-shadow(0 0 14px #cddc39) drop-shadow(0 0 28px rgba(205,220,57,0.35)); }
 }
 
-/* Glass card slide in from left */
 @keyframes slideInLeft {
   from { transform: translateX(-110%); }
   to   { transform: translateX(0); }
 }
-
-/* Glass card slide out to left */
 @keyframes slideOutLeft {
   from { transform: translateX(0); }
   to   { transform: translateX(-110%); }
 }
-
-@keyframes slideInFromRight {
-  from { transform: translateX(110%); opacity: 1; }
-  to   { transform: translateX(0); opacity: 1; }
+@keyframes slideInRight {
+  from { transform: translateX(110%); }
+  to   { transform: translateX(0); }
 }
-
-@keyframes slideOutToRight {
-  from { transform: translateX(0); opacity: 1; }
-  to   { transform: translateX(110%); opacity: 1; }
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to   { transform: translateX(110%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

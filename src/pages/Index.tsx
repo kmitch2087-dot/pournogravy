@@ -37,6 +37,7 @@ const Index = () => {
   const [glassVisible, setGlassVisible] = useState(false);
   const [logoGlowing, setLogoGlowing] = useState(true);
   const [slideVisible, setSlideVisible] = useState(false);
+  const slidePhase = useRef<'in' | 'out' | 'hidden'>('hidden');
 
   // Fetch products from the most recent active/scheduled merch drop.
   const { data: dropProductRows } = useQuery({
@@ -117,44 +118,45 @@ const Index = () => {
       setGlassVisible(true);
       setSlideVisible(true);
       setLogoGlowing(false);
+      slidePhase.current = 'in';
       return;
     }
 
-    const SLIDE_IN_DURATION  = 1000;
-    const HOLD_DURATION      = 5000;
-    const GAP_DURATION       = 3000;
+    const HOLD = 5000;
+    const GAP  = 3000;
 
-    let cycleTimer: ReturnType<typeof setTimeout>;
+    let t1: ReturnType<typeof setTimeout>;
+    let t2: ReturnType<typeof setTimeout>;
+    let t3: ReturnType<typeof setTimeout>;
 
     function runCycle() {
-      setLogoGlowing(true);
       setGlassVisible(false);
       setSlideVisible(false);
+      setLogoGlowing(true);
+      slidePhase.current = 'hidden';
 
-      cycleTimer = setTimeout(() => {
+      t1 = setTimeout(() => {
         setLogoGlowing(false);
         setGlassVisible(true);
         setSlideVisible(true);
+        slidePhase.current = 'in';
 
-        cycleTimer = setTimeout(() => {
+        t2 = setTimeout(() => {
           setGlassVisible(false);
           setSlideVisible(false);
           setLogoGlowing(true);
+          slidePhase.current = 'out';
 
-          cycleTimer = setTimeout(() => {
-            setHeroIndex(prev => (prev + 1) % totalSlides);
+          t3 = setTimeout(() => {
+            setHeroIndex((prev: number) => (prev + 1) % totalSlides);
             runCycle();
-          }, GAP_DURATION);
-
-        }, HOLD_DURATION);
-      }, SLIDE_IN_DURATION);
+          }, GAP);
+        }, HOLD);
+      }, GAP);
     }
 
-    cycleTimer = setTimeout(() => {
-      runCycle();
-    }, 1500);
-
-    return () => clearTimeout(cycleTimer);
+    t1 = setTimeout(runCycle, 1500);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [heroPaused, totalSlides]);
 
   const handleDotClick = (i: number) => {
@@ -195,7 +197,12 @@ const Index = () => {
           <img
             src="/hero-bg-transparent.png"
             alt=""
-            className={`w-full h-full object-contain object-center transition-none ${logoGlowing ? '[animation:logoGlow_1.5s_ease-in-out_infinite_alternate]' : 'opacity-[0.12]'}`}
+            className={[
+              'w-full h-full object-contain object-center',
+              logoGlowing
+                ? '[animation:logoGlow_1.8s_ease-in-out_infinite_alternate]'
+                : 'opacity-[0.08]',
+            ].join(' ')}
             loading="eager"
             decoding="async"
           />
@@ -203,12 +210,16 @@ const Index = () => {
 
         {/* Glass headline — mobile: stacks below image (order-2, no glass card); desktop: absolute top-left overlay */}
         <div
-          className={`relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[320px] lg:max-w-[360px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-7 md:py-6 z-20 transition-none
-            ${glassVisible
-              ? '[animation:slideInLeft_1s_ease_forwards]'
-              : '[animation:slideOutLeft_1s_ease_forwards]'
-            }`}
-          style={{ transform: glassVisible ? undefined : 'translateX(-110%)' }}
+          className={[
+            'relative order-2 w-full px-4 py-4',
+            'md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[320px] lg:max-w-[360px]',
+            'md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-7 md:py-6 z-20',
+            glassVisible
+              ? '[animation:slideInLeft_1s_cubic-bezier(0.25,0.46,0.45,0.94)_forwards]'
+              : slidePhase.current === 'out'
+                ? '[animation:slideOutLeft_1s_cubic-bezier(0.55,0,1,0.45)_forwards]'
+                : '-translate-x-[110%]',
+          ].join(' ')}
         >
           <h1 className="font-display text-lg sm:text-xl md:text-2xl lg:text-3xl leading-[1] tracking-wider mb-0 text-white md:text-primary-foreground">
             MILDLY OFFENSIVE<br />
@@ -233,13 +244,16 @@ const Index = () => {
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 transition-none ${
-                active && slideVisible
-                  ? 'opacity-100 [animation:slideInFromRight_1s_ease_forwards]'
-                  : active && !slideVisible
-                  ? 'opacity-100 [animation:slideOutToRight_1s_ease_forwards]'
-                  : 'opacity-0 translate-x-full pointer-events-none'
-              }`}
+              className={[
+                'absolute inset-0',
+                active
+                  ? slideVisible
+                    ? '[animation:slideInRight_1s_cubic-bezier(0.25,0.46,0.45,0.94)_forwards]'
+                    : slidePhase.current === 'out'
+                      ? '[animation:slideOutRight_1s_cubic-bezier(0.55,0,1,0.45)_forwards]'
+                      : 'translate-x-[110%] opacity-0'
+                  : 'translate-x-[110%] opacity-0 pointer-events-none',
+              ].join(' ')}
               role="group"
               aria-roledescription="slide"
               aria-label={`${slideIdx + 1} of ${totalSlides}: ${product.name}`}
@@ -291,18 +305,9 @@ const Index = () => {
               <div className="hidden md:block absolute inset-0 z-10">
                 {/* Polaroid — truly centered on the full viewport */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-                    animate={
-                      active
-                        ? { opacity: 1, scale: 1, rotate: -2 }
-                        : { opacity: 0, scale: 0.9, rotate: -3 }
-                    }
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="relative w-[320px] lg:w-[390px] xl:w-[440px]"
-                  >
+                  <div className="relative w-[320px] lg:w-[390px] xl:w-[440px] -rotate-2">
                     <div
-                      className="relative aspect-square bg-muted border-[12px] border-white/90 shadow-2xl overflow-hidden"
+                      className="relative aspect-square bg-black border-[6px] border-white/80 shadow-2xl overflow-hidden"
                       style={{
                         boxShadow:
                           "0 20px 60px rgba(0,0,0,0.5), 0 0 60px rgba(253,224,71,0.15)",
@@ -326,14 +331,11 @@ const Index = () => {
                         {product.badge}
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 </div>
 
                 {/* Copy — absolutely positioned right; photo centering is independent */}
-                <motion.div
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-                  transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+                <div
                   className="absolute right-0 top-0 bottom-0 w-[280px] lg:w-[320px] xl:w-[360px] flex items-center pr-8 lg:pr-10 xl:pr-14 text-white"
                 >
                   <div>
@@ -362,7 +364,7 @@ const Index = () => {
                       </Link>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           );
