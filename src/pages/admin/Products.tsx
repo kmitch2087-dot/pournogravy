@@ -24,7 +24,6 @@ interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
   featured: boolean; category: string | null;
-  stripe_product_id: string | null; stripe_price_id: string | null;
 }
 
 type MergedProduct = {
@@ -39,8 +38,6 @@ type MergedProduct = {
   isStatic: boolean;       // came from products.ts
   inDrop: boolean;
   category: string;        // 'apparel' | 'accessories'
-  stripeProductId: string | null;
-  stripePriceId: string | null;
 };
 
 const Products = () => {
@@ -56,7 +53,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, stripe_product_id, stripe_price_id")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbProduct[];
@@ -96,8 +93,6 @@ const Products = () => {
         isStatic: false,
         inDrop: dropIdSet.has(p.id),
         category: p.category ?? "apparel",
-        stripeProductId: p.stripe_product_id,
-        stripePriceId: p.stripe_price_id,
       });
     }
 
@@ -116,8 +111,6 @@ const Products = () => {
           isStatic: true,
           inDrop: false,
           category: "apparel",
-          stripeProductId: null,
-          stripePriceId: null,
         });
       }
     }
@@ -214,7 +207,6 @@ const Products = () => {
 
   const getLiveState = (p: MergedProduct): "live" | "listed" | "draft" => {
     if (!p.published) return "draft";
-    if (p.stripeProductId && p.stripePriceId) return "live";
     return "listed";
   };
 
