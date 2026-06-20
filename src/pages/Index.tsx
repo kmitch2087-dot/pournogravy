@@ -464,17 +464,17 @@ const Index = () => {
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((q, i) => (
             <span
               key={i}
-              className="mx-8 inline-flex items-center gap-2 font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
+              className="inline-flex items-center font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
               style={{ textShadow: '0 0 8px rgba(253,224,71,0.8), 0 0 20px rgba(253,224,71,0.4)' }}
             >
+              {q}
               <img
                 src="/karen_ticker.png"
                 alt=""
                 aria-hidden="true"
-                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle"
+                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-8"
                 style={{ imageRendering: 'crisp-edges' }}
               />
-              {q}
             </span>
           ))}
         </div>
