@@ -24,8 +24,6 @@ const HERO_PRODUCT_IDS = [
   "service-bartender-do-not-approach-tee",
 ];
 
-const HERO_SLIDE_DURATION_MS = 5000;
-
 const Index = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -36,9 +34,9 @@ const Index = () => {
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
   const heroPauseResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 1.5s hold before the glass + carousel appear, so the logo background reads first.
-  const [introHoldElapsed, setIntroHoldElapsed] = useState(false);
-  const INTRO_HOLD_MS = 800;
+  const [glassVisible, setGlassVisible] = useState(false);
+  const [logoGlowing, setLogoGlowing] = useState(true);
+  const [slideVisible, setSlideVisible] = useState(false);
 
   // Fetch products from the most recent active/scheduled merch drop.
   const { data: dropProductRows } = useQuery({
@@ -111,26 +109,53 @@ const Index = () => {
     return () => clearInterval(id);
   }, []);
 
-  // First-load intro hold: keep the glass hidden for 3s after mount.
+  // Hero slide orchestrator — synchronized slide-in/slide-out with logo glow gap.
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setIntroHoldElapsed(true);
+    if (heroPaused) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setGlassVisible(true);
+      setSlideVisible(true);
+      setLogoGlowing(false);
       return;
     }
-    const id = setTimeout(() => setIntroHoldElapsed(true), INTRO_HOLD_MS);
-    return () => clearTimeout(id);
-  }, []);
 
-  // Hero auto-rotation.
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || heroPaused || totalSlides <= 1) return;
-    const id = setTimeout(() => {
-      setHeroIndex((i) => (i + 1) % totalSlides);
-    }, HERO_SLIDE_DURATION_MS);
-    return () => clearTimeout(id);
-  }, [heroIndex, heroPaused, totalSlides]);
+    const SLIDE_IN_DURATION  = 1000;
+    const HOLD_DURATION      = 5000;
+    const GAP_DURATION       = 3000;
+
+    let cycleTimer: ReturnType<typeof setTimeout>;
+
+    function runCycle() {
+      setLogoGlowing(true);
+      setGlassVisible(false);
+      setSlideVisible(false);
+
+      cycleTimer = setTimeout(() => {
+        setLogoGlowing(false);
+        setGlassVisible(true);
+        setSlideVisible(true);
+
+        cycleTimer = setTimeout(() => {
+          setGlassVisible(false);
+          setSlideVisible(false);
+          setLogoGlowing(true);
+
+          cycleTimer = setTimeout(() => {
+            setHeroIndex(prev => (prev + 1) % totalSlides);
+            runCycle();
+          }, GAP_DURATION);
+
+        }, HOLD_DURATION);
+      }, SLIDE_IN_DURATION);
+    }
+
+    cycleTimer = setTimeout(() => {
+      runCycle();
+    }, 1500);
+
+    return () => clearTimeout(cycleTimer);
+  }, [heroPaused, totalSlides]);
 
   const handleDotClick = (i: number) => {
     setHeroIndex(i);
@@ -170,18 +195,20 @@ const Index = () => {
           <img
             src="/hero-bg.jpg"
             alt=""
-            className="w-full h-full object-contain object-center opacity-20 md:opacity-25"
+            className={`w-full h-full object-contain object-center transition-none ${logoGlowing ? '[animation:logoGlow_1.5s_ease-in-out_infinite_alternate]' : 'opacity-[0.12]'}`}
             loading="eager"
             decoding="async"
           />
         </div>
 
         {/* Glass headline — mobile: stacks below image (order-2, no glass card); desktop: absolute top-left overlay */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.4, rotate: -18 }}
-          animate={introHoldElapsed ? { opacity: 1, scale: 1, rotate: -6 } : { opacity: 0, scale: 0.4, rotate: -18 }}
-          transition={{ type: "spring", stiffness: 380, damping: 14, mass: 0.9, delay: introHoldElapsed ? 0.4 : 0 }}
-          className="relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[320px] lg:max-w-[360px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-7 md:py-6 z-20"
+        <div
+          className={`relative order-2 w-full px-4 py-4 md:absolute md:top-6 md:left-6 md:w-auto md:max-w-[320px] lg:max-w-[360px] md:bg-primary/20 md:backdrop-blur-md md:rounded-2xl md:px-7 md:py-6 z-20 transition-none
+            ${glassVisible
+              ? '[animation:slideInLeft_1s_ease_forwards]'
+              : '[animation:slideOutLeft_1s_ease_forwards]'
+            }`}
+          style={{ transform: glassVisible ? undefined : 'translateX(-110%)' }}
         >
           <h1 className="font-display text-lg sm:text-xl md:text-2xl lg:text-3xl leading-[1] tracking-wider mb-0 text-white md:text-primary-foreground">
             MILDLY OFFENSIVE<br />
@@ -190,32 +217,28 @@ const Index = () => {
             <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.8)] drop-shadow-[0_0_40px_rgba(255,23,68,0.4)]">MILDLY</span><br />
             OFFENSIVE BARTENDER.
           </h1>
-          <p className="font-marker text-sm md:text-base text-white mt-2 tracking-wider italic">
-            <RichText html={getValue("home", "hero", "subheading", "Use your sleeve to give them a piece of your mind.")} />
-          </p>
           {/* CTA button: desktop only — mobile CTA lives in its own section below */}
           <Link to="/shop" className="mt-3 hidden md:inline-block">
             <Button className="h-10 px-6 font-display text-sm tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
               {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
             </Button>
           </Link>
-        </motion.div>
+        </div>
 
-        {/* ---- Product slides — fade in together with the glass after hold ---- */}
-        <motion.div
-          className="relative order-1 h-[55vw] md:h-auto md:absolute md:inset-0"
-          initial={{ opacity: 0 }}
-          animate={introHoldElapsed ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-        >
+        {/* ---- Product slides ---- */}
+        <div className="relative order-1 h-[55vw] md:h-auto md:absolute md:inset-0">
         {heroSlides.map((slide, slideIdx) => {
           const active = heroIndex === slideIdx;
           const { product } = slide;
           return (
             <div
               key={`product-${slideIdx}-${product.id}`}
-              className={`absolute inset-0 transition-opacity duration-700 ${
-                active ? "opacity-100" : "opacity-0 pointer-events-none"
+              className={`absolute inset-0 transition-none ${
+                active && slideVisible
+                  ? 'opacity-100 [animation:slideInFromRight_1s_ease_forwards]'
+                  : active && !slideVisible
+                  ? 'opacity-100 [animation:slideOutToRight_1s_ease_forwards]'
+                  : 'opacity-0 translate-x-full pointer-events-none'
               }`}
               role="group"
               aria-roledescription="slide"
@@ -345,15 +368,10 @@ const Index = () => {
           );
         })}
 
-        </motion.div>
+        </div>
 
         {/* Mobile CTA buttons — primary (shop) + secondary (current product) — hidden on desktop */}
-        <motion.div
-          className="order-3 flex flex-col gap-3 px-4 pb-4 pt-2 md:hidden"
-          initial={{ opacity: 0 }}
-          animate={introHoldElapsed ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
+        <div className="order-3 flex flex-col gap-3 px-4 pb-4 pt-2 md:hidden">
           <Link to="/shop" className="w-full">
             <Button className="w-full h-11 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
               {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
@@ -369,7 +387,7 @@ const Index = () => {
               </Button>
             </Link>
           )}
-        </motion.div>
+        </div>
 
         {/* Dot indicators — mobile: in-flow below CTAs; desktop: absolute bottom center */}
         <div
