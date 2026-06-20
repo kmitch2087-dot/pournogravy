@@ -35,9 +35,9 @@ const Index = () => {
   const [heroPaused, setHeroPaused] = useState(false);
   const heroPauseResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [glassVisible, setGlassVisible] = useState(false);
-  const [logoGlowing, setLogoGlowing] = useState(true);
   const [slideVisible, setSlideVisible] = useState(false);
   const slidePhase = useRef<'in' | 'out' | 'hidden'>('hidden');
+  const logoRef = useRef<HTMLImageElement>(null);
 
   // Fetch products from the most recent active/scheduled merch drop.
   const { data: dropProductRows } = useQuery({
@@ -110,53 +110,88 @@ const Index = () => {
     return () => clearInterval(id);
   }, []);
 
-  // Hero slide orchestrator — synchronized slide-in/slide-out with logo glow gap.
+  // Hero slide orchestrator — inline style transitions on logoRef, no CSS keyframes.
   useEffect(() => {
     if (heroPaused) return;
+
+    const setLogoOpacity = (opacity: number, glowStrength: number, duration: number) => {
+      if (!logoRef.current) return;
+      logoRef.current.style.transition = `opacity ${duration}ms ease-in-out, filter ${duration}ms ease-in-out`;
+      logoRef.current.style.opacity = String(opacity);
+      logoRef.current.style.filter = glowStrength > 0
+        ? `drop-shadow(0 0 ${glowStrength}px #cddc39) drop-shadow(0 0 ${glowStrength * 2}px rgba(205,220,57,0.35))`
+        : 'none';
+    };
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setGlassVisible(true);
       setSlideVisible(true);
-      setLogoGlowing(false);
+      setLogoOpacity(0.08, 0, 0);
       slidePhase.current = 'in';
       return;
     }
 
-    const HOLD = 5000;
-    const GAP  = 3000;
+    const HOLD       = 5000;
+    const TRANSITION = 1000;
+    const GAP        = 3000;
 
     let t1: ReturnType<typeof setTimeout>;
     let t2: ReturnType<typeof setTimeout>;
     let t3: ReturnType<typeof setTimeout>;
+    let t4: ReturnType<typeof setTimeout>;
 
-    function runCycle() {
+    function cycle() {
+      // Slides exit + logo rises (1s)
       setGlassVisible(false);
       setSlideVisible(false);
-      setLogoGlowing(true);
-      slidePhase.current = 'hidden';
+      slidePhase.current = 'out';
+      setLogoOpacity(0.5, 14, TRANSITION);
 
+      // After slide-out: hold logo at peak for first half of gap
       t1 = setTimeout(() => {
-        setLogoGlowing(false);
-        setGlassVisible(true);
-        setSlideVisible(true);
-        slidePhase.current = 'in';
+        slidePhase.current = 'hidden';
 
+        // Mid-gap: logo descends over second half of gap
         t2 = setTimeout(() => {
-          setGlassVisible(false);
-          setSlideVisible(false);
-          setLogoGlowing(true);
-          slidePhase.current = 'out';
+          setLogoOpacity(0.08, 0, TRANSITION);
+          setHeroIndex((prev: number) => (prev + 1) % totalSlides);
 
+          // After descent: slides enter
           t3 = setTimeout(() => {
-            setHeroIndex((prev: number) => (prev + 1) % totalSlides);
-            runCycle();
-          }, GAP);
-        }, HOLD);
-      }, GAP);
+            setGlassVisible(true);
+            setSlideVisible(true);
+            slidePhase.current = 'in';
+
+            // Hold, then repeat
+            t4 = setTimeout(cycle, HOLD);
+          }, TRANSITION);
+        }, GAP / 2);
+      }, TRANSITION);
     }
 
-    t1 = setTimeout(runCycle, 1500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // Initial load: dim logo, brief glow peek, then first slide in
+    setLogoOpacity(0.08, 0, 0);
+    t1 = setTimeout(() => {
+      setLogoOpacity(0.5, 14, 800);
+      t2 = setTimeout(() => {
+        setLogoOpacity(0.08, 0, 800);
+        t3 = setTimeout(() => {
+          setGlassVisible(true);
+          setSlideVisible(true);
+          slidePhase.current = 'in';
+          t4 = setTimeout(cycle, HOLD);
+        }, 900);
+      }, 900);
+    }, 300);
+
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      if (logoRef.current) {
+        logoRef.current.style.transition = '';
+        logoRef.current.style.opacity = '';
+        logoRef.current.style.filter = '';
+      }
+    };
   }, [heroPaused, totalSlides]);
 
   const handleDotClick = (i: number) => {
@@ -195,14 +230,11 @@ const Index = () => {
         {/* Persistent dimmed logo background */}
         <div className="absolute inset-0 pointer-events-none">
           <img
+            ref={logoRef}
             src="/hero-bg-transparent.png"
             alt=""
-            className={[
-              'w-full h-full object-contain object-center',
-              logoGlowing
-                ? '[animation:logoGlow_3s_ease-in-out_forwards]'
-                : '[animation:logoFadeOut_1s_ease-in-out_forwards]',
-            ].join(' ')}
+            className="w-full h-full object-contain object-center"
+            style={{ opacity: 0.08, filter: 'none' }}
             loading="eager"
             decoding="async"
           />
