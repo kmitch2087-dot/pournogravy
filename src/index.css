@@ -137,9 +137,17 @@
 
 /* ── Hero carousel animation ── */
 
+/* Single breath: peaks bright, then fades back dim before slides return */
 @keyframes logoGlow {
-  0%   { opacity: 0.08; filter: drop-shadow(0 0 0px #cddc39); }
-  100% { opacity: 0.5;  filter: drop-shadow(0 0 14px #cddc39) drop-shadow(0 0 28px rgba(205,220,57,0.35)); }
+  0%   { opacity: 0.5;  filter: drop-shadow(0 0 14px #cddc39) drop-shadow(0 0 28px rgba(205,220,57,0.35)); }
+  45%  { opacity: 0.5;  filter: drop-shadow(0 0 14px #cddc39) drop-shadow(0 0 28px rgba(205,220,57,0.35)); }
+  75%  { opacity: 0.08; filter: drop-shadow(0 0 0px #cddc39); }
+  100% { opacity: 0.08; filter: drop-shadow(0 0 0px #cddc39); }
+}
+
+@keyframes logoFadeOut {
+  0%   { opacity: 0.5;  filter: drop-shadow(0 0 14px #cddc39) drop-shadow(0 0 28px rgba(205,220,57,0.35)); }
+  100% { opacity: 0.08; filter: drop-shadow(0 0 0px #cddc39); }
 }
 
 @keyframes slideInLeft {

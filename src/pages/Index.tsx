@@ -200,8 +200,8 @@ const Index = () => {
             className={[
               'w-full h-full object-contain object-center',
               logoGlowing
-                ? '[animation:logoGlow_1.8s_ease-in-out_infinite_alternate]'
-                : 'opacity-[0.08]',
+                ? '[animation:logoGlow_3s_ease-in-out_forwards]'
+                : '[animation:logoFadeOut_1s_ease-in-out_forwards]',
             ].join(' ')}
             loading="eager"
             decoding="async"
