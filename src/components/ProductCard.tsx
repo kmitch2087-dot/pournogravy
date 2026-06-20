@@ -221,7 +221,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                   <img
                     src={zoomSrc}
                     alt={`${product.name} graphic detail`}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: showZoom ? 1 : 0, transition: 'opacity 0.8s ease-in-out' }}
                     loading="lazy"
                   />
