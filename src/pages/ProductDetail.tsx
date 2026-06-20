@@ -1,4 +1,5 @@
 import SEO from "@/components/SEO";
+import { ShareButton } from "@/components/ShareButton";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { RichText } from "@/components/RichText";
 import { type ProductVariant, type ProductColor } from "@/data/products";
@@ -645,6 +646,17 @@ const ProductDetail = () => {
                   <RotateCcw className="h-4 w-4 text-[#fde047]" />
                   <span>30-day returns</span>
                 </div>
+              </div>
+
+              {/* Share */}
+              <div className="pt-2 border-t border-border/30">
+                <ShareButton
+                  productName={product.name}
+                  productUrl={`/product/${product.id}`}
+                  productImage={product.images?.[0]
+                    ? `https://pournogravy.com${product.images[0]}`
+                    : undefined}
+                />
               </div>
             </div>
           </motion.div>

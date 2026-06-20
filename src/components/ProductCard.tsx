@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useRef } from "react";
 import { useCardImageFlip } from "@/hooks/useCardImageFlip";
+import { ShareButton } from "@/components/ShareButton";
 
 // Module-level no-repeat state — persists across renders, resets on page reload
 let _lastCartPhrase = '';
@@ -324,11 +325,19 @@ const ProductCard = ({ product }: { product: Product }) => {
           </Link>
         </div>
 
-        {/* ── FOOTER NOTE ── */}
-        <div className="relative z-10 px-3 pb-2 text-center">
-          <span className="text-[8px] text-gray-400 italic leading-tight block">
+        {/* ── FOOTER NOTE + SHARE ── */}
+        <div className="relative z-10 px-3 pb-2 flex items-end justify-between">
+          <span className="text-[8px] text-gray-400 italic leading-tight">
             {footerNote}
           </span>
+          <ShareButton
+            productName={product.name}
+            productUrl={`/product/${product.id}`}
+            productImage={cardImages[0]
+              ? `https://pournogravy.com${cardImages[0]}`
+              : undefined}
+            className="shrink-0 ml-2"
+          />
         </div>
       </div>
     </motion.div>
