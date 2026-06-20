@@ -259,8 +259,6 @@ const Index = () => {
               aria-label={`${slideIdx + 1} of ${totalSlides}: ${product.name}`}
               aria-hidden={!active}
             >
-              {/* Semi-transparent backdrop so logo bleeds through slightly */}
-              <div className="absolute inset-0 bg-black/75" />
               <div
                 aria-hidden="true"
                 className="absolute inset-0 opacity-70"
