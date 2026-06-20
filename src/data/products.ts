@@ -75,18 +75,18 @@ export const products: Product[] = [
     description: "Let your guests know that you’re the property value of this establishment and your coworkers are only here as supporting cast.",
     humor: "I'm here.  All Rise!",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.png",
+    image: "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.webp",
     images: [
-      "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.png",
-      "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.png",
+      "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.webp",
+      "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.png",
-          "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.png",
+          "/products/im-your-favorite-bartenders-favorite-bartender-tee-0.webp",
+          "/products/im-your-favorite-bartenders-favorite-bartender-tee-1.webp",
         ],
       },
     ],
@@ -124,18 +124,20 @@ export const products: Product[] = [
     description: "However, be careful when tapping.  It might spray!",
     humor: "Don't Make it Weird.  It's just a Keg.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/i-would-totally-tap-that-keg-tee-0.png",
+    image: "/products/i-would-totally-tap-that-keg-tee-0.webp",
     images: [
-      "/products/i-would-totally-tap-that-keg-tee-0.png",
-      "/products/i-would-totally-tap-that-keg-tee-1.jpg",
+      "/products/i-would-totally-tap-that-keg-tee-0.webp",
+      "/products/i-would-totally-tap-that-keg-tee-1.webp",
+      "/keg_graphic_zoom.png",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/i-would-totally-tap-that-keg-tee-0.png",
-          "/products/i-would-totally-tap-that-keg-tee-1.jpg",
+          "/products/i-would-totally-tap-that-keg-tee-0.webp",
+          "/products/i-would-totally-tap-that-keg-tee-1.webp",
+          "/keg_graphic_zoom.png",
         ],
       },
     ],
@@ -176,18 +178,18 @@ export const products: Product[] = [
     description: "Karens create Karens.  And we need to put a stop to it!  Sure, most guests witnessing a Karen's entitled rant will feel bad for you and roll their eyes.  But there might be someone who notices that if we bend to the demands, they too could use similar tactics to get what they want.  Thus, giving birth to an up-and-coming Karen and strengthening their movement.",
     humor: "It's Not Just a Tagline.  It's a Warning.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.png",
+    image: "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.webp",
     images: [
-      "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.png",
-      "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.png",
+      "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.webp",
+      "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.png",
-          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.png",
+          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-0.webp",
+          "/products/saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee-1.webp",
         ],
       },
     ],
@@ -240,18 +242,18 @@ export const products: Product[] = [
     description: "Rep the brand that's repping you!  For the bartender who stands up to any Karen regardless of the situation.  Stand up for yourself and your fellow bartender by pointing out Karen's social failures in such an embarrassing way that they are silenced before the thought of asking for a manager hits their signature haircut.",
     humor: "It's my logo!  But It's Your Logo too",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.png",
+    image: "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.webp",
     images: [
-      "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.png",
-      "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.png",
+      "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.webp",
+      "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.png",
-          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.png",
+          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-0.webp",
+          "/products/pournogravy-og-tee-the-official-uniform-for-bartender-legends-1.webp",
         ],
       },
     ],
@@ -284,18 +286,20 @@ export const products: Product[] = [
     description: "This design signifies that you are part of the movement to end the Post-Pandemic Karen Entitlement Act.  Sporting this shirt behind the bar is a subtle invitation to your arch nemesis to climb down from their self-declared entitlement ladder and join the rest of the normals.",
     humor: "Time to Put Karen in the Corner and Have Her Think About What She Said.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/last-call-for-karen-tee-0.png",
+    image: "/products/last-call-for-karen-tee-0.webp",
     images: [
-      "/products/last-call-for-karen-tee-0.png",
-      "/products/last-call-for-karen-tee-1.png",
+      "/products/last-call-for-karen-tee-0.webp",
+      "/products/last-call-for-karen-tee-1.webp",
+      "/karen_graphic_zoom.png",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/last-call-for-karen-tee-0.png",
-          "/products/last-call-for-karen-tee-1.png",
+          "/products/last-call-for-karen-tee-0.webp",
+          "/products/last-call-for-karen-tee-1.webp",
+          "/karen_graphic_zoom.png",
         ],
       },
     ],
@@ -330,18 +334,18 @@ export const products: Product[] = [
     subheading: "\"Excuse me?!  Can I Order From You?!\"  —  \"New Phone.  Who's this?\"",
     humor: "",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/service-bartender-do-not-approach-tee-0.png",
+    image: "/products/service-bartender-do-not-approach-tee-0.webp",
     images: [
-      "/products/service-bartender-do-not-approach-tee-0.png",
-      "/products/service-bartender-do-not-approach-tee-1.png",
+      "/products/service-bartender-do-not-approach-tee-0.webp",
+      "/products/service-bartender-do-not-approach-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/service-bartender-do-not-approach-tee-0.png",
-          "/products/service-bartender-do-not-approach-tee-1.png",
+          "/products/service-bartender-do-not-approach-tee-0.webp",
+          "/products/service-bartender-do-not-approach-tee-1.webp",
         ],
       },
     ],
@@ -384,10 +388,10 @@ export const products: Product[] = [
     description: "They come in and confuse us for a higher power.  What they don't realize yet is that we are going hold all confessions over their head for a larger tip.",
     humor: "I'll Have a Sin and Tonic Please.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/atheist-tee-0.png",
+    image: "/products/atheist-tee-0.webp",
     images: [
-      "/products/atheist-tee-0.png",
-      "/products/atheist-tee-1.png",
+      "/products/atheist-tee-0.webp",
+      "/products/atheist-tee-1.webp",
     ],
     colors: [
       {
@@ -406,8 +410,8 @@ export const products: Product[] = [
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/atheist-tee-0.png",
-          "/products/atheist-tee-1.png",
+          "/products/atheist-tee-0.webp",
+          "/products/atheist-tee-1.webp",
         ],
       },
     ],
@@ -430,18 +434,18 @@ export const products: Product[] = [
     description: "Prefer your divinity without the imagery?  Same message, cleaner design.  Still holds all your confessions over your head until you tip accordingly.",
     humor: "I'll Have a Sin and Tonic Please.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/atheist-with-text-only-0.png",
+    image: "/products/atheist-with-text-only-0.webp",
     images: [
-      "/products/atheist-with-text-only-0.png",
-      "/products/atheist-with-text-only-1.png",
+      "/products/atheist-with-text-only-0.webp",
+      "/products/atheist-with-text-only-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/atheist-with-text-only-0.png",
-          "/products/atheist-with-text-only-1.png",
+          "/products/atheist-with-text-only-0.webp",
+          "/products/atheist-with-text-only-1.webp",
         ],
       },
     ],
@@ -476,10 +480,10 @@ export const products: Product[] = [
     description: "This shirt is for bartenders who put the \"B\" in \"subtle\".  And should continue to do so by yelling \"cheers\" to our favorite Karens and remind them that they're number 1!",
     humor: "Wear It as a Badge of Honor",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/the-finger-tee-0.png",
+    image: "/products/the-finger-tee-0.webp",
     images: [
-      "/products/the-finger-tee-0.png",
-      "/products/the-finger-tee-1.png",
+      "/products/the-finger-tee-0.webp",
+      "/products/the-finger-tee-1.webp",
     ],
     colors: [
       {
@@ -492,8 +496,8 @@ export const products: Product[] = [
         label: "White",
         hex: "#ffffff",
         images: [
-          "/products/the-finger-tee-2.png",
-          "/products/the-finger-tee-3.png",
+          "/products/the-finger-tee-2.webp",
+          "/products/the-finger-tee-3.webp",
         ],
       },
     ],
@@ -502,8 +506,8 @@ export const products: Product[] = [
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/the-finger-tee-0.png",
-          "/products/the-finger-tee-1.png",
+          "/products/the-finger-tee-0.webp",
+          "/products/the-finger-tee-1.webp",
         ],
       },
     ],
@@ -524,10 +528,10 @@ export const products: Product[] = [
     description: "This is for the bartender who is stuck under a manager that has never tend bar before and doesn't have the know how to count your pours.  This is also for the bartender that has experienced management but doesn't give a damn if they get caught taking care of their high tipping regular regardless of the risk is.  This is for the bartender who pours in a little love.",
     humor: "Heavy Is the Tip That Pours the Booze!",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/pourn-hand-tee-0.png",
+    image: "/products/pourn-hand-tee-0.webp",
     images: [
-      "/products/pourn-hand-tee-0.png",
-      "/products/pourn-hand-tee-1.png",
+      "/products/pourn-hand-tee-0.webp",
+      "/products/pourn-hand-tee-1.webp",
     ],
     colors: [
       {
@@ -546,8 +550,8 @@ export const products: Product[] = [
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/pourn-hand-tee-0.png",
-          "/products/pourn-hand-tee-1.png",
+          "/products/pourn-hand-tee-0.webp",
+          "/products/pourn-hand-tee-1.webp",
         ],
       },
     ],
@@ -576,10 +580,10 @@ export const products: Product[] = [
     description: "Which of history's oldest professions is better? It might be a 'trick' question. There are a lot of similarities, just different outcomes.",
     humor: "If you don't get it, then this design is not for you.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/second-most-fun-job-tee-0.png",
+    image: "/products/second-most-fun-job-tee-0.webp",
     images: [
-      "/products/second-most-fun-job-tee-0.png",
-      "/products/second-most-fun-job-tee-1.png",
+      "/products/second-most-fun-job-tee-0.webp",
+      "/products/second-most-fun-job-tee-1.webp",
     ],
     colors: [
       {
@@ -598,8 +602,8 @@ export const products: Product[] = [
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/second-most-fun-job-tee-0.png",
-          "/products/second-most-fun-job-tee-1.png",
+          "/products/second-most-fun-job-tee-0.webp",
+          "/products/second-most-fun-job-tee-1.webp",
         ],
       },
     ],
@@ -634,10 +638,10 @@ export const products: Product[] = [
     description: "This design is for the bartender that loves the job but hates the public.",
     humor: "Jekyll and Hyde",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/introverted-bartender-tee-0.jpg",
+    image: "/products/introverted-bartender-tee-0.webp",
     images: [
-      "/products/introverted-bartender-tee-0.jpg",
-      "/products/introverted-bartender-tee-1.png",
+      "/products/introverted-bartender-tee-0.webp",
+      "/products/introverted-bartender-tee-1.webp",
     ],
     colors: [
       {
@@ -656,8 +660,8 @@ export const products: Product[] = [
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/introverted-bartender-tee-0.jpg",
-          "/products/introverted-bartender-tee-1.png",
+          "/products/introverted-bartender-tee-0.webp",
+          "/products/introverted-bartender-tee-1.webp",
         ],
       },
     ],
@@ -684,18 +688,18 @@ export const products: Product[] = [
     description: "Same ancient debate, now in text-only format for those who want the joke without having to explain the graphic.  You know what it means.  They probably do too.",
     humor: "If you don't get it, then this design is not for you.",
     sizes: ["S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/legally-fun-tee-text-only-0.png",
+    image: "/products/legally-fun-tee-text-only-0.webp",
     images: [
-      "/products/legally-fun-tee-text-only-0.png",
-      "/products/legally-fun-tee-text-only-1.png",
+      "/products/legally-fun-tee-text-only-0.webp",
+      "/products/legally-fun-tee-text-only-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/legally-fun-tee-text-only-0.png",
-          "/products/legally-fun-tee-text-only-1.png",
+          "/products/legally-fun-tee-text-only-0.webp",
+          "/products/legally-fun-tee-text-only-1.webp",
         ],
       },
     ],
@@ -742,18 +746,18 @@ export const products: Product[] = [
     description: "Let's remind the ones that keep yapping our ears off that although results may vary, they can either pay someone $90/hour, or they can purchase an adult beverage and leave a good tip for a lot less.  If they want our attention, make them pay for it...otherwise tell them that they didn't pay you enough to stand there and listen.",
     humor: "Tipping Is Cheaper Than the Cost of Therapy!",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/tip-your-therapist-tee-0.png",
+    image: "/products/tip-your-therapist-tee-0.webp",
     images: [
-      "/products/tip-your-therapist-tee-0.png",
-      "/products/tip-your-therapist-tee-1.png",
+      "/products/tip-your-therapist-tee-0.webp",
+      "/products/tip-your-therapist-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/tip-your-therapist-tee-0.png",
-          "/products/tip-your-therapist-tee-1.png",
+          "/products/tip-your-therapist-tee-0.webp",
+          "/products/tip-your-therapist-tee-1.webp",
         ],
       },
     ],
@@ -798,18 +802,18 @@ export const products: Product[] = [
     description: "Excuse me!  I don't taste any alcohol in my drink!",
     humor: "Wear This Shirt as a Teaching Moment",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/strn-drink-tee-text-and-image-0.png",
+    image: "/products/strn-drink-tee-text-and-image-0.webp",
     images: [
-      "/products/strn-drink-tee-text-and-image-0.png",
-      "/products/strn-drink-tee-text-and-image-1.png",
+      "/products/strn-drink-tee-text-and-image-0.webp",
+      "/products/strn-drink-tee-text-and-image-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/strn-drink-tee-text-and-image-0.png",
-          "/products/strn-drink-tee-text-and-image-1.png",
+          "/products/strn-drink-tee-text-and-image-0.webp",
+          "/products/strn-drink-tee-text-and-image-1.webp",
         ],
       },
     ],
@@ -861,18 +865,18 @@ export const products: Product[] = [
     description: "Also, if you're one of those freaks that add a splash of OJ to your margarita, you're diabolical and need to go back to work for a TGI Fridays.  Stop being so salty and stubborn and make the drink correctly.  This is not the hill that you should want to die on.  I said what I said!  Oh, and one more thing!  Tell your friends to buy this shirt for Cinco de Mayo! Thanks!",
     humor: "Make Sure to Wash and Wipe your Glass Before Rimming.",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/well-it-ain-t-gonna-lick-itself-tee-0.png",
+    image: "/products/well-it-ain-t-gonna-lick-itself-tee-0.webp",
     images: [
-      "/products/well-it-ain-t-gonna-lick-itself-tee-0.png",
-      "/products/well-it-ain-t-gonna-lick-itself-tee-1.png",
+      "/products/well-it-ain-t-gonna-lick-itself-tee-0.webp",
+      "/products/well-it-ain-t-gonna-lick-itself-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/well-it-ain-t-gonna-lick-itself-tee-0.png",
-          "/products/well-it-ain-t-gonna-lick-itself-tee-1.png",
+          "/products/well-it-ain-t-gonna-lick-itself-tee-0.webp",
+          "/products/well-it-ain-t-gonna-lick-itself-tee-1.webp",
         ],
       },
     ],
@@ -907,18 +911,18 @@ export const products: Product[] = [
     description: "It might not be three of your favorite things, but when united, it becomes one of the most ordered cocktails at any bar.  Let us celebrate this popular libation and raise its awareness with this shirt.",
     humor: "Because Two Vodkas Are Better Than One!",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/tea-toes-and-vodka-please-tee-0.png",
+    image: "/products/tea-toes-and-vodka-please-tee-0.webp",
     images: [
-      "/products/tea-toes-and-vodka-please-tee-0.png",
-      "/products/tea-toes-and-vodka-please-tee-1.png",
+      "/products/tea-toes-and-vodka-please-tee-0.webp",
+      "/products/tea-toes-and-vodka-please-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/tea-toes-and-vodka-please-tee-0.png",
-          "/products/tea-toes-and-vodka-please-tee-1.png",
+          "/products/tea-toes-and-vodka-please-tee-0.webp",
+          "/products/tea-toes-and-vodka-please-tee-1.webp",
         ],
       },
     ],
@@ -949,18 +953,18 @@ export const products: Product[] = [
     description: "Yes, I know it's immature.  But it's also hilarious, so you're welcome!  Even my designer tried talking me out of this while crying from laughter.  I even compromised and placed the design on the back of the shirt so that you can have a normal conversation with someone without them shaking their head at you.   Buy this as a gift for your fellow bartender or give it to your favorite Karen, but please have some self-respect and do not buy it for yourself!",
     humor: "The Shocker!",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/dear-karen-you-stink-tee-0.png",
+    image: "/products/dear-karen-you-stink-tee-0.webp",
     images: [
-      "/products/dear-karen-you-stink-tee-0.png",
-      "/products/dear-karen-you-stink-tee-1.png",
+      "/products/dear-karen-you-stink-tee-0.webp",
+      "/products/dear-karen-you-stink-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/dear-karen-you-stink-tee-0.png",
-          "/products/dear-karen-you-stink-tee-1.png",
+          "/products/dear-karen-you-stink-tee-0.webp",
+          "/products/dear-karen-you-stink-tee-1.webp",
         ],
       },
     ],
@@ -993,18 +997,18 @@ export const products: Product[] = [
     description: "Yes, I know the description below says the same thing as the other shirt with the same message, but some people don't like the graphic/design of the other one.  And since I need to make as much money as I can off of all of you, I am trying to appease those who want the graphic and those who don't.  And yes, I am being lazy by copy/pasting the description below from the shirt with the graphic, but some people might have skipped over the it since they would rather have this design over the other.  Plus, its hard coming up with these BS descriptions for 20+ designs.  So, give me a break, stop being so judgmental, pick which version you want, give me your money and leave me alone.",
     humor: "This Is My Real Job T-shirt",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.png",
+    image: "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.webp",
     images: [
-      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.png",
-      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.png",
+      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.webp",
+      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.png",
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.png",
+          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-0.webp",
+          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only-1.webp",
         ],
       },
     ],
@@ -1050,18 +1054,18 @@ export const products: Product[] = [
     description: "Be a little empathetic when the Karens question your career choice. They come from a place of work envy.   Remember, Karen must work 9-5 for 40 years of her life so that she can spend her last 20 years striving for the lifestyle that we have been living our whole career; having afternoons off, eating good food, and enjoying a few adult beverages on the porch or at our favorite bar.",
     humor: "This Is My Real Job T-shirt",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.png",
+    image: "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.webp",
     images: [
-      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.png",
-      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.png",
+      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.webp",
+      "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.png",
-          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.png",
+          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-0.webp",
+          "/products/i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-1.webp",
         ],
       },
     ],
@@ -1106,18 +1110,18 @@ export const products: Product[] = [
     description: "No graphic, just the message.  Sometimes the words alone say everything.  And if your last tip was weak, so is this drink.  You've been warned.",
     humor: "Wear This Shirt as a Teaching Moment",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.png",
+    image: "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.webp",
     images: [
-      "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.png",
-      "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.png",
+      "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.webp",
+      "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.png",
-          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.png",
+          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-0.webp",
+          "/products/your-next-drink-is-only-as-strong-as-your-last-tip-tee-1.webp",
         ],
       },
     ],
@@ -1168,18 +1172,18 @@ export const products: Product[] = [
     description: "I always smirk and ask this every time I serve a hard seltzer.  And the side eyed laughs that I receive are worth the price of the shirt.  Dirty!!",
     humor: "How Do You Take It?",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.png",
+    image: "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.webp",
     images: [
-      "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.png",
-      "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.jpg",
+      "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.webp",
+      "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.png",
-          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.jpg",
+          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-0.webp",
+          "/products/do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee-1.webp",
         ],
       },
     ],
@@ -1211,18 +1215,18 @@ export const products: Product[] = [
     description: "A politically correct way of waving hello to your favorite Karen.  She will love it!",
     humor: "Anti-Karen T-shirt",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/f-off-karen-0.png",
+    image: "/products/f-off-karen-0.webp",
     images: [
-      "/products/f-off-karen-0.png",
-      "/products/f-off-karen-1.png",
+      "/products/f-off-karen-0.webp",
+      "/products/f-off-karen-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/f-off-karen-0.png",
-          "/products/f-off-karen-1.png",
+          "/products/f-off-karen-0.webp",
+          "/products/f-off-karen-1.webp",
         ],
       },
     ],
@@ -1252,18 +1256,18 @@ export const products: Product[] = [
     description: "This design will remind your guests that you are an udderly amazing bartender, and that they should be throwing money at you just for being in your presence!  Now get out there and milk all the tips out of them Karens!",
     humor: "Cow Tipping T-shirt:",
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
-    image: "/products/cow-tipping-0.png",
+    image: "/products/cow-tipping-0.webp",
     images: [
-      "/products/cow-tipping-0.png",
-      "/products/cow-tipping-1.png",
+      "/products/cow-tipping-0.webp",
+      "/products/cow-tipping-1.webp",
     ],
     variants: [
       {
         id: "unisex",
         label: "Unisex",
         images: [
-          "/products/cow-tipping-0.png",
-          "/products/cow-tipping-1.png",
+          "/products/cow-tipping-0.webp",
+          "/products/cow-tipping-1.webp",
         ],
       },
     ],

@@ -7,6 +7,7 @@ import { useProductRatings } from "@/hooks/useProductRatings";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useRef } from "react";
+import { useCardImageFlip } from "@/hooks/useCardImageFlip";
 
 // ─── Easter egg fallbacks ──────────────────────────────────────────────────
 const FALLBACK_TABLE_NAMES = [
@@ -127,8 +128,10 @@ const ProductCard = ({ product }: { product: Product }) => {
       };
     }, [eggsData, seed]);
 
-  const cardImage =
-    product.variants?.[0]?.images?.[0] ?? product.image ?? product.images?.[0];
+  const cardImages = product.images && product.images.length > 0
+    ? product.images
+    : product.image ? [product.image] : [];
+  const imgIdx = useCardImageFlip(cardImages.length);
 
   const isNew = product.wentLiveAt
     ? Date.now() - new Date(product.wentLiveAt).getTime() < NEW_BADGE_MS
@@ -190,17 +193,34 @@ const ProductCard = ({ product }: { product: Product }) => {
         <div className="relative z-10 border-dashed border-t border-gray-400 mx-3 my-1" />
 
         {/* ── PRODUCT IMAGE — full width, no rounded corners, wishlist heart overlaid ── */}
-        <div className="relative z-10 aspect-square bg-gray-100 overflow-hidden">
+        <div className="relative z-10 aspect-square bg-[#111] overflow-hidden">
           <Link to={`/product/${product.id}`} className="group block w-full h-full">
-            {cardImage ? (
-              <img
-                src={cardImage}
-                alt={product.name}
-                className="absolute inset-0 w-full h-full object-contain"
-              />
+            {cardImages.length > 0 ? (
+              cardImages.map((src, i, arr) => (
+                src && (
+                  <img
+                    key={src}
+                    src={src}
+                    alt={i === 0 ? product.name : `${product.name} view ${i + 1}`}
+                    className="absolute inset-0 w-full h-full"
+                    style={{
+                      objectFit: i === arr.length - 1 && arr.length > 1 ? 'cover' : 'contain',
+                      opacity: imgIdx === i ? 1 : 0,
+                      transition: 'opacity 0.8s ease-in-out',
+                    }}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    onError={(e) => {
+                      const el = e.target as HTMLImageElement;
+                      if (el.src.endsWith('.webp')) {
+                        el.src = el.src.replace('.webp', '.png');
+                      }
+                    }}
+                  />
+                )
+              ))
             ) : (
               <div className="absolute inset-0 flex items-center justify-center p-6">
-                <span className="font-mono text-center text-xs leading-tight text-gray-600 group-hover:text-gray-900 transition-colors">
+                <span className="font-mono text-center text-xs leading-tight text-gray-400 group-hover:text-gray-200 transition-colors">
                   {product.name}
                 </span>
               </div>
