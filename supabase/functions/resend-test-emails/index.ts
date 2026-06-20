@@ -18,9 +18,9 @@ const STORAGE_BASE = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const testToken = Deno.env.get("RESEND_TEST_TOKEN")!;
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (token !== serviceKey) {
+  if (token !== testToken) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const [{ data: order }, { data: items }, { data: settings }] = await Promise.all([
     supabase.from("orders").select("*").eq("id", order_id).single(),
