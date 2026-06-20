@@ -65,6 +65,8 @@ export interface Product {
   thumbnailFocalX?: number;
   /** Thumbnail zoom focal point Y (0–100, default 40). */
   thumbnailFocalY?: number;
+  /** Admin-controlled per-section visibility. undefined = visible (truthy default). */
+  section_visibility?: Record<string, boolean>;
 }
 
 export const products: Product[] = [

@@ -373,13 +373,15 @@ const ProductDetail = () => {
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
               </h1>
-              {(product.subheading || product.humor) && (
-                <p
+              {product.section_visibility?.humor !== false && (product.subheading || product.humor) && (
+                <div
                   className="font-marker text-sm md:text-base tracking-[0.15em] text-[#fde047] italic mt-3"
                   style={{ textShadow: "0 0 8px rgba(253,224,71,0.4)" }}
                 >
-                  {product.subheading || product.humor}
-                </p>
+                  {(product.subheading || product.humor || '').startsWith('<')
+                    ? <span dangerouslySetInnerHTML={{ __html: product.subheading || product.humor || '' }} />
+                    : <span>{product.subheading || product.humor}</span>}
+                </div>
               )}
 
               {avgRating !== null && (
@@ -395,21 +397,25 @@ const ProductDetail = () => {
             </div>
 
             {(product.sectionOrder ?? ["humor", "description", "longDescription", "badAdvice"]).map((sectionId) => {
-              if (sectionId === "description" && product.description) return (
-                <p key="description" className="text-muted-foreground text-sm md:text-base leading-relaxed">
-                  {product.description}
-                </p>
+              if (sectionId === "description" && product.section_visibility?.description !== false && product.description) return (
+                <div key="description" className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                  {product.description.startsWith('<')
+                    ? <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                    : <p>{product.description}</p>}
+                </div>
               );
-              if (sectionId === "longDescription" && product.longDescription?.length) return (
+              if (sectionId === "longDescription" && product.section_visibility?.longDescription !== false && product.longDescription?.length) return (
                 <div key="longDescription" className="space-y-4">
                   {product.longDescription.map((para, i) => (
-                    <p key={i} className="text-muted-foreground text-sm md:text-base leading-relaxed">
-                      <RichText html={para} />
-                    </p>
+                    <div key={i} className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                      {para.startsWith('<')
+                        ? <div dangerouslySetInnerHTML={{ __html: para }} />
+                        : <RichText html={para} />}
+                    </div>
                   ))}
                 </div>
               );
-              if (sectionId === "badAdvice" && product.badAdvice && product.badAdvice.paragraphs.length > 0) return (
+              if (sectionId === "badAdvice" && product.section_visibility?.badAdvice !== false && product.badAdvice && product.badAdvice.paragraphs.length > 0) return (
                 <div
                   key="badAdvice"
                   className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
@@ -423,7 +429,9 @@ const ProductDetail = () => {
                   </p>
                   <div className="space-y-3">
                     {product.badAdvice.paragraphs.map((para, i) => (
-                      <p key={i} className="text-lg text-foreground/80 leading-relaxed">{para}</p>
+                      para.startsWith('<')
+                        ? <div key={i} className="text-lg text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: para }} />
+                        : <p key={i} className="text-lg text-foreground/80 leading-relaxed">{para}</p>
                     ))}
                   </div>
                 </div>
