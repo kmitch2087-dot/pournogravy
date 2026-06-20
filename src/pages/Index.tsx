@@ -395,13 +395,8 @@ const Index = () => {
 
         </div>
 
-        {/* Mobile CTA buttons — primary (shop) + secondary (current product) — hidden on desktop */}
+        {/* Mobile CTA buttons — secondary (current product) only — hidden on desktop */}
         <div className="order-3 flex flex-col gap-3 px-4 pb-4 pt-2 md:hidden">
-          <Link to="/shop" className="w-full">
-            <Button className="w-full h-11 font-display text-xs tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-              {getValue("home", "hero", "cta_text", "OH, YOU KNOW THE OWNER TOO?")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
-            </Button>
-          </Link>
           {heroSlides[heroIndex] && (
             <Link to={`/product/${heroSlides[heroIndex].product.id}`} className="w-full">
               <Button
