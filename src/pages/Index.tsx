@@ -259,14 +259,6 @@ const Index = () => {
               aria-label={`${slideIdx + 1} of ${totalSlides}: ${product.name}`}
               aria-hidden={!active}
             >
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 opacity-70"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at 20% 30%, rgba(253,224,71,0.2), transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(255,23,68,0.18), transparent 50%)",
-                }}
-              />
 
               {/* Mobile layout: full-width shirt image + bottom overlay with featured drop + product name */}
               <div className="block md:hidden absolute inset-0">
