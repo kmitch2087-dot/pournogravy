@@ -51,6 +51,7 @@
     "@tiptap/extension-color": "^3.27.1",
     "@tiptap/extension-font-family": "^3.27.1",
     "@tiptap/extension-highlight": "^3.27.1",
+    "@tiptap/extension-placeholder": "^3.27.1",
     "@tiptap/extension-text-style": "^3.27.1",
     "@tiptap/extension-underline": "^3.27.1",
     "@tiptap/pm": "^3.27.1",
@@ -103,5 +104,12 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
+  },
+  "allowScripts": {
+    "@tiptap/extension-placeholder@3.27.1": true,
+    "@tiptap/extension-underline@3.27.1": true,
+    "@tiptap/pm@3.27.1": true,
+    "@tiptap/react@3.27.1": true,
+    "@tiptap/starter-kit@3.27.1": true
   }
 }

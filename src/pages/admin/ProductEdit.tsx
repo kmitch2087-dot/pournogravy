@@ -17,6 +17,8 @@ import {
 import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink, Eye, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { cn } from "@/lib/utils";
 
 const AVAILABLE_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
@@ -53,6 +55,8 @@ interface FormState {
   fulfillment_type: string;
   // Copy section order
   sectionOrder: string[];
+  // Section visibility toggles
+  sectionVisibility: Record<string, boolean>;
 }
 
 const DEFAULT_SECTION_ORDER = ["humor", "description", "longDescription", "badAdvice"];
@@ -81,6 +85,7 @@ const defaultForm = (): FormState => ({
   colors: [],
   fulfillment_type: "printer",
   sectionOrder: [...DEFAULT_SECTION_ORDER],
+  sectionVisibility: { humor: true, description: true, longDescription: true, badAdvice: true },
 });
 
 // ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
@@ -132,6 +137,7 @@ const ParagraphList = ({
 // ─── Draggable copy section wrapper ─────────────────────────────────────────
 const DraggableSection = ({
   id, label, children, onDragStart, onDragOver, onDrop,
+  visible = true, onToggleVisible,
 }: {
   id: string;
   label: string;
@@ -139,22 +145,51 @@ const DraggableSection = ({
   onDragStart: (id: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (id: string) => void;
+  visible?: boolean;
+  onToggleVisible?: (id: string, val: boolean) => void;
 }) => (
   <div
     draggable
     onDragStart={() => onDragStart(id)}
     onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
     onDrop={() => onDrop(id)}
-    className="border border-border rounded-md p-4 space-y-3 bg-background/50"
+    className={cn(
+      "border border-border rounded-md p-4 space-y-3 bg-background/50 transition-opacity",
+      !visible && "opacity-50"
+    )}
   >
     <div className="flex items-center justify-between">
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
-      <div
-        className="text-muted-foreground hover:text-[#fde047] transition-colors"
-        style={{ cursor: "grab" }}
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
+      <div className="flex items-center gap-3">
+        {onToggleVisible && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">
+              {visible ? 'Published' : 'Hidden'}
+            </span>
+            <button
+              type="button"
+              onClick={() => onToggleVisible(id, !visible)}
+              className={cn(
+                'relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+                'transition-colors duration-200 ease-in-out',
+                visible ? 'bg-[#cddc39]' : 'bg-muted'
+              )}
+            >
+              <span className={cn(
+                'pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow-lg',
+                'transform transition duration-200 ease-in-out',
+                visible ? 'translate-x-4' : 'translate-x-0'
+              )} />
+            </button>
+          </div>
+        )}
+        <div
+          className="text-muted-foreground hover:text-[#fde047] transition-colors"
+          style={{ cursor: "grab" }}
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
       </div>
     </div>
     {children}
@@ -325,6 +360,9 @@ const ProductEdit = () => {
         sectionOrder: ((product as Record<string, unknown>).section_order as string[] | null)?.length
           ? (product as Record<string, unknown>).section_order as string[]
           : [...DEFAULT_SECTION_ORDER],
+        sectionVisibility: ((product as Record<string, unknown>).section_visibility as Record<string, boolean> | null) ?? {
+          humor: true, description: true, longDescription: true, badAdvice: true,
+        },
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
@@ -355,6 +393,7 @@ const ProductEdit = () => {
           sizes: sp.sizes ?? ["XS", "S", "M", "L", "XL", "2XL"],
           colors: [],
           fulfillment_type: "printer",
+          sectionVisibility: { humor: true, description: true, longDescription: true, badAdvice: true },
         });
         setInitialized(true);
       }
@@ -380,6 +419,10 @@ const ProductEdit = () => {
     order.splice(to, 0, dragItem.current);
     setF({ sectionOrder: order });
     dragItem.current = null;
+  };
+
+  const toggleSectionVisibility = (sectionId: string, val: boolean) => {
+    setF({ sectionVisibility: { ...form.sectionVisibility, [sectionId]: val } });
   };
 
   const handleNameChange = (name: string) => {
@@ -459,11 +502,12 @@ const ProductEdit = () => {
       ...form.additionalImages,
     ].filter(Boolean);
 
-    // Parse textarea fields
-    const longDesc = form.longDescription.split("\n").filter(Boolean);
-    const badParagraphs = form.badAdviceParagraphs.split("\n").filter(Boolean);
-    const badAdvice = form.badAdviceTitle || badParagraphs.length > 0
-      ? { title: form.badAdviceTitle, paragraphs: badParagraphs }
+    // Parse text fields — longDescription and badAdvice are now HTML strings from RichTextEditor
+    const longDescHtml = form.longDescription?.trim();
+    const longDesc = longDescHtml ? [longDescHtml] : [];
+    const badParagraphsHtml = form.badAdviceParagraphs?.trim();
+    const badAdvice = form.badAdviceTitle || badParagraphsHtml
+      ? { title: form.badAdviceTitle, paragraphs: badParagraphsHtml ? [badParagraphsHtml] : [] }
       : null;
 
     // wentLiveAt: respect what's in the field; if going live and field is empty, stamp now
@@ -480,13 +524,16 @@ const ProductEdit = () => {
       long_description: longDesc.length > 0 ? longDesc : null,
       bad_advice: badAdvice,
       section_order: form.sectionOrder,
+      section_visibility: form.sectionVisibility ?? {
+        humor: true, description: true, longDescription: true, badAdvice: true,
+      },
       price_cents: Math.round(Number(form.price_dollars) * 100),
       is_active: form.isLive,
       published: form.isLive,
       status: form.isLive ? "published" : "draft",
       featured: form.featured,
       badge: form.badge || null,
-      images,
+      images: images.length > 0 ? images : [],
       image_url: images[0] ?? null,
       back_image_url: form.backImageUrl || null,
       focus_x: form.focusX,
@@ -494,8 +541,8 @@ const ProductEdit = () => {
       // Also write to the legacy focal columns so existing display code keeps working
       thumbnail_focal_x: form.focusX,
       thumbnail_focal_y: form.focusY,
-      sizes: form.sizes,
-      colors: form.colors.length > 0 ? form.colors : null,
+      sizes: form.sizes?.length > 0 ? form.sizes : [],
+      colors: form.colors?.length > 0 ? form.colors : [],
       fulfillment_type: form.fulfillment_type,
       // Keep fulfillment_route in sync with the legacy column
       fulfillment_route: mapFulfillmentTypeToRoute(form.fulfillment_type),
@@ -538,8 +585,9 @@ const ProductEdit = () => {
     const slug = form.slug || slugify(form.name);
     if (!slug) return toast.error("Add a name or slug first");
 
-    const longDesc = form.longDescription.split("\n").filter(Boolean);
-    const badParagraphs = form.badAdviceParagraphs.split("\n").filter(Boolean);
+    const longDescHtml = form.longDescription?.trim();
+    const longDesc = longDescHtml ? [longDescHtml] : [];
+    const badParagraphsHtml = form.badAdviceParagraphs?.trim();
     const images = [form.mainImageUrl, ...form.additionalImages].filter(Boolean);
 
     const previewProduct = {
@@ -549,8 +597,8 @@ const ProductEdit = () => {
       description: form.description,
       humor: form.humor,
       longDescription: longDesc,
-      badAdvice: (form.badAdviceTitle || badParagraphs.length > 0)
-        ? { title: form.badAdviceTitle, paragraphs: badParagraphs }
+      badAdvice: (form.badAdviceTitle || badParagraphsHtml)
+        ? { title: form.badAdviceTitle, paragraphs: badParagraphsHtml ? [badParagraphsHtml] : [] }
         : undefined,
       badge: form.badge || undefined,
       published: true,
@@ -699,7 +747,9 @@ const ProductEdit = () => {
               {form.sectionOrder.map((sectionId) => {
                 if (sectionId === "humor") return (
                   <DraggableSection key="humor" id="humor" label="Humor / Zinger"
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}
+                    visible={form.sectionVisibility?.humor ?? true}
+                    onToggleVisible={toggleSectionVisibility}>
                     <Input
                       value={form.humor}
                       onChange={(e) => setF({ humor: e.target.value })}
@@ -709,46 +759,47 @@ const ProductEdit = () => {
                 );
                 if (sectionId === "description") return (
                   <DraggableSection key="description" id="description" label="Short Description"
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
-                    <Textarea
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}
+                    visible={form.sectionVisibility?.description ?? true}
+                    onToggleVisible={toggleSectionVisibility}>
+                    <RichTextEditor
                       value={form.description}
-                      onChange={(e) => setF({ description: e.target.value })}
-                      rows={3}
-                      className="resize-none"
+                      onChange={(html) => setF({ description: html })}
                       placeholder="The main product copy shown on the product page."
+                      minHeight="100px"
                     />
                   </DraggableSection>
                 );
                 if (sectionId === "longDescription") return (
                   <DraggableSection key="longDescription" id="longDescription" label="Long Description"
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
-                    <Textarea
-                      value={form.longDescription}
-                      onChange={(e) => setF({ longDescription: e.target.value })}
-                      rows={5}
-                      className="resize-none"
-                      placeholder={"One paragraph per line.\nBlank lines are ignored."}
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}
+                    visible={form.sectionVisibility?.longDescription ?? true}
+                    onToggleVisible={toggleSectionVisibility}>
+                    <RichTextEditor
+                      value={form.longDescription ?? ''}
+                      onChange={(html) => setF({ longDescription: html })}
+                      placeholder="Extended copy shown in the expandable section."
+                      minHeight="160px"
                     />
-                    <p className="text-xs text-muted-foreground">Each line becomes its own paragraph on the product page.</p>
                   </DraggableSection>
                 );
                 if (sectionId === "badAdvice") return (
                   <DraggableSection key="badAdvice" id="badAdvice" label="Bad Bartender Advice"
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}
+                    visible={form.sectionVisibility?.badAdvice ?? true}
+                    onToggleVisible={toggleSectionVisibility}>
                     <div className="space-y-3">
                       <Input
                         value={form.badAdviceTitle}
                         onChange={(e) => setF({ badAdviceTitle: e.target.value })}
                         placeholder="e.g. Bad Bartender Advice"
                       />
-                      <Textarea
-                        value={form.badAdviceParagraphs}
-                        onChange={(e) => setF({ badAdviceParagraphs: e.target.value })}
-                        rows={6}
-                        className="resize-none"
-                        placeholder={"One paragraph per line.\nEach line becomes its own <p> block."}
+                      <RichTextEditor
+                        value={form.badAdviceParagraphs ?? ''}
+                        onChange={(html) => setF({ badAdviceParagraphs: html })}
+                        placeholder="Shown in the Bad Advice section."
+                        minHeight="120px"
                       />
-                      <p className="text-xs text-muted-foreground">One paragraph per line. Blank lines are ignored.</p>
                     </div>
                   </DraggableSection>
                 );

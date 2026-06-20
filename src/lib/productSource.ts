@@ -40,6 +40,7 @@ interface DbProductRow {
   drop_date: string | null;
   went_live_at: string | null;
   section_order: string[] | null;
+  section_visibility: Record<string, boolean> | null;
   thumbnail_focal_x: number | null;
   thumbnail_focal_y: number | null;
 }
@@ -70,6 +71,7 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   thumbnailFocalX: r.thumbnail_focal_x ?? 40,
   thumbnailFocalY: r.thumbnail_focal_y ?? 40,
   sectionOrder: r.section_order ?? undefined,
+  section_visibility: r.section_visibility ?? undefined,
 });
 
 /**
@@ -108,6 +110,7 @@ export const useMergedProducts = () => {
           longDescription: db.longDescription?.length ? db.longDescription : p.longDescription,
           subheading: p.subheading,
           sectionOrder: db.sectionOrder ?? p.sectionOrder,
+          section_visibility: db.section_visibility ?? p.section_visibility,
         };
       });
       // Add any DB products that don't have a hardcoded equivalent

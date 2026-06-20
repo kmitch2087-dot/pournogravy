@@ -9,6 +9,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useRef } from "react";
 import { useCardImageFlip } from "@/hooks/useCardImageFlip";
 
+// Module-level no-repeat state — persists across renders, resets on page reload
+let _lastCartPhrase = '';
+
+function pickCartPhrase(phrases: string[]): string {
+  if (!phrases.length) return 'Add to Cart';
+  if (phrases.length === 1) return phrases[0];
+  const available = phrases.filter(p => p !== _lastCartPhrase);
+  const next = available[Math.floor(Math.random() * available.length)];
+  _lastCartPhrase = next;
+  return next;
+}
+
 // ─── Easter egg fallbacks ──────────────────────────────────────────────────
 const FALLBACK_TABLE_NAMES = [
   "69", "Pool Bathroom", "THAT Guy Again", "The Needy End",
@@ -133,6 +145,21 @@ const ProductCard = ({ product }: { product: Product }) => {
         footerNote:         seededPick(footerArr, seed + 3),
       };
     }, [eggsData, seed]);
+
+  // Add-to-cart phrase: DB phrases with no-repeat, fall back to CTA_PHRASES
+  const addToCartPhrases = useMemo(() => {
+    const dbPhrases = (eggsData ?? [])
+      .filter(e => e.category === 'add_to_cart')
+      .map(e => e.text);
+    return dbPhrases.length > 0 ? dbPhrases : CTA_PHRASES;
+  }, [eggsData]);
+
+  // Pick once on mount and stick with it for this card instance
+  const ctaPhraseRef = useRef<string | null>(null);
+  if (ctaPhraseRef.current === null) {
+    ctaPhraseRef.current = pickCartPhrase(addToCartPhrases);
+  }
+  const ctaPhrase = ctaPhraseRef.current;
 
   const cardImages = product.images && product.images.length > 0
     ? product.images
@@ -292,7 +319,7 @@ const ProductCard = ({ product }: { product: Product }) => {
             to={`/product/${product.id}`}
             className="flex items-center justify-between w-full bg-[#fde047] text-black px-3 py-2 font-mono text-[10px] font-bold tracking-widest uppercase hover:bg-[#fbbf24] transition-colors rounded-none"
           >
-            <span>{seededPick(CTA_PHRASES, seed + 5)}</span>
+            <span>{ctaPhrase}</span>
             <span>${product.price.toFixed(2)}</span>
           </Link>
         </div>
