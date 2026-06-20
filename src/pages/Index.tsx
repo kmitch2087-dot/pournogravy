@@ -471,17 +471,10 @@ const Index = () => {
                 src="/karen_ticker.png"
                 alt=""
                 aria-hidden="true"
-                className="inline-block w-5 h-5 md:w-6 md:h-6 object-contain opacity-90 align-middle"
+                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle"
                 style={{ imageRendering: 'crisp-edges' }}
               />
               {q}
-              <img
-                src="/karen_ticker.png"
-                alt=""
-                aria-hidden="true"
-                className="inline-block w-5 h-5 md:w-6 md:h-6 object-contain opacity-90 align-middle"
-                style={{ imageRendering: 'crisp-edges', transform: 'scaleX(-1)' }}
-              />
             </span>
           ))}
         </div>
