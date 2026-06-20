@@ -394,39 +394,42 @@ const ProductDetail = () => {
 
             </div>
 
-            {product.longDescription?.map((para, i) => (
-              <p
-                key={i}
-                className="text-muted-foreground text-sm md:text-base leading-relaxed"
-              >
-                <RichText html={para} />
-              </p>
-            ))}
-
-            {/* Bad Bartender Advice — yellow box only, no white duplicate (8b) */}
-            {product.badAdvice && product.badAdvice.paragraphs.length > 0 && (
-              <div
-                className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
-                style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
-              >
-                <p
-                  className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
-                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
-                >
-                  ☠ {product.badAdvice.title || "Bad Bartender Advice"}
+            {(product.sectionOrder ?? ["humor", "description", "longDescription", "badAdvice"]).map((sectionId) => {
+              if (sectionId === "description" && product.description) return (
+                <p key="description" className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                  {product.description}
                 </p>
-                <div className="space-y-3">
-                  {product.badAdvice.paragraphs.map((para, i) => (
-                    <p
-                      key={i}
-                      className="text-lg text-foreground/80 leading-relaxed"
-                    >
-                      {para}
+              );
+              if (sectionId === "longDescription" && product.longDescription?.length) return (
+                <div key="longDescription" className="space-y-4">
+                  {product.longDescription.map((para, i) => (
+                    <p key={i} className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                      <RichText html={para} />
                     </p>
                   ))}
                 </div>
-              </div>
-            )}
+              );
+              if (sectionId === "badAdvice" && product.badAdvice && product.badAdvice.paragraphs.length > 0) return (
+                <div
+                  key="badAdvice"
+                  className="relative border-2 border-[#fde047]/60 bg-black/40 p-6 rough-border"
+                  style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
+                >
+                  <p
+                    className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
+                    style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
+                  >
+                    ☠ {product.badAdvice.title || "Bad Bartender Advice"}
+                  </p>
+                  <div className="space-y-3">
+                    {product.badAdvice.paragraphs.map((para, i) => (
+                      <p key={i} className="text-lg text-foreground/80 leading-relaxed">{para}</p>
+                    ))}
+                  </div>
+                </div>
+              );
+              return null;
+            })}
 
             {/* Custom garment request — "pain in the ass" CTA */}
             <div className="pt-2 text-xs text-muted-foreground leading-relaxed">

@@ -53,6 +53,8 @@ export interface Product {
    * back gracefully — color.imagesByFit > color.images > variant.images > product.images.
    */
   colors?: ProductColor[];
+  /** Admin-controlled order of copy sections on the product page */
+  sectionOrder?: string[];
   /** @deprecated — use `variants` instead */
   featured?: boolean;
   /** Public visibility flag. Only products with `published: true` appear in shop/featured/search. */

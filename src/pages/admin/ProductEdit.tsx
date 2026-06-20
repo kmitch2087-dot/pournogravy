@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink, Eye, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 
@@ -51,7 +51,11 @@ interface FormState {
   colors: ColorRow[];
   // Fulfillment
   fulfillment_type: string;
+  // Copy section order
+  sectionOrder: string[];
 }
+
+const DEFAULT_SECTION_ORDER = ["humor", "description", "longDescription", "badAdvice"];
 
 const defaultForm = (): FormState => ({
   slug: "",
@@ -76,6 +80,7 @@ const defaultForm = (): FormState => ({
   sizes: ["XS", "S", "M", "L", "XL", "2XL"],
   colors: [],
   fulfillment_type: "printer",
+  sectionOrder: [...DEFAULT_SECTION_ORDER],
 });
 
 // ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
@@ -123,6 +128,38 @@ const ParagraphList = ({
     </div>
   );
 };
+
+// ─── Draggable copy section wrapper ─────────────────────────────────────────
+const DraggableSection = ({
+  id, label, children, onDragStart, onDragOver, onDrop,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+  onDragStart: (id: string) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (id: string) => void;
+}) => (
+  <div
+    draggable
+    onDragStart={() => onDragStart(id)}
+    onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
+    onDrop={() => onDrop(id)}
+    className="border border-border rounded-md p-4 space-y-3 bg-background/50"
+  >
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
+      <div
+        className="text-muted-foreground hover:text-[#fde047] transition-colors"
+        style={{ cursor: "grab" }}
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </div>
+    {children}
+  </div>
+);
 
 // ─── Shirt outline SVG for print preview ────────────────────────────────────
 const ShirtOutline = ({ className = "" }: { className?: string }) => (
@@ -285,6 +322,9 @@ const ProductEdit = () => {
         colors: rawColors,
         fulfillment_type: (product as Record<string, unknown>).fulfillment_type as string
           ?? mapLegacyRoute((product as Record<string, unknown>).fulfillment_route as string | undefined),
+        sectionOrder: ((product as Record<string, unknown>).section_order as string[] | null)?.length
+          ? (product as Record<string, unknown>).section_order as string[]
+          : [...DEFAULT_SECTION_ORDER],
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
@@ -325,6 +365,22 @@ const ProductEdit = () => {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  // ── Drag-and-drop for copy sections ────────────────────────────────────────
+  const dragItem = useRef<string | null>(null);
+  const handleDragStart = (id: string) => { dragItem.current = id; };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+  const handleDrop = (targetId: string) => {
+    if (!dragItem.current || dragItem.current === targetId) return;
+    const order = [...form.sectionOrder];
+    const from = order.indexOf(dragItem.current);
+    const to = order.indexOf(targetId);
+    if (from === -1 || to === -1) return;
+    order.splice(from, 1);
+    order.splice(to, 0, dragItem.current);
+    setF({ sectionOrder: order });
+    dragItem.current = null;
+  };
 
   const handleNameChange = (name: string) => {
     setF(form.slugOverride ? { name } : { name, slug: slugify(name) });
@@ -423,6 +479,7 @@ const ProductEdit = () => {
       humor: form.humor || null,
       long_description: longDesc.length > 0 ? longDesc : null,
       bad_advice: badAdvice,
+      section_order: form.sectionOrder,
       price_cents: Math.round(Number(form.price_dollars) * 100),
       is_active: form.isLive,
       published: form.isLive,
@@ -632,79 +689,71 @@ const ProductEdit = () => {
             </CardContent>
           </Card>
 
-          {/* ── COPY ── */}
+          {/* ── COPY (drag-and-drop reorderable) ── */}
           <Card>
             <CardHeader>
               <CardTitle className="font-display tracking-widest">COPY</CardTitle>
-              <p className="text-xs text-muted-foreground">Keep it in Opie's voice — raw and honest.</p>
+              <p className="text-xs text-muted-foreground">Drag sections to reorder. Keep it in Opie's voice — raw and honest.</p>
             </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-1.5">
-                <Label>Short Description</Label>
-                <Textarea
-                  value={form.description}
-                  onChange={(e) => setF({ description: e.target.value })}
-                  rows={3}
-                  className="resize-none"
-                  placeholder="The main product copy shown on the product page."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Long Description</Label>
-                <Textarea
-                  value={form.longDescription}
-                  onChange={(e) => setF({ longDescription: e.target.value })}
-                  rows={5}
-                  className="resize-none"
-                  placeholder={"One paragraph per line.\nBlank lines are ignored."}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Each line becomes its own paragraph on the product page.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Humor / Zinger</Label>
-                <Input
-                  value={form.humor}
-                  onChange={(e) => setF({ humor: e.target.value })}
-                  placeholder="One-liner shown on the product card and as the pull-quote callout"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── BAD BARTENDER ADVICE ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">BAD BARTENDER ADVICE</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Opie's story / dialogue block shown at the bottom of the product page.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Title</Label>
-                <Input
-                  value={form.badAdviceTitle}
-                  onChange={(e) => setF({ badAdviceTitle: e.target.value })}
-                  placeholder="e.g. My Name is Opie and I'll Be Your Bartender:"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Paragraphs</Label>
-                <Textarea
-                  value={form.badAdviceParagraphs}
-                  onChange={(e) => setF({ badAdviceParagraphs: e.target.value })}
-                  rows={6}
-                  className="resize-none"
-                  placeholder={"One paragraph per line.\nEach line becomes its own <p> block."}
-                />
-                <p className="text-xs text-muted-foreground">
-                  One paragraph per line. Blank lines are ignored.
-                </p>
-              </div>
+            <CardContent className="space-y-3">
+              {form.sectionOrder.map((sectionId) => {
+                if (sectionId === "humor") return (
+                  <DraggableSection key="humor" id="humor" label="Humor / Zinger"
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    <Input
+                      value={form.humor}
+                      onChange={(e) => setF({ humor: e.target.value })}
+                      placeholder="One-liner shown as the yellow italic subheading on the product page"
+                    />
+                  </DraggableSection>
+                );
+                if (sectionId === "description") return (
+                  <DraggableSection key="description" id="description" label="Short Description"
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    <Textarea
+                      value={form.description}
+                      onChange={(e) => setF({ description: e.target.value })}
+                      rows={3}
+                      className="resize-none"
+                      placeholder="The main product copy shown on the product page."
+                    />
+                  </DraggableSection>
+                );
+                if (sectionId === "longDescription") return (
+                  <DraggableSection key="longDescription" id="longDescription" label="Long Description"
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    <Textarea
+                      value={form.longDescription}
+                      onChange={(e) => setF({ longDescription: e.target.value })}
+                      rows={5}
+                      className="resize-none"
+                      placeholder={"One paragraph per line.\nBlank lines are ignored."}
+                    />
+                    <p className="text-xs text-muted-foreground">Each line becomes its own paragraph on the product page.</p>
+                  </DraggableSection>
+                );
+                if (sectionId === "badAdvice") return (
+                  <DraggableSection key="badAdvice" id="badAdvice" label="Bad Bartender Advice"
+                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}>
+                    <div className="space-y-3">
+                      <Input
+                        value={form.badAdviceTitle}
+                        onChange={(e) => setF({ badAdviceTitle: e.target.value })}
+                        placeholder="e.g. Bad Bartender Advice"
+                      />
+                      <Textarea
+                        value={form.badAdviceParagraphs}
+                        onChange={(e) => setF({ badAdviceParagraphs: e.target.value })}
+                        rows={6}
+                        className="resize-none"
+                        placeholder={"One paragraph per line.\nEach line becomes its own <p> block."}
+                      />
+                      <p className="text-xs text-muted-foreground">One paragraph per line. Blank lines are ignored.</p>
+                    </div>
+                  </DraggableSection>
+                );
+                return null;
+              })}
             </CardContent>
           </Card>
 

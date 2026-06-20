@@ -39,6 +39,7 @@ interface DbProductRow {
   featured: boolean;
   drop_date: string | null;
   went_live_at: string | null;
+  section_order: string[] | null;
   thumbnail_focal_x: number | null;
   thumbnail_focal_y: number | null;
 }
@@ -68,6 +69,7 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   wentLiveAt: r.went_live_at ?? undefined,
   thumbnailFocalX: r.thumbnail_focal_x ?? 40,
   thumbnailFocalY: r.thumbnail_focal_y ?? 40,
+  sectionOrder: r.section_order ?? undefined,
 });
 
 /**
@@ -105,6 +107,7 @@ export const useMergedProducts = () => {
           badAdvice: db.badAdvice ?? p.badAdvice,
           longDescription: db.longDescription?.length ? db.longDescription : p.longDescription,
           subheading: p.subheading,
+          sectionOrder: db.sectionOrder ?? p.sectionOrder,
         };
       });
       // Add any DB products that don't have a hardcoded equivalent
