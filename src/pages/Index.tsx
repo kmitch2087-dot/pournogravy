@@ -193,7 +193,7 @@ const Index = () => {
         {/* Persistent dimmed logo background */}
         <div className="absolute inset-0 pointer-events-none">
           <img
-            src="/hero-bg.jpg"
+            src="/hero-bg-transparent.png"
             alt=""
             className={`w-full h-full object-contain object-center transition-none ${logoGlowing ? '[animation:logoGlow_1.5s_ease-in-out_infinite_alternate]' : 'opacity-[0.12]'}`}
             loading="eager"
