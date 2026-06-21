@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { products as staticProducts } from "@/data/products";
+import { useMergedProducts } from "@/lib/productSource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -47,6 +47,7 @@ const Products = () => {
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const { data: staticProducts = [] } = useMergedProducts();
 
   const { data: dbProducts = [], isLoading } = useQuery<DbProduct[]>({
     queryKey: ["admin-products"],

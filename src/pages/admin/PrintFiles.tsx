@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { products as staticProducts } from "@/data/products";
 import { Loader2, FileImage, Lock, Eye, Image, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -247,8 +246,7 @@ const AuditTable = () => {
       const blackFiles = blackRes.data ?? [];
       const whiteFiles = whiteRes.data ?? [];
       const dbSlugs = (dbRes.data ?? []).map((r: { slug: string }) => r.slug);
-      const staticSlugs = staticProducts.map((p) => p.id);
-      const productSlugs = new Set([...dbSlugs, ...staticSlugs]);
+      const productSlugs = new Set(dbSlugs);
 
       setRows(buildAudit(blackFiles, whiteFiles, productSlugs));
       setRan(true);

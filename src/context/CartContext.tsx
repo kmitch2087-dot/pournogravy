@@ -5,8 +5,10 @@ import React, {
   useCallback,
   useEffect,
   useRef,
+  useMemo,
 } from "react";
-import { Product, products } from "@/data/products";
+import { type Product } from "@/data/products";
+import { useMergedProducts } from "@/lib/productSource";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
@@ -48,12 +50,26 @@ const CART_STORAGE_KEY = "pournogravy:cart:v3";
 const LEGACY_CART_KEYS = ["pournogravy:cart:v1", "pournogravy:cart:v2"];
 const SESSION_ID_KEY = "pournogravy:session_id";
 
+type ProductSnapshot = {
+  name: string;
+  price: number;
+  images: string[];
+  image?: string;
+  sizes: string[];
+  description: string;
+  variants?: Product["variants"];
+  colors?: Product["colors"];
+  badge?: string;
+  humor?: string;
+};
+
 type StoredCartItem = {
   productId: string;
   size: string;
   quantity: number;
   variantId?: string;
   colorId?: string;
+  p?: ProductSnapshot;
 };
 
 const sameLine = (
@@ -94,17 +110,29 @@ const loadCart = (): CartItem[] => {
     const stored = JSON.parse(raw) as StoredCartItem[];
     if (!Array.isArray(stored)) return [];
 
-    const productMap = new Map(products.map((p) => [p.id, p]));
     return stored
       .filter((s): s is StoredCartItem =>
         typeof s?.productId === "string" &&
         typeof s?.size === "string" &&
         typeof s?.quantity === "number" &&
-        s.quantity > 0,
+        s.quantity > 0 &&
+        s.p != null,
       )
       .map((s) => {
-        const product = productMap.get(s.productId);
-        if (!product) return null;
+        const snap = s.p!;
+        const product: Product = {
+          id: s.productId,
+          name: snap.name,
+          price: snap.price,
+          images: snap.images,
+          image: snap.image ?? snap.images[0],
+          sizes: snap.sizes,
+          description: snap.description,
+          variants: snap.variants,
+          colors: snap.colors,
+          badge: snap.badge,
+          humor: snap.humor ?? "",
+        };
         if (!product.sizes.includes(s.size)) return null;
         let variantId: string | undefined;
         if (product.variants && product.variants.length > 0) {
@@ -141,6 +169,18 @@ const saveCart = (items: CartItem[]) => {
       quantity: i.quantity,
       ...(i.variantId ? { variantId: i.variantId } : {}),
       ...(i.colorId ? { colorId: i.colorId } : {}),
+      p: {
+        name: i.product.name,
+        price: i.product.price,
+        images: i.product.images ?? [],
+        image: i.product.image,
+        sizes: i.product.sizes,
+        description: i.product.description,
+        variants: i.product.variants,
+        colors: i.product.colors,
+        badge: i.product.badge,
+        humor: i.product.humor,
+      },
     }));
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(slim));
   } catch {
@@ -159,8 +199,7 @@ type DbCartRow = {
 };
 
 /** Merge DB rows into current cart. DB items fill gaps; local items win on conflict. */
-const mergeDbIntoLocal = (local: CartItem[], rows: DbCartRow[]): CartItem[] => {
-  const productMap = new Map(products.map((p) => [p.id, p]));
+const mergeDbIntoLocal = (local: CartItem[], rows: DbCartRow[], productMap: Map<string, Product>): CartItem[] => {
   const merged = [...local];
   for (const row of rows) {
     if (!row.product_slug) continue;
@@ -207,6 +246,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mergedForUser = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const productMapRef = useRef<Map<string, Product>>(new Map());
+
+  const { data: allProducts = [] } = useMergedProducts();
+  useMemo(() => {
+    productMapRef.current = new Map(allProducts.map((p) => [p.id, p]));
+  }, [allProducts]);
 
   // ── Init: load localStorage only ─────────────────────────────────────────
   // IMPORTANT: do NOT call supabase.auth.getSession() here.
@@ -282,7 +327,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq("user_id", userId);
 
     const merged = saved?.length
-      ? mergeDbIntoLocal(localItems, saved as DbCartRow[])
+      ? mergeDbIntoLocal(localItems, saved as DbCartRow[], productMapRef.current)
       : localItems;
 
     setItems(merged);

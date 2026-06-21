@@ -6,7 +6,8 @@ import { ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
-import { products, quotes } from "@/data/products";
+import { quotes } from "@/data/products";
+import { useMergedProducts } from "@/lib/productSource";
 import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,6 +36,7 @@ const Index = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
   const { getValue } = useSiteContent();
+  const { data: allProducts = [] } = useMergedProducts();
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
   const [heroPaused, setHeroPaused] = useState(false);
   const heroPauseResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,25 +83,25 @@ const Index = () => {
   });
 
   // Featured row only shows published products.
-  const featured = products
+  const featured = allProducts
     .filter((p) => p.published === true && p.featured)
     .slice(0, 6);
 
-  // Hero products: use active drop's product slugs mapped to static products, else fall back.
+  // Hero products: use active drop's product slugs mapped to DB products, else fall back.
   const dropProducts = (dropProductRows ?? [])
-    .map(r => products.find(p => p.id === r.products?.slug))
+    .map(r => allProducts.find(p => p.id === r.products?.slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
   const heroProducts = dropProducts.length > 0
     ? dropProducts
     : HERO_PRODUCT_IDS
-        .map((id) => products.find((p) => p.id === id))
+        .map((id) => allProducts.find((p) => p.id === id))
         .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
   type HeroSlide = { type: "product"; product: typeof heroProducts[number] };
   const heroSlides: HeroSlide[] = heroProducts.map((p) => ({ type: "product" as const, product: p }));
   if (heroSlides.length === 0) {
-    const first = products.find(p => p.published);
+    const first = allProducts.find(p => p.published);
     if (first) heroSlides.push({ type: "product", product: first });
   }
   const totalSlides = heroSlides.length;
@@ -702,7 +704,7 @@ const Index = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {reviews.map((review, i) => {
-                const productName = products.find((p) => p.id === review.product_slug)?.name ?? review.product_slug;
+                const productName = allProducts.find((p) => p.id === review.product_slug)?.name ?? review.product_slug;
                 const snippet = review.body && review.body.length > 120
                   ? review.body.slice(0, 120) + "…"
                   : review.body ?? "";

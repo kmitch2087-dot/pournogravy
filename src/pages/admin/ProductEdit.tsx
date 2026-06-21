@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { products as staticProducts } from "@/data/products";
+import { useMergedProducts } from "@/lib/productSource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -294,6 +294,7 @@ const ProductEdit = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const { data: staticProducts = [] } = useMergedProducts();
   const [uploading, setUploading] = useState(false);
   const [mainUploading, setMainUploading] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm());

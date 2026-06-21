@@ -3,13 +3,14 @@ import { Heart } from "lucide-react";
 import SEO from "@/components/SEO";
 import ProductCard from "@/components/ProductCard";
 import { useWishlist } from "@/hooks/useWishlist";
-import { products } from "@/data/products";
 import { motion } from "framer-motion";
+import { useMergedProducts } from "@/lib/productSource";
 
 const Wishlist = () => {
   const { wishlist, loading } = useWishlist();
+  const { data: allProducts = [] } = useMergedProducts();
 
-  const saved = products.filter((p) => wishlist.includes(p.id));
+  const saved = allProducts.filter((p) => wishlist.includes(p.id));
 
   return (
     <div className="min-h-screen pt-24 md:pt-28">
