@@ -60,6 +60,10 @@ interface FormState {
   sectionOrder: string[];
   // Section visibility toggles
   sectionVisibility: Record<string, boolean>;
+  // Share preview (OG)
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
 }
 
 const DEFAULT_SECTION_ORDER = ["humor", "description", "longDescription", "badAdvice"];
@@ -89,6 +93,9 @@ const defaultForm = (): FormState => ({
   fulfillment_type: "printer",
   sectionOrder: [...DEFAULT_SECTION_ORDER],
   sectionVisibility: { humor: true, description: true, longDescription: true, badAdvice: true },
+  ogTitle: '',
+  ogDescription: '',
+  ogImage: '',
 });
 
 // ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
@@ -381,6 +388,9 @@ const ProductEdit = () => {
         sectionVisibility: ((product as Record<string, unknown>).section_visibility as Record<string, boolean> | null) ?? {
           humor: true, description: true, longDescription: true, badAdvice: true,
         },
+        ogTitle: (product as Record<string, unknown>).og_title as string ?? '',
+        ogDescription: (product as Record<string, unknown>).og_description as string ?? '',
+        ogImage: (product as Record<string, unknown>).og_image as string ?? '',
       });
       setInitialized(true);
     } else if (isNew && fromSlug) {
@@ -411,7 +421,11 @@ const ProductEdit = () => {
           sizes: sp.sizes ?? ["XS", "S", "M", "L", "XL", "2XL"],
           colors: [],
           fulfillment_type: "printer",
+          sectionOrder: [...DEFAULT_SECTION_ORDER],
           sectionVisibility: { humor: true, description: true, longDescription: true, badAdvice: true },
+          ogTitle: '',
+          ogDescription: '',
+          ogImage: '',
         });
         setInitialized(true);
       }
@@ -564,6 +578,9 @@ const ProductEdit = () => {
       fulfillment_type: form.fulfillment_type,
       // Keep fulfillment_route in sync with the legacy column
       fulfillment_route: mapFulfillmentTypeToRoute(form.fulfillment_type),
+      og_title:       form.ogTitle       || null,
+      og_description: form.ogDescription || null,
+      og_image:       form.ogImage       || null,
     };
 
     let error;
@@ -855,6 +872,109 @@ const ProductEdit = () => {
                 );
                 return null;
               })}
+            </CardContent>
+          </Card>
+
+          {/* ── SHARE PREVIEW ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest">SHARE PREVIEW</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Controls what appears when this product is shared via iMessage, text, Facebook, or Instagram. Leave blank to use defaults (product name, first photo, humor line).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Live preview card */}
+              <div className="border border-border rounded-lg overflow-hidden max-w-sm">
+                <div className="text-[10px] text-muted-foreground px-2 pt-2 pb-1 bg-muted/30 uppercase tracking-widest">
+                  Preview
+                </div>
+                <div className="aspect-[1.91/1] bg-muted overflow-hidden">
+                  {(form.ogImage || form.mainImageUrl) ? (
+                    <img
+                      src={form.ogImage || form.mainImageUrl}
+                      alt="Share preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                      No image — will use first product photo
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-muted/20 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">pournogravy.com</p>
+                  <p className="text-sm font-semibold text-white line-clamp-1">
+                    {form.ogTitle || form.name || 'Product Name'}
+                  </p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {form.ogDescription || form.humor || form.description || 'Product description will appear here'}
+                  </p>
+                </div>
+              </div>
+
+              {/* OG Image URL */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                  Share Image URL
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.ogImage}
+                    onChange={(e) => setF({ ogImage: e.target.value })}
+                    placeholder="Leave blank to use first product photo"
+                  />
+                  {form.mainImageUrl && !form.ogImage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setF({ ogImage: form.mainImageUrl })}
+                      className="whitespace-nowrap text-[10px] font-mono tracking-wider shrink-0"
+                    >
+                      Use Main Photo
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Best size: 1200×630px. Square product shots get letterboxed by most platforms.
+                </p>
+              </div>
+
+              {/* OG Title */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                  Share Title
+                </Label>
+                <Input
+                  value={form.ogTitle}
+                  onChange={(e) => setF({ ogTitle: e.target.value })}
+                  placeholder={form.name || 'Product name (brand appended automatically)'}
+                  maxLength={60}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {form.ogTitle.length}/60 — keep under 60 to avoid truncation
+                </p>
+              </div>
+
+              {/* OG Description */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                  Share Description
+                </Label>
+                <Textarea
+                  value={form.ogDescription}
+                  onChange={(e) => setF({ ogDescription: e.target.value })}
+                  placeholder={form.humor || form.description || 'Short description for link previews'}
+                  rows={2}
+                  maxLength={160}
+                  className="resize-none"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {form.ogDescription.length}/160 — keep under 160
+                </p>
+              </div>
             </CardContent>
           </Card>
 

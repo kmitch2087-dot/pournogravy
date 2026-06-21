@@ -67,6 +67,12 @@ export interface Product {
   thumbnailFocalY?: number;
   /** Admin-controlled per-section visibility. undefined = visible (truthy default). */
   section_visibility?: Record<string, boolean>;
+  /** Custom share preview image URL (og:image). Falls back to images[0] then site default. */
+  og_image?: string;
+  /** Custom share preview title (og:title). Falls back to product name. */
+  og_title?: string;
+  /** Custom share preview description (og:description). Falls back to humor or description. */
+  og_description?: string;
 }
 
 export const products: Product[] = [

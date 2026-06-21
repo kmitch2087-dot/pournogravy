@@ -301,9 +301,19 @@ const ProductDetail = () => {
       )}
 
       <SEO
-        title={product.name}
-        description={`${product.humor} — ${product.name}. Unisex tee. Shop Pournogravy.`}
-        image={product.images?.[0] ?? product.image}
+        title={product.og_title || product.name}
+        description={
+          product.og_description ||
+          product.humor ||
+          product.description ||
+          'Bartender-themed apparel from POURnogravy'
+        }
+        image={
+          product.og_image ||
+          product.images?.[0] ||
+          product.image ||
+          'https://pournogravy.com/pournogravy_back_logo_full.png'
+        }
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"
       />

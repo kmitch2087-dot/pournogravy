@@ -185,6 +185,10 @@ const Settings = () => {
     shipping_standard: "7.99",
     shipping_express: "14.99",
     free_shipping_threshold: "",
+    // Share preview defaults
+    og_image_default: "",
+    og_title_default: "",
+    og_description_default: "",
   });
 
   useEffect(() => {
@@ -213,6 +217,9 @@ const Settings = () => {
       free_shipping_threshold: settings.free_shipping_threshold_cents != null
         ? (settings.free_shipping_threshold_cents / 100).toFixed(0)
         : "",
+      og_image_default:       (settings as any).og_image_default       ?? "",
+      og_title_default:       (settings as any).og_title_default       ?? "",
+      og_description_default: (settings as any).og_description_default ?? "",
     });
   }, [settings]);
 
@@ -317,6 +324,9 @@ const Settings = () => {
         free_shipping_threshold_cents: form.free_shipping_threshold
           ? Math.round(parseFloat(form.free_shipping_threshold) * 100)
           : null,
+        og_image_default:       form.og_image_default       || null,
+        og_title_default:       form.og_title_default       || null,
+        og_description_default: form.og_description_default || null,
       })
       .eq("id", 1);
 
@@ -393,18 +403,100 @@ const Settings = () => {
 
         {/* ── Business ── */}
         <TabsContent value="business">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <CardTitle className="font-display tracking-widest">BUSINESS DETAILS</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Field label="Business name"  value={form.business_name}  onChange={(v) => setForm({ ...form, business_name: v })} />
-              <Field label="From name"      value={form.from_name}      onChange={(v) => setForm({ ...form, from_name: v })} />
-              <Field label="From email"     value={form.from_email}     onChange={(v) => setForm({ ...form, from_email: v })} type="email" />
-              <Field label="Support email"  value={form.support_email}  onChange={(v) => setForm({ ...form, support_email: v })} type="email" />
-              <SaveBtn onClick={saveSettings} />
-            </CardContent>
-          </Card>
+          <div className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-display tracking-widest">BUSINESS DETAILS</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Field label="Business name"  value={form.business_name}  onChange={(v) => setForm({ ...form, business_name: v })} />
+                <Field label="From name"      value={form.from_name}      onChange={(v) => setForm({ ...form, from_name: v })} />
+                <Field label="From email"     value={form.from_email}     onChange={(v) => setForm({ ...form, from_email: v })} type="email" />
+                <Field label="Support email"  value={form.support_email}  onChange={(v) => setForm({ ...form, support_email: v })} type="email" />
+                <SaveBtn onClick={saveSettings} />
+              </CardContent>
+            </Card>
+
+            {/* ── Share Preview Defaults ── */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-display tracking-widest">SHARE PREVIEW DEFAULTS</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Used when sharing the homepage or shop page. Also the fallback for any product without custom OG fields set.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Live preview */}
+                <div className="border border-border rounded-lg overflow-hidden max-w-sm">
+                  <div className="text-[10px] text-muted-foreground px-2 pt-2 pb-1 bg-muted/30 uppercase tracking-widest">
+                    Preview — Homepage / Shop link
+                  </div>
+                  <div className="aspect-[1.91/1] bg-muted overflow-hidden">
+                    {form.og_image_default ? (
+                      <img src={form.og_image_default} alt="" className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                        No image set
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 bg-muted/20 space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">pournogravy.com</p>
+                    <p className="text-sm font-semibold text-white line-clamp-1">
+                      {form.og_title_default || 'POURnogravy — Bartender Apparel'}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {form.og_description_default || 'Description appears here'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Default OG Image */}
+                <div className="space-y-1.5">
+                  <Label>Default Share Image URL</Label>
+                  <Input
+                    value={form.og_image_default}
+                    onChange={(e) => setForm({ ...form, og_image_default: e.target.value })}
+                    placeholder="https://pournogravy.com/pournogravy_back_logo_full.png"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Best size: 1200×630px.</p>
+                </div>
+
+                {/* Default OG Title */}
+                <div className="space-y-1.5">
+                  <Label>Default Share Title</Label>
+                  <Input
+                    value={form.og_title_default}
+                    onChange={(e) => setForm({ ...form, og_title_default: e.target.value })}
+                    placeholder="POURnogravy — Bartender Apparel"
+                    maxLength={60}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {form.og_title_default.length}/60 characters
+                  </p>
+                </div>
+
+                {/* Default OG Description */}
+                <div className="space-y-1.5">
+                  <Label>Default Share Description</Label>
+                  <Textarea
+                    value={form.og_description_default}
+                    onChange={(e) => setForm({ ...form, og_description_default: e.target.value })}
+                    rows={2}
+                    maxLength={160}
+                    className="resize-none"
+                    placeholder="Saving my bar from the socially stupid, one Karen at a time…"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {form.og_description_default.length}/160 characters
+                  </p>
+                </div>
+
+                <SaveBtn onClick={saveSettings} label="SAVE DEFAULTS" />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* ── Shipping ── */}

@@ -43,6 +43,9 @@ interface DbProductRow {
   section_visibility: Record<string, boolean> | null;
   thumbnail_focal_x: number | null;
   thumbnail_focal_y: number | null;
+  og_image: string | null;
+  og_title: string | null;
+  og_description: string | null;
 }
 
 const dbRowToProduct = (r: DbProductRow): Product => ({
@@ -72,6 +75,9 @@ const dbRowToProduct = (r: DbProductRow): Product => ({
   thumbnailFocalY: r.thumbnail_focal_y ?? 40,
   sectionOrder: r.section_order ?? undefined,
   section_visibility: r.section_visibility ?? undefined,
+  og_image: r.og_image ?? undefined,
+  og_title: r.og_title ?? undefined,
+  og_description: r.og_description ?? undefined,
 });
 
 /**
