@@ -16,7 +16,9 @@ import { useSiteContent } from "@/context/SiteContentContext";
 import { RichText } from "@/components/RichText";
 
 const TICKER_PHRASE = "Drink more, Bitch less, Tip big, Stay moist!";
-const TICKER_ITEMS = [TICKER_PHRASE, TICKER_PHRASE];
+// 10 copies total (5 per half) — the CSS animation translates -50%, so both halves
+// must be identical. 5 copies per half ensures the strip is wider than any viewport.
+const TICKER_ITEMS = Array(10).fill(TICKER_PHRASE);
 
 // Fallback product IDs when no active merch drop has products assigned.
 const HERO_PRODUCT_IDS = [
