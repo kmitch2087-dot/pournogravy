@@ -1267,7 +1267,7 @@ const ProductEdit = () => {
 
       {/* Preview modal */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] p-0 flex flex-col gap-0">
+        <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b border-border shrink-0">
             <DialogTitle className="font-display tracking-widest text-sm">
               PREVIEW — {form.name || previewSlug}
@@ -1276,7 +1276,7 @@ const ProductEdit = () => {
           <iframe
             key={previewOpen ? previewSlug : "closed"}
             src={previewOpen ? `/product/${previewSlug}?preview=1` : undefined}
-            className="flex-1 w-full border-0"
+            className="flex-1 min-h-0 w-full border-0"
             title="Product preview"
           />
         </DialogContent>
