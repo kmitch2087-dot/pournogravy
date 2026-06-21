@@ -95,6 +95,7 @@ const Customers = () => {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
               placeholder="Search by email address…"
+              aria-label="Search by email address"
               className="w-full pl-9 pr-4 py-2.5 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
             />
           </div>

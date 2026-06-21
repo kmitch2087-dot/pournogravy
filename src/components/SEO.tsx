@@ -38,6 +38,7 @@ export default function SEO({
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       <meta property="og:url" content={url} />
+      <link rel="canonical" href={url} />
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content="Pournogravy" />
 

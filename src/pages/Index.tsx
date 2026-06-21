@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { RichText } from "@/components/RichText";
 
-const TICKER_ITEMS = Array(10).fill("Drink more, Bitch less, Tip big, Stay moist!");
+const TICKER_PHRASE = "Drink more, Bitch less, Tip big, Stay moist!";
+const TICKER_ITEMS = [TICKER_PHRASE, TICKER_PHRASE];
 
 // Fallback product IDs when no active merch drop has products assigned.
 const HERO_PRODUCT_IDS = [
@@ -457,7 +458,7 @@ const Index = () => {
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((q, i) => (
+          {TICKER_ITEMS.map((q, i) => (
             <React.Fragment key={i}>
               <span
                 className="inline-flex items-center font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"

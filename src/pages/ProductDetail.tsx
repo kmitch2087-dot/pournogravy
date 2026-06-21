@@ -1,4 +1,6 @@
 import SEO from "@/components/SEO";
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 import { ShareButton } from "@/components/ShareButton";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { RichText } from "@/components/RichText";
@@ -43,6 +45,7 @@ const ProductDetail = () => {
   const { trackAddToCart } = useAnalytics();
   const [selectedSize, setSelectedSize] = useState("");
   const [justAdded, setJustAdded] = useState(false);
+  const [addedFeedback, setAddedFeedback] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   // Selected fit (Men's / Women's). Defaults to the first variant on the product.
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(
@@ -54,6 +57,7 @@ const ProductDetail = () => {
   );
   // "Want this on a hoodie/speedo/whatever?" request modal.
   const [customOpen, setCustomOpen] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -122,6 +126,7 @@ const ProductDetail = () => {
   useEffect(() => {
     setSelectedSize("");
     setJustAdded(false);
+    setAddedFeedback(false);
     setActiveImage(0);
     setSelectedVariant(product?.variants?.[0]);
     setSelectedColor(product?.colors?.[0]);
@@ -169,7 +174,8 @@ const ProductDetail = () => {
   }
 
   const related = (mergedProducts ?? [])
-    .filter((p) => p.id !== product.id && p.published === true)
+    .filter((p) => p.id !== product.id && p.published !== false)
+    .sort(() => Math.random() - 0.5)
     .slice(0, 3);
 
   // Photo lookup chain — most specific match wins:
@@ -204,26 +210,35 @@ const ProductDetail = () => {
     addItem(product, selectedSize, selectedVariant?.id, selectedColor?.id);
     trackAddToCart(product.id, { size: selectedSize, variant: selectedVariant?.id });
     setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 2000);
+    setAddedFeedback(true);
+    toast.success('Added to cart', {
+      description: product.name,
+      duration: 2000,
+    });
+    setTimeout(() => {
+      setJustAdded(false);
+      setAddedFeedback(false);
+    }, 2000);
   };
 
   // ── JSON-LD: Google rich results + Shopping eligibility ──────────────────
   const jsonLd = {
-    "@context": "https://schema.org/",
+    "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    description: `${product.humor} — ${product.name}. Bartender-themed apparel for the service industry.`,
-    brand: { "@type": "Brand", name: "Pournogravy" },
-    image: product.images,
-    url: `https://pournogravy.com/product/${product.id}`,
+    description: product.description ?? `${product.humor} — ${product.name}. Bartender-themed apparel for the service industry.`,
+    brand: { "@type": "Brand", name: "POURnogravy" },
+    image: (product.images ?? []).map((img: string) =>
+      img.startsWith('http') ? img : `https://pournogravy.com${img}`
+    ),
     sku: product.id,
     offers: {
       "@type": "Offer",
+      price: product.price ?? 27.99,
       priceCurrency: "USD",
-      price: product.price.toFixed(2),
       availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: "Pournogravy" },
       url: `https://pournogravy.com/product/${product.id}`,
+      seller: { "@type": "Organization", name: "POURnogravy" },
       shippingDetails: {
         "@type": "OfferShippingDetails",
         shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "USD" },
@@ -240,6 +255,16 @@ const ProductDetail = () => {
         reviewCount: reviews.length,
       },
     }),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://pournogravy.com" },
+      { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://pournogravy.com/shop" },
+      { "@type": "ListItem", "position": 3, "name": product.name, "item": `https://pournogravy.com/product/${product.id}` }
+    ]
   };
 
   return (
@@ -282,22 +307,35 @@ const ProductDetail = () => {
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        <link rel="canonical" href={`https://pournogravy.com/product/${product.id}`} />
+      </Helmet>
       <div className="container mx-auto px-4">
         {/* Back link */}
-        <Link
-          to="/shop"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-[#fde047] transition-colors mb-8 font-display tracking-widest uppercase"
+        <a
+          href="/shop"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white transition-colors py-3 group mb-4 font-display tracking-widest uppercase"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Shop
-        </Link>
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Shop
+        </a>
 
-        <div className="grid md:grid-cols-2 gap-8 md:gap-16 pb-12">
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="mb-4 text-xs text-muted-foreground">
+          <ol className="flex items-center gap-1.5">
+            <li><a href="/" className="hover:text-[#fde047] transition-colors">Home</a></li>
+            <li className="opacity-40">/</li>
+            <li><a href="/shop" className="hover:text-[#fde047] transition-colors">Shop</a></li>
+            <li className="opacity-40">/</li>
+            <li className="text-white/70">{product.name}</li>
+          </ol>
+        </nav>
+
+        <div className="grid md:grid-cols-2 gap-8 md:gap-16 pb-12 items-start">
           {/* Gallery — sticky so it travels with the user while they read copy */}
-          <div className="space-y-4 md:sticky md:top-28 md:self-start">
+          <div className="space-y-4 md:sticky md:top-24 md:self-start">
             <motion.div
               key={activeImage}
               initial={{ opacity: 0.4 }}
@@ -308,7 +346,7 @@ const ProductDetail = () => {
               {gallery[activeImage] ? (
                 <img
                   src={gallery[activeImage]}
-                  alt={product.name}
+                  alt={`${product.name} — view ${activeImage + 1}`}
                   className="w-full h-full object-cover"
                   loading="eager"
                   decoding="async"
@@ -329,6 +367,16 @@ const ProductDetail = () => {
                   {product.badge}
                 </div>
               )}
+              <div className="absolute top-3 right-3 z-10">
+                <ShareButton
+                  productName={product.name}
+                  productUrl={`/product/${product.id}`}
+                  productImage={product.images?.[0]
+                    ? `https://pournogravy.com${product.images[0]}`
+                    : undefined}
+                  compact={true}
+                />
+              </div>
             </motion.div>
 
             {/* Thumbnail strip */}
@@ -341,8 +389,8 @@ const ProductDetail = () => {
                     aria-label={`View image ${i + 1}`}
                     className={`relative h-20 w-20 border-2 overflow-hidden transition-all bg-muted ${
                       i === activeImage
-                        ? "border-[#fde047]"
-                        : "border-white/20 hover:border-white/50"
+                        ? "border-[#fde047] opacity-100"
+                        : "border-transparent opacity-50 hover:opacity-80 hover:border-white/50"
                     }`}
                     style={
                       i === activeImage
@@ -352,7 +400,7 @@ const ProductDetail = () => {
                   >
                     <img
                       src={img}
-                      alt=""
+                      alt={`${product.name} — view ${i + 1}`}
                       className="w-full h-full object-contain"
                       loading="lazy"
                       decoding="async"
@@ -389,8 +437,14 @@ const ProductDetail = () => {
                 <div className="flex items-center gap-1.5 mt-2">
                   <StarRow rating={avgRating} />
                   <span className="text-xs text-muted-foreground">
-                    {avgRating.toFixed(1)} ({reviews!.length} review{reviews!.length !== 1 ? "s" : ""})
+                    {avgRating.toFixed(1)}
                   </span>
+                  <a
+                    href="#reviews"
+                    className="text-xs text-muted-foreground hover:text-[#fde047] transition-colors underline underline-offset-2"
+                  >
+                    {reviews!.length} {reviews!.length === 1 ? 'review' : 'reviews'} ↓
+                  </a>
                 </div>
               )}
 
@@ -540,13 +594,22 @@ const ProductDetail = () => {
 
               {/* Size selector */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-display tracking-widest uppercase">Size</p>
-                  {selectedSize && (
-                    <p className="text-xs text-muted-foreground">
-                      Selected: <span className="text-foreground font-display">{selectedSize}</span>
-                    </p>
-                  )}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-display tracking-widest uppercase text-muted-foreground">Size</span>
+                  <div className="flex items-center gap-3">
+                    {selectedSize && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: <span className="text-foreground font-display">{selectedSize}</span>
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSizeGuideOpen(true)}
+                      className="text-xs text-[#fde047] underline underline-offset-2 hover:no-underline transition-all"
+                    >
+                      Size Guide
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => (
@@ -648,16 +711,6 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              {/* Share */}
-              <div className="pt-2 border-t border-border/30">
-                <ShareButton
-                  productName={product.name}
-                  productUrl={`/product/${product.id}`}
-                  productImage={product.images?.[0]
-                    ? `https://pournogravy.com${product.images[0]}`
-                    : undefined}
-                />
-              </div>
             </div>
           </motion.div>
         </div>
@@ -670,8 +723,53 @@ const ProductDetail = () => {
           designName={product.name}
         />
 
+        {/* Size guide modal */}
+        {sizeGuideOpen && (
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setSizeGuideOpen(false)}
+          >
+            <div
+              className="bg-background border border-border rounded-lg p-6 max-w-md w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-lg tracking-wider">SIZE GUIDE</h3>
+                <button onClick={() => setSizeGuideOpen(false)} aria-label="Close size guide"
+                  className="text-muted-foreground hover:text-white">✕</button>
+              </div>
+              <table className="w-full text-sm text-center">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground text-xs">
+                    <th className="pb-2 text-left">Size</th>
+                    <th className="pb-2">Chest (in)</th>
+                    <th className="pb-2">Length (in)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {[
+                    ['XS', '31-34', '27'],
+                    ['S', '34-37', '28'],
+                    ['M', '38-41', '29'],
+                    ['L', '42-45', '30'],
+                    ['XL', '46-49', '31'],
+                    ['2XL', '50-53', '32'],
+                  ].map(([size, chest, length]) => (
+                    <tr key={size}>
+                      <td className="py-2 text-left font-medium">{size}</td>
+                      <td className="py-2">{chest}</td>
+                      <td className="py-2">{length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-xs text-muted-foreground mt-4">Unisex fit. When in doubt, size up.</p>
+            </div>
+          </div>
+        )}
+
         {/* Reviews */}
-        <section className="pt-12 pb-8 border-t border-border">
+        <section id="reviews" className="pt-12 pb-8 border-t border-border">
           <h2 className="font-display text-2xl md:text-3xl tracking-wider mb-8">REVIEWS</h2>
 
           {reviews && reviews.length === 0 && (

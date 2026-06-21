@@ -80,6 +80,17 @@ const useEasterEggs = () =>
     throwOnError: false,
   });
 
+function getBarTime(slug: string): string {
+  let hash = 0;
+  for (const ch of slug) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  const hour = (hash % 5) + 19; // 7pm - 11pm range (19-23)
+  const min = (hash >> 4) % 60;
+  const sec = (hash >> 8) % 60;
+  const h = hour > 12 ? hour - 12 : hour;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  return `${h}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')} ${ampm}`;
+}
+
 // ─── Zoom image map — keyed by product.id ──────────────────────────────────
 const ZOOM_IMAGES: Record<string, string> = {
   'last-call-for-karen-tee':          '/karen_graphic_zoom.png',
@@ -121,8 +132,8 @@ const ProductCard = ({ product }: { product: Product }) => {
     [seed],
   );
 
-  // Current time — captured once on mount (receipt-accurate)
-  const checkTime = useMemo(() => new Date().toLocaleTimeString(), []);
+  // Deterministic bar time — unique per product slug, consistent across renders
+  const checkTime = getBarTime(product.id ?? (product as { slug?: string }).slug ?? '');
 
   // ── Easter eggs ──────────────────────────────────────────────────────────
   const { data: eggsData } = useEasterEggs();

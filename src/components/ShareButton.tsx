@@ -7,9 +7,10 @@ interface ShareButtonProps {
   productUrl: string;
   productImage?: string;
   className?: string;
+  compact?: boolean;
 }
 
-export function ShareButton({ productName, productUrl, productImage, className }: ShareButtonProps) {
+export function ShareButton({ productName, productUrl, productImage, className, compact }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -65,16 +66,24 @@ export function ShareButton({ productName, productUrl, productImage, className }
         type="button"
         onClick={() => setOpen(!open)}
         aria-label="Share this product"
-        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-[#fde047] transition-colors font-display tracking-widest uppercase"
+        className={cn(
+          'flex items-center gap-1.5 transition-colors',
+          compact
+            ? 'bg-black/60 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/80'
+            : 'text-xs text-muted-foreground hover:text-[#fde047] font-display tracking-widest uppercase'
+        )}
       >
         <Share2 className="h-4 w-4" />
-        {copied ? '✓ Copied!' : 'Share'}
+        {!compact && <span>{copied ? '✓ Copied!' : 'Share'}</span>}
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full mb-2 left-0 z-50 bg-background border border-border rounded-md shadow-lg overflow-hidden min-w-[180px]">
+          <div className={cn(
+            "absolute z-50 bg-background border border-border rounded-md shadow-lg overflow-hidden min-w-[180px]",
+            compact ? "top-full mt-2 right-0" : "bottom-full mb-2 left-0"
+          )}>
             <button
               type="button"
               onClick={handleFacebook}

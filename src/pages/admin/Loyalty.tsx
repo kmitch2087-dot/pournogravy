@@ -503,6 +503,7 @@ const Loyalty = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by email…"
+              aria-label="Search by email"
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
             />
           </div>
