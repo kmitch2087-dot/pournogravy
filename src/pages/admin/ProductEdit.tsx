@@ -14,7 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Upload, X, Plus, ExternalLink, Eye, GripVertical } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Upload, X, Plus, ExternalLink, Eye, GripVertical } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
@@ -289,9 +292,24 @@ const ProductEdit = () => {
   const [form, setForm] = useState<FormState>(defaultForm());
   const [initialized, setInitialized] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainUploadRef = useRef<HTMLInputElement>(null);
+
+  // All products for prev/next navigation (name-sorted)
+  const { data: allProducts = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["admin-products-nav"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+    enabled: !isNew,
+  });
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["admin-product", id],
@@ -613,7 +631,7 @@ const ProductEdit = () => {
     };
 
     sessionStorage.setItem(`preview_product_${slug}`, JSON.stringify(previewProduct));
-    window.open(`/product/${slug}?preview=1`, "_blank", "noopener");
+    setPreviewOpen(true);
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -627,20 +645,52 @@ const ProductEdit = () => {
 
   const isPOD = form.fulfillment_type === "printful" || form.fulfillment_type === "printify";
 
+  const currentIndex = isNew ? -1 : allProducts.findIndex((p) => p.id === id);
+  const prevProduct = currentIndex > 0 ? allProducts[currentIndex - 1] : null;
+  const nextProduct = currentIndex !== -1 && currentIndex < allProducts.length - 1 ? allProducts[currentIndex + 1] : null;
+  const previewSlug = form.slug || slugify(form.name);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
-          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/products")}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to products
+          </Button>
+          {!isNew && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!prevProduct}
+                onClick={() => prevProduct && navigate(`/admin/products/${prevProduct.id}`)}
+                title={prevProduct ? prevProduct.name : undefined}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!nextProduct}
+                onClick={() => nextProduct && navigate(`/admin/products/${nextProduct.id}`)}
+                title={nextProduct ? nextProduct.name : undefined}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             className="text-xs font-display tracking-widest"
             onClick={openPreview}
+            disabled={!previewSlug}
           >
             <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
           </Button>
@@ -1214,6 +1264,23 @@ const ProductEdit = () => {
           </div>
         </div>
       </div>
+
+      {/* Preview modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] p-0 flex flex-col gap-0">
+          <DialogHeader className="px-4 py-3 border-b border-border shrink-0">
+            <DialogTitle className="font-display tracking-widest text-sm">
+              PREVIEW — {form.name || previewSlug}
+            </DialogTitle>
+          </DialogHeader>
+          <iframe
+            key={previewOpen ? previewSlug : "closed"}
+            src={previewOpen ? `/product/${previewSlug}?preview=1` : undefined}
+            className="flex-1 w-full border-0"
+            title="Product preview"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
