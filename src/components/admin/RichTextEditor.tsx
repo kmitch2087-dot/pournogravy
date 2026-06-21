@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -29,6 +30,12 @@ export function RichTextEditor({
     editable: !disabled,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
+
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || '', false);
+    }
+  }, [editor, value]);
 
   if (!editor) return null;
 
