@@ -302,7 +302,7 @@ const Index = () => {
             <div
               key={`product-${slideIdx}-${product.id}`}
               className={[
-                'absolute inset-0',
+                'absolute inset-0 will-change-transform',
                 active
                   ? slideVisible
                     ? '[animation:slideInRight_1s_cubic-bezier(0.25,0.46,0.45,0.94)_forwards]'
@@ -477,7 +477,7 @@ const Index = () => {
       >
         <div
           className="flex whitespace-nowrap"
-          style={{ animation: "marquee-scroll 14s linear infinite" }}
+          style={{ animation: "marquee-scroll 14s linear infinite", willChange: 'transform' }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
@@ -502,7 +502,7 @@ const Index = () => {
       </section>
 
       {/* Super Powers section — Opie's original Shopify copy */}
-      <section className="relative noise-overlay overflow-hidden">
+      <section className="relative noise-overlay overflow-hidden" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 800px' }}>
         <div
           className="absolute inset-0 -z-0"
           style={{
@@ -617,6 +617,8 @@ const Index = () => {
         style={{
           background:
             "linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted)) 50%, hsl(var(--background)) 100%)",
+          contentVisibility: 'auto',
+          containIntrinsicSize: '0 600px',
         }}
       >
         <div className="container mx-auto px-4 py-20 md:py-24">

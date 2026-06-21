@@ -30,6 +30,8 @@ const BlogCard = ({ post, index }: { post: BlogPost; index: number }) => (
             src={post.featured_image_url}
             alt={post.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <div

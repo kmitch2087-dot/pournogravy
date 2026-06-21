@@ -1,5 +1,59 @@
+# POURnogravy robots.txt
+# Standard crawlers — full access except admin
 User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/*
 Sitemap: https://pournogravy.com/sitemap.xml
+Sitemap: https://pournogravy.com/sitemap-images.xml
+
+# === AI TRAINING SCRAPERS — BLOCKED ===
+# These collect data for model training, not search indexing
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+# === AI SEARCH AGENTS — ALLOWED ===
+# These power AI search results (ChatGPT, Google AI Overviews, Claude, Apple, Meta)
+# Allowing these makes POURnogravy visible in AI-generated search answers
+
+# OpenAI / ChatGPT search
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+
+# Google AI Overviews (Gemini search summaries)
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+
+# Anthropic / Claude
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+
+# Apple Intelligence
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+
+# Meta AI
+User-agent: meta-externalagent
+Allow: /
+Disallow: /admin
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin

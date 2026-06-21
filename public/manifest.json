@@ -1,0 +1,27 @@
+{
+  "name": "POURnogravy",
+  "short_name": "POURnogravy",
+  "description": "Mildly offensive bartender apparel for service industry survivors.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#fde047",
+  "lang": "en-US",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/logo.webp",
+      "sizes": "any",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pournogravy_back_logo_full.png",
+      "sizes": "2234x546",
+      "type": "image/png",
+      "label": "POURnogravy — Bartender Apparel"
+    }
+  ]
+}

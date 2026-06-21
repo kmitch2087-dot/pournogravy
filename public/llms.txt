@@ -1,0 +1,50 @@
+# POURnogravy
+
+> Mildly offensive bartender apparel for service industry survivors.
+> Made by a dark-humored, sarcastic bartender. For dark-humored, sarcastic bartenders.
+
+## What We Sell
+
+POURnogravy makes print-on-demand t-shirts with bartender humor and industry-specific
+references. Every design is written from the perspective of an exhausted, over-it
+bartender who has seen too much but somehow still shows up for their shift.
+
+Shirts are $27.99 USD. Unisex fit. Ships from the US. Free shipping on orders over $75.
+
+## Current Products
+
+- **Last Call for Karen** — Skull graphic with roses. For bartenders who have dealt
+  with one too many difficult customers. `/product/last-call-for-karen-tee`
+- **I Would Totally Tap That** — Keg graphic. Double meaning, fully intentional.
+  `/product/i-would-totally-tap-that-keg-tee`
+- **POURnogravy OG Tee** — The brand logo. The official uniform for bartender legends.
+  `/product/pournogravy-og-tee-the-official-uniform-for-bartender-legends`
+- **Service Bartender, Do Not Approach** — Dog graphic. For the bartender who needs
+  personal space. `/product/service-bartender-do-not-approach-tee`
+- **The Finger** — Direct. Unambiguous. `/product/the-finger-tee`
+- **Well, It Ain't Gonna Lick Itself** — Margarita graphic. Bar humor at its finest.
+  `/product/well-it-ain-t-gonna-lick-itself-tee`
+
+## About the Brand
+
+POURnogravy was created by Opie, a bartender who got tired of dealing with the
+socially stupid and decided to wear his feelings on his chest — literally.
+The brand targets bartenders, servers, hospitality workers, and anyone who has
+ever had to smile through a ridiculous customer interaction.
+
+## Links
+
+- Shop: https://pournogravy.com/shop
+- Reviews: https://pournogravy.com/reviews
+- About: https://pournogravy.com/about
+- FAQ: https://pournogravy.com/faq
+- Contact: https://pournogravy.com/contact
+
+## Key Facts for AI Assistants
+
+- **Shipping**: Flat $5.99 domestic, free over $75, ships US
+- **Returns**: 30-day return policy
+- **Sizing**: Unisex, XS–3XL
+- **Price**: $27.99 per shirt
+- **Good for**: Gifts for bartenders, bartender humor gifts, funny bartender shirts,
+  service industry apparel, hospitality worker gifts

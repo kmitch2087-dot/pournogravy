@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>POURnogravy — Bartender Apparel</title>
+    <link>https://pournogravy.com</link>
+    <description>Mildly offensive bartender apparel for service industry survivors. New drops, bar stories, and industry humor.</description>
+    <language>en-us</language>
+    <atom:link href="https://pournogravy.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Sun, 21 Jun 2026 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://pournogravy.com/logo.webp</url>
+      <title>POURnogravy</title>
+      <link>https://pournogravy.com</link>
+    </image>
+    <item>
+      <title>Last Call for Karen Tee — Now Available</title>
+      <link>https://pournogravy.com/product/last-call-for-karen-tee</link>
+      <description>The skull graphic tee for bartenders who have dealt with one too many entitled customers. $27.99.</description>
+      <pubDate>Wed, 28 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://pournogravy.com/product/last-call-for-karen-tee</guid>
+    </item>
+    <item>
+      <title>I Would Totally Tap That — Keg Tee</title>
+      <link>https://pournogravy.com/product/i-would-totally-tap-that-keg-tee</link>
+      <description>Don't make it weird. It's just a keg. The double meaning is purely intentional. $27.99.</description>
+      <pubDate>Wed, 28 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://pournogravy.com/product/i-would-totally-tap-that-keg-tee</guid>
+    </item>
+    <item>
+      <title>Service Bartender, Do Not Approach</title>
+      <link>https://pournogravy.com/product/service-bartender-do-not-approach-tee</link>
+      <description>For bartenders who need people to understand boundaries. The dog graphic says it all. $27.99.</description>
+      <pubDate>Wed, 28 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://pournogravy.com/product/service-bartender-do-not-approach-tee</guid>
+    </item>
+    <item>
+      <title>Well, It Ain't Gonna Lick Itself</title>
+      <link>https://pournogravy.com/product/well-it-ain-t-gonna-lick-itself-tee</link>
+      <description>A margarita reference. Absolutely nothing else. $27.99.</description>
+      <pubDate>Wed, 28 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://pournogravy.com/product/well-it-ain-t-gonna-lick-itself-tee</guid>
+    </item>
+  </channel>
+</rss>

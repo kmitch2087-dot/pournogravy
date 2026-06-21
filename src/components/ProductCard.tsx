@@ -249,7 +249,8 @@ const ProductCard = ({ product }: { product: Product }) => {
                     alt={product.name}
                     className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: showZoom ? 0 : 1, transition: 'opacity 0.8s ease-in-out' }}
-                    loading="eager"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       const el = e.target as HTMLImageElement;
                       if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.png');
@@ -263,6 +264,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                     className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: showZoom ? 1 : 0, transition: 'opacity 0.8s ease-in-out' }}
                     loading="lazy"
+                    decoding="async"
                   />
                 )}
               </>

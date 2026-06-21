@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>POURnogravy</ShortName>
+  <Description>Search POURnogravy bartender apparel</Description>
+  <Tags>bartender apparel shirts humor</Tags>
+  <Url type="text/html" template="https://pournogravy.com/shop?q={searchTerms}"/>
+  <Image width="16" height="16" type="image/x-icon">https://pournogravy.com/favicon.ico</Image>
+  <InputEncoding>UTF-8</InputEncoding>
+</OpenSearchDescription>
