@@ -49,6 +49,7 @@ const Reviews = () => {
         title="Reviews"
         description="Real talk from real bartenders. See what the industry thinks of Pournogravy gear."
         url="https://pournogravy.com/reviews"
+        imageAlt="POURnogravy customer reviews"
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6">

@@ -37,13 +37,22 @@ const Navbar = () => {
   }, [location.pathname]);
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-background/90 backdrop-blur-md border-b border-[#fde047]/20 shadow-[0_2px_20px_rgba(0,0,0,0.3)]"
-          : "bg-background/60 backdrop-blur-sm border-b border-transparent"
-      }`}
-    >
+    <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:bg-[#fde047] focus:text-black focus:px-4 focus:py-2 focus:rounded focus:font-display focus:text-sm focus:tracking-wider"
+      >
+        Skip to main content
+      </a>
+      <header>
+      <nav
+        aria-label="Main navigation"
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-background/90 backdrop-blur-md border-b border-[#fde047]/20 shadow-[0_2px_20px_rgba(0,0,0,0.3)]"
+            : "bg-background/60 backdrop-blur-sm border-b border-transparent"
+        }`}
+      >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
@@ -133,6 +142,8 @@ const Navbar = () => {
             <ShoppingBag className="h-5 w-5" />
             {totalItems > 0 && (
               <span
+                aria-live="polite"
+                aria-atomic="true"
                 className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#fde047] text-[10px] font-bold text-black"
                 style={{ boxShadow: "0 0 10px rgba(253,224,71,0.6)" }}
               >
@@ -209,7 +220,9 @@ const Navbar = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+      </nav>
+      </header>
+    </>
   );
 };
 

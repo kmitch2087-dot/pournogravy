@@ -77,6 +77,7 @@ const Shop = () => {
         title="Shop"
         description="Browse the full Pournogravy collection — tees for bartenders, by bartenders. Wear your war stories. Free shipping on orders over $50."
         url="https://pournogravy.com/shop"
+        imageAlt="POURnogravy shop — bartender apparel"
       />
       {/* Drop Shop Banner */}
       <DropShopBanner />

@@ -107,6 +107,7 @@ const Blog = () => {
         title="Blog"
         description="Opinions, rants, and recipes for disaster from the Pournogravy crew."
         url="https://pournogravy.com/blog"
+        imageAlt="POURnogravy blog"
       />
 
       {/* Header */}

@@ -208,18 +208,39 @@ const Index = () => {
   return (
     <div className="min-h-screen pt-16 md:pt-20">
       <SEO
-        title="Home"
-        description="Bartender-themed apparel for the people who pour for a living. Because someone has to deal with the public, and it might as well be stylish."
+        title="Bartender Apparel"
+        description="Saving my bar from the socially stupid, one Karen at a time. Mildly offensive bartender t-shirts for service industry survivors."
         url="https://pournogravy.com"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          "name": "Pournogravy",
-          "url": "https://pournogravy.com",
-          "logo": "https://pournogravy.com/logo.webp",
-          "description": "Bartender-themed apparel for the people who pour for a living.",
-          "sameAs": [],
-        }}
+        imageAlt="POURnogravy bartender apparel brand"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "POURnogravy",
+            "url": "https://pournogravy.com",
+            "logo": "https://pournogravy.com/logo.webp",
+            "description": "Mildly offensive bartender apparel for service industry survivors.",
+            "sameAs": [
+              "https://www.instagram.com/pournogravy",
+              "https://www.facebook.com/pournogravy",
+              "https://www.tiktok.com/@pournogravy",
+            ],
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "POURnogravy",
+            "url": "https://pournogravy.com",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://pournogravy.com/shop?q={search_term_string}",
+              },
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
       />
       {/* Drop Hero Banner — shown above carousel when a drop is live */}
       <DropHeroBanner />

@@ -22,6 +22,7 @@ const Contact = () => {
         title="Contact"
         description="Reach out to Pournogravy — questions, custom orders, wholesale inquiries, or just need to vent about a bad tipper. We're listening."
         url="https://pournogravy.com/contact"
+        imageAlt="Contact POURnogravy"
       />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">

@@ -3,7 +3,7 @@ import { Instagram, Facebook } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="relative bg-black text-white overflow-hidden">
+    <footer role="contentinfo" className="relative bg-black text-white overflow-hidden">
       {/* neon top border */}
       <div
         aria-hidden="true"

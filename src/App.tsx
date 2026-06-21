@@ -107,7 +107,7 @@ const PublicChrome = ({ children }: { children: React.ReactNode }) => {
       {!isAdmin && <Navbar />}
       {!isAdmin && <CartDrawer />}
       {!isAdmin && <SiteEditor />}
-      {children}
+      {isAdmin ? children : <main id="main-content">{children}</main>}
       {!isAdmin && <Footer />}
     </>
   );

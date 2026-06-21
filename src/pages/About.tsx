@@ -14,6 +14,7 @@ const About = () => {
         title="About"
         description="Pournogravy was born behind the bar. Apparel for bartenders who've heard it all, poured it all, and survived to tell the tale. Meet the brand."
         url="https://pournogravy.com/about"
+        imageAlt="POURnogravy — the brand story"
       />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">

@@ -314,6 +314,7 @@ const ProductDetail = () => {
           product.image ||
           'https://pournogravy.com/pournogravy_back_logo_full.png'
         }
+        imageAlt={product.og_title || product.name}
         url={`https://pournogravy.com/product/${product.id}`}
         type="product"
       />

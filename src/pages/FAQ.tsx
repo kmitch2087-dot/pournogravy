@@ -48,6 +48,16 @@ const FAQ = () => {
         title="FAQ"
         description="Got questions about Pournogravy? Shipping, sizing, returns, custom orders — we've got answers. Probably funnier than you expected."
         url="https://pournogravy.com/faq"
+        imageAlt="POURnogravy frequently asked questions"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": activeFaqs.map(faq => ({
+            "@type": "Question",
+            "name": faq.q,
+            "acceptedAnswer": { "@type": "Answer", "text": faq.a },
+          })),
+        }}
       />
       {/* Hero band */}
       <section className="relative bg-black text-white overflow-hidden">
