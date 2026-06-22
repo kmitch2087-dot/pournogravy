@@ -28,6 +28,22 @@ SPA routing is handled by `404.html` (a copy of `index.html` produced by the bui
 match a static file, preserving the URL so React Router handles routing client-side.
 The HTTP 404 status on SPA routes is expected and correct for this pattern.
 
+## Session Protocol
+- Update CLAUDE.md every ~30 minutes during active sessions with new findings:
+  stack gotchas, file locations, config discoveries, what was just fixed/built/decided
+- Do NOT follow deployment/routing advice from Claude.ai without reading actual repo files first
+- Claude.ai has no filesystem access — it works from live bundle inspection and Supabase MCP only
+- If Claude.ai and CLAUDE.md conflict on config (like `_redirects`), CLAUDE.md wins
+- After each significant fix or build, note it here with the commit hash and what it addressed
+
+### Recent significant commits
+| Commit | What it fixed |
+|--------|--------------|
+| `0d24858` | Migrated product catalog from 1228-line static array to DB-only (`useMergedProducts`); removed array from main bundle (~49kB saved) |
+| `44feb4c` | Added `aria-label` to logo link and product card image links (accessibility) |
+| `754f410` | Fixed black screen on client-side navigation to `/admin` — added inner `<Suspense>` around `<Outlet />` in AdminLayout so the shell stays visible while page chunk loads |
+| DB-only | Fixed 4 product image 404s (`cow-tipping`, `f-off-karen`, `do-you-like-it-in-a-glass`, `your-next-drink`) — DB had `.webp` URLs but only `.png`/`.jpg` files existed |
+
 ## ✅ ENV VARS — RESOLVED
 `.env.production` is committed to the repo (not gitignored). It contains `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. This guarantees Vite bakes these into the CF Pages build. Do not move these to CF Pages "Secrets" — Secrets are runtime-only and not available at Vite build time.
 
