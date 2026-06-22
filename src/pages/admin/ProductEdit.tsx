@@ -346,7 +346,10 @@ const ProductEdit = () => {
       })();
 
       const [main = "", ...rest] = allImages;
-      const rawColors = (product.colors as ColorRow[] | null) ?? [];
+      const rawColors: ColorRow[] = ((product.colors as unknown[] | null) ?? []).map((c) => {
+        const col = c as Record<string, unknown>;
+        return { name: (col.name ?? col.label ?? '') as string, hex: (col.hex ?? '#000000') as string };
+      });
 
       const wentLiveAtRaw = (product as Record<string, unknown>).went_live_at as string | null;
       const wentLiveAtLocal = wentLiveAtRaw
@@ -643,7 +646,7 @@ const ProductEdit = () => {
       image: images[0],
       sizes: form.sizes,
       colors: form.colors.length > 0
-        ? form.colors.map((c) => ({ id: c.name.toLowerCase(), label: c.name, hex: c.hex }))
+        ? form.colors.map((c) => ({ id: (c.name || '').toLowerCase(), label: c.name || '', hex: c.hex }))
         : [{ id: "black", label: "Black", hex: "#0a0a0a" }, { id: "white", label: "White", hex: "#ffffff" }],
       variants: [{ id: "unisex", label: "Unisex", images }],
     };
@@ -1168,7 +1171,7 @@ const ProductEdit = () => {
                   )}
                   {form.colors.map((c, i) => {
                     const slugPattern = form.slug
-                      ? `${form.slug}_${c.name.toLowerCase().replace(/\s+/g, "_") || "<name>"}`
+                      ? `${form.slug}_${(c.name || '').toLowerCase().replace(/\s+/g, "_") || "<name>"}`
                       : "<slug>_<name>";
                     return (
                       <div key={i} className="flex items-center gap-3 group">
