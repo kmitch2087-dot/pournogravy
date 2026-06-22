@@ -59,6 +59,8 @@ const Navbar = () => {
           <img
             src="/logo.webp"
             alt="POURnogravy"
+            width="500"
+            height="257"
             className="h-10 md:h-14 w-auto transition-transform group-hover:scale-105"
           />
         </Link>

@@ -150,6 +150,7 @@ const Shop = () => {
             <div className="flex items-center gap-2 ml-auto">
               <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
               <select
+                aria-label="Sort products"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-xs bg-transparent border border-border text-muted-foreground focus:outline-none focus:border-[#fde047] py-1.5 px-2 cursor-pointer"
