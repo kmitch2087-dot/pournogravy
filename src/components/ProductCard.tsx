@@ -112,7 +112,7 @@ const CTA_PHRASES = [
   "ONE MORE ROUND",
 ];
 
-const ProductCard = ({ product }: { product: Product }) => {
+const ProductCard = ({ product, priority = false }: { product: Product; priority?: boolean }) => {
   const { isSaved, toggle } = useWishlist();
   const ratings = useProductRatings();
   const saved = isSaved(product.id);
@@ -249,8 +249,9 @@ const ProductCard = ({ product }: { product: Product }) => {
                     alt={product.name}
                     className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: showZoom ? 0 : 1, transition: 'opacity 0.8s ease-in-out' }}
-                    loading="lazy"
-                    decoding="async"
+                    loading={priority ? "eager" : "lazy"}
+                    fetchPriority={priority ? "high" : "auto"}
+                    decoding={priority ? "sync" : "async"}
                     onError={(e) => {
                       const el = e.target as HTMLImageElement;
                       if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.png');

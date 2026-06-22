@@ -668,7 +668,7 @@ const Index = () => {
                   }}
                 />
                 <div className="relative">
-                  <ProductCard product={product} />
+                  <ProductCard product={product} priority={i < 3} />
                 </div>
               </motion.div>
             ))}
