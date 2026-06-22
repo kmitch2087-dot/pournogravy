@@ -258,7 +258,7 @@ const Index = () => {
         <div className="absolute inset-0 pointer-events-none">
           <img
             ref={logoRef}
-            src="/hero-bg-transparent.png"
+            src="/hero-bg-transparent.webp"
             alt=""
             className="w-full h-full object-contain object-center"
             style={{ opacity: 0.08, filter: 'none' }}
@@ -493,7 +493,7 @@ const Index = () => {
                 {q}
               </span>
               <img
-                src="/karen_ticker.png"
+                src="/karen_ticker.webp"
                 alt=""
                 aria-hidden="true"
                 width="40"

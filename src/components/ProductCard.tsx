@@ -93,8 +93,8 @@ function getBarTime(slug: string): string {
 
 // ─── Zoom image map — keyed by product.id ──────────────────────────────────
 const ZOOM_IMAGES: Record<string, string> = {
-  'last-call-for-karen-tee':          '/karen_graphic_zoom.png',
-  'i-would-totally-tap-that-keg-tee': '/keg_graphic_zoom.png',
+  'last-call-for-karen-tee':          '/karen_graphic_zoom.webp',
+  'i-would-totally-tap-that-keg-tee': '/keg_graphic_zoom.webp',
 };
 
 // ─── Constants ─────────────────────────────────────────────────────────────
