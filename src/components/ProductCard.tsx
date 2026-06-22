@@ -251,7 +251,7 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
                     style={{ opacity: showZoom ? 0 : 1, transition: 'opacity 0.8s ease-in-out' }}
                     loading={priority ? "eager" : "lazy"}
                     fetchPriority={priority ? "high" : "auto"}
-                    decoding={priority ? "sync" : "async"}
+                    decoding="async"
                     onError={(e) => {
                       const el = e.target as HTMLImageElement;
                       if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.png');
