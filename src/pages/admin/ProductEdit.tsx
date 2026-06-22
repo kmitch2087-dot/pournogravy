@@ -331,6 +331,12 @@ const ProductEdit = () => {
     enabled: !isNew,
   });
 
+  // ── Reset when navigating to a different product ──────────────────────────
+  useEffect(() => {
+    setInitialized(false);
+    setForm(defaultForm());
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Populate form ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (initialized) return;
