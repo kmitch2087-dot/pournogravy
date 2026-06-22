@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Italic, Underline as UnderlineIcon, List, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,17 +22,24 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Underline,
       Placeholder.configure({ placeholder }),
     ],
     content: value,
     editable: !disabled,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onContentError: ({ error }) => {
+      console.error('[RichTextEditor] content parse error:', error);
+    },
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', false);
+    if (!editor || editor.isDestroyed) return;
+    try {
+      if (value !== editor.getHTML()) {
+        editor.commands.setContent(value || '', { emitUpdate: false });
+      }
+    } catch (err) {
+      console.error('[RichTextEditor] setContent threw:', err);
     }
   }, [editor, value]);
 
