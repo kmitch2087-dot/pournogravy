@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/context/AuthContext";
@@ -301,7 +301,13 @@ const AdminLayout = () => {
           </header>
 
           <main className="flex-1 p-4 md:p-6 overflow-auto">
-            <Outlet />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-64">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#fde047] border-t-transparent" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
 
