@@ -334,7 +334,9 @@ const ProductEdit = () => {
   // ── Reset when navigating to a different product ──────────────────────────
   useEffect(() => {
     setInitialized(false);
-    setForm(defaultForm());
+    // Keep slugOverride:true so that if the user edits the name before the new
+    // product's data arrives, we don't auto-regenerate the slug from the name.
+    setForm({ ...defaultForm(), slugOverride: true });
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Populate form ──────────────────────────────────────────────────────────
@@ -537,6 +539,18 @@ const ProductEdit = () => {
 
     setSaving(true);
     const slug = form.slug || slugify(form.name);
+
+    // Check slug uniqueness before writing — catches both user edits and data inconsistencies
+    {
+      const q = supabase.from("products").select("id").eq("slug", slug);
+      if (!isNew) q.neq("id", id!);
+      const { data: conflict } = await q.maybeSingle();
+      if (conflict) {
+        toast.error(`URL slug "${slug}" is already used by another product — change the slug before saving.`);
+        setSaving(false);
+        return;
+      }
+    }
 
     // Compile images array: main first, then additional (skip back_image — stored separately)
     const images = [
