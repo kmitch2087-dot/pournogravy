@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** June 16, 2026 (Fulfillment Partners UI, add-fulfillment-vendor edge fn, abandoned-cart-reminder, refund-order, archive-orders, blast-email, fulfillment_vendors table, order_archive table)  
+**Last Updated:** June 22, 2026 (WebP image conversion, QA a11y/SEO/CLS fixes, font render-blocking fix, priority images, Lighthouse baseline measurement)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -451,6 +451,23 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### June 22, 2026
+- **QA audit report** — full audit generated: `~/Desktop/Pournogravy_QA_Report_2026-06-22.md`. Covers Lighthouse scores, accessibility, SEO, security (35 tables RLS checked), best practices, functional/routing, email/payments, analytics.
+- **WebP image conversion** — 80 product images + 5 UI images converted via `cwebp`. 61MB → 7.3MB (88% reduction). All `.png`/`.jpg` product images now have `.webp` equivalents in `public/products/` and `public/`. ProductCard has `.webp`→`.png` `onError` fallback.
+- **DB image URLs updated** — SQL UPDATE via Supabase MCP changed all 26 product rows from `.png`/`.jpg` to `.webp` (`unnest(images)` + `array_agg()` + `regexp_replace` pattern).
+- **Accessibility fixes (4 parallel agents)**:
+  - `MerchDrops.tsx` — added `<SEO>` component (title, description, url, imageAlt props)
+  - `Index.tsx` — carousel slides get `inert=""` when inactive; dot buttons enlarged to `min-w-[44px] min-h-[44px]` (WCAG 2.5.5 touch target)
+  - `Index.tsx` — Karen ticker img: `width="40"` `height="40"` (eliminates layout shift)
+  - `Footer.tsx`, `admin/Orders.tsx`, `admin/CustomRequests.tsx` — sub-labels changed from `<h4>` to `<p>` (fixes heading order)
+- **CLS fix — logo** — `Navbar.tsx` logo img: added `width="500"` `height="257"` (measured from WebP header)
+- **Accessibility fix — sort select** — `Shop.tsx` sort `<select>`: added `aria-label="Sort products"`
+- **Font render-blocking fix** — removed `@import url(...)` from `src/index.css`; all 4 font families (Bebas Neue, Inter, Permanent Marker, Space Grotesk) consolidated into a single `<link>` in `index.html`. Eliminates second render-blocking stylesheet caused by CSS @import cascade delay.
+- **Priority images** — `ProductCard.tsx`: added `priority` prop (`loading`, `fetchPriority`). First 3 cards on Shop + Homepage get `loading="eager"` + `fetchPriority="high"` + `decoding="async"`.
+- **`decoding="sync"` regression fixed** — reverted after TBT spiked from 20ms to 107ms. `decoding="async"` for all images.
+- **Lighthouse baselines (5-run average)** — Homepage performance: **60**. Shop: **66**. TBT: 34ms avg. CLS: 0.0. LCP is 8–10s — structural SPA limitation (JS→React→Supabase→image chain). Cannot be improved without SSR rewrite.
+- **`.gitignore`** — added `*.bak` and `*.bak2` to suppress build-file backups from git status.
 
 ### June 15, 2026
 - **Shipping pipeline complete**: stripe-webhook captures shipping_cents, writes to orders table. Printer invoice now includes print cost + shipping pass-through with clear "TOTAL TO INVOICE US" total. Customer shipped email has clickable tracking URL.

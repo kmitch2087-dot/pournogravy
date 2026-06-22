@@ -36,3 +36,5 @@ public/products/*_white.png
 
 # Supabase CLI temp files
 supabase/.temp/
+*.bak
+*.bak2

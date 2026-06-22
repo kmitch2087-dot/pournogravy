@@ -39,6 +39,11 @@ The HTTP 404 status on SPA routes is expected and correct for this pattern.
 ### Recent significant commits
 | Commit | What it fixed |
 |--------|--------------|
+| `e3631ce` | Reverted `decoding="sync"` on priority images — sync decoding blocks main thread; caused TBT spike 20ms → 107ms. All images use `decoding="async"` |
+| `c772158` | Google Fonts CSS `@import` removed from `index.css`; consolidated into single `<link>` in `index.html` (eliminates render-blocking cascade delay). Added `priority` prop to ProductCard; first 3 cards get `loading="eager"` + `fetchPriority="high"` |
+| `d44710a` | Logo CLS fix — `width="500"` `height="257"` on Navbar logo img. Shop sort select `aria-label="Sort products"` |
+| `82fb6ff` | WebP image conversion — 80 product images + 5 UI images, 61MB → 7.3MB (88%). DB image URLs updated to .webp. ProductCard has `.webp`→`.png` onError fallback |
+| `358a5cf` | QA accessibility/SEO/CLS fixes — MerchDrops SEO, carousel `inert` + 44×44px dot targets, Karen ticker CLS, heading order (Footer/Orders/CustomRequests `h4`→`p`) |
 | `0d24858` | Migrated product catalog from 1228-line static array to DB-only (`useMergedProducts`); removed array from main bundle (~49kB saved) |
 | `44feb4c` | Added `aria-label` to logo link and product card image links (accessibility) |
 | `754f410` | Fixed black screen on client-side navigation to `/admin` — added inner `<Suspense>` around `<Outlet />` in AdminLayout so the shell stays visible while page chunk loads |
