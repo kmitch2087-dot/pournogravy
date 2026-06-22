@@ -55,7 +55,7 @@ const Navbar = () => {
       >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/" aria-label="POURnogravy — Home" className="flex items-center gap-2 group">
           <img
             src="/logo.webp"
             alt="POURnogravy"

@@ -240,7 +240,7 @@ const ProductCard = ({ product }: { product: Product }) => {
 
         {/* ── PRODUCT IMAGE — full width, no rounded corners, wishlist heart overlaid ── */}
         <div className="relative z-10 aspect-square bg-[#111] overflow-hidden">
-          <Link to={`/product/${product.id}`} className="group block w-full h-full">
+          <Link to={`/product/${product.id}`} aria-label={`View ${product.name}`} className="group block w-full h-full">
             {cardImages.length > 0 ? (
               <>
                 {cardImages[0] && (
