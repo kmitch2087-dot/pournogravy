@@ -33,12 +33,12 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4
+            <p
               className="font-marker text-xs tracking-[0.3em] mb-4 uppercase text-[#fde047]"
               style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
             >
               Shop
-            </h4>
+            </p>
             <div className="flex flex-col gap-2">
               <Link to="/shop" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
                 All Products
@@ -53,12 +53,12 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4
+            <p
               className="font-marker text-xs tracking-[0.3em] mb-4 uppercase text-[#fde047]"
               style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
             >
               Info
-            </h4>
+            </p>
             <div className="flex flex-col gap-2">
               <Link to="/about" className="text-sm text-white/70 hover:text-[#fde047] transition-colors">
                 My Story
@@ -79,12 +79,12 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4
+            <p
               className="font-marker text-xs tracking-[0.3em] mb-4 uppercase text-[#fde047]"
               style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
             >
               Follow the Chaos
-            </h4>
+            </p>
             <div className="flex gap-3">
               <a
                 href="https://www.instagram.com/pournogravy/"

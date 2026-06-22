@@ -317,6 +317,7 @@ const Index = () => {
               aria-roledescription="slide"
               aria-label={`${slideIdx + 1} of ${totalSlides}: ${product.name}`}
               aria-hidden={!active}
+              {...(!active ? { inert: '' } : {})}
             >
 
               {/* Mobile layout: full-width shirt image + bottom overlay with featured drop + product name */}
@@ -449,7 +450,7 @@ const Index = () => {
               onClick={() => handleDotClick(i)}
               aria-label={`Go to slide ${i + 1}`}
               aria-current={heroIndex === i}
-              className="p-2 -m-1 focus:outline-none"
+              className="flex items-center justify-center min-w-[44px] min-h-[44px] focus:outline-none"
             >
               <span
                 className={`block h-1.5 rounded-full transition-all ${
@@ -495,6 +496,8 @@ const Index = () => {
                 src="/karen_ticker.png"
                 alt=""
                 aria-hidden="true"
+                width="40"
+                height="40"
                 className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-10"
                 style={{ imageRendering: 'crisp-edges' }}
               />

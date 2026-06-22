@@ -1,4 +1,4 @@
-import { Helmet } from "react-helmet-async";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { CalendarDays, Bell } from "lucide-react";
@@ -18,10 +18,12 @@ export default function MerchDrops() {
 
   return (
     <>
-      <Helmet>
-        <title>Merch Drops — Pournogravy</title>
-        <meta name="description" content="Upcoming limited merch drops from Pournogravy. Be the first to know." />
-      </Helmet>
+      <SEO
+        title="Merch Drops"
+        description="Limited merch drops from POURnogravy — exclusive bartender apparel released in small runs. No restocks. Be the first to know."
+        url="https://pournogravy.com/merch-drops"
+        imageAlt="POURnogravy merch drops — limited bartender apparel releases"
+      />
 
       {/* Hero */}
       <section className="relative bg-black text-white overflow-hidden">

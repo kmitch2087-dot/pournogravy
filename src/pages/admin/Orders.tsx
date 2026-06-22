@@ -454,7 +454,7 @@ const Orders = () => {
 
                 {/* Line items */}
                 <div>
-                  <h4 className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Items</h4>
+                  <p className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Items</p>
                   <div className="space-y-2">
                     {detail.items.map((it) => {
                       const snap = (it.product_snapshot ?? {}) as Record<string, unknown>;
@@ -478,7 +478,7 @@ const Orders = () => {
                 {/* Shipping address */}
                 {detail.order.shipping_address ? (
                   <div>
-                    <h4 className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Ship to</h4>
+                    <p className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Ship to</p>
                     <div className="text-sm bg-muted/30 border border-border p-3 rounded-sm space-y-0.5">
                       {formatAddress(detail.order.shipping_address).map((line, i) => (
                         <p key={i}>{line}</p>

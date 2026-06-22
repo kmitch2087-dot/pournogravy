@@ -303,7 +303,7 @@ const CustomRequests = () => {
 
               {detail.notes && (
                 <div>
-                  <h4 className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Notes from customer</h4>
+                  <p className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Notes from customer</p>
                   <p className="text-sm bg-muted/30 border border-border p-3 rounded-sm whitespace-pre-wrap">{detail.notes}</p>
                 </div>
               )}
