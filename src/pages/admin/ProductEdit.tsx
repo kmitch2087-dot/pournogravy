@@ -837,7 +837,7 @@ const ProductEdit = () => {
             <CardContent className="space-y-3">
               {form.sectionOrder.map((sectionId) => {
                 if (sectionId === "humor") return (
-                  <DraggableSection key="humor" id="humor" label="Humor / Zinger"
+                  <DraggableSection key="humor" id="humor" label="Product Subheading"
                     onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop}
                     visible={form.sectionVisibility?.humor ?? true}
                     onToggleVisible={toggleSectionVisibility}>
