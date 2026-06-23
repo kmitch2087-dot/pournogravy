@@ -97,10 +97,11 @@ Deno.serve(async (req) => {
       .eq("id", orderId);
 
     // Fetch order + items + settings to build the notifications/printer payload
-    const [{ data: order }, { data: items }, { data: settings }] = await Promise.all([
+    const [{ data: order }, { data: items }, { data: settings }, { data: loyaltyRules }] = await Promise.all([
       supabase.from("orders").select("*").eq("id", orderId).single(),
       supabase.from("order_items").select("*").eq("order_id", orderId),
       supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
+      supabase.from("loyalty_rules").select("pour_points_enabled").eq("id", 1).maybeSingle(),
     ]);
 
     // Fetch image_url for each unique product slug from the products table
@@ -185,8 +186,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2) Pour Points — 1 point per $1 spent on products only (auth users only; shipping excluded)
-    if (order.user_id && (order.total_cents ?? 0) > 0) {
+    // 2) Pour Points — 1 point per $1 spent on products only (auth users only; shipping excluded; program enabled)
+    if (order.user_id && (order.total_cents ?? 0) > 0 && (loyaltyRules?.pour_points_enabled ?? true)) {
       const subtotalForPoints = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
       const pointsEarned = Math.floor(subtotalForPoints / 100);
       if (subtotalForPoints > 0 && pointsEarned > 0) {

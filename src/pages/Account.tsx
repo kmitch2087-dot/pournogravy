@@ -29,7 +29,7 @@ interface OrderRow {
 
 const Account = () => {
   const { user, profile, isAdmin, loading, signOut } = useAuth();
-  const { account, transactions, loading: loyaltyLoading, redeem, rewardsAvailable, pointsToNextReward } = useLoyalty();
+  const { account, transactions, loading: loyaltyLoading, redeem, rewardsAvailable, pointsToNextReward, programEnabled } = useLoyalty();
   const navigate = useNavigate();
   const [redeeming, setRedeeming] = useState(false);
   const [redeemedCode, setRedeemedCode] = useState<string | null>(null);
@@ -132,7 +132,7 @@ const Account = () => {
         </div>
 
         {/* Pour Points card */}
-        <motion.section
+        {programEnabled && <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -255,7 +255,7 @@ const Account = () => {
               </div>
             )}
           </div>
-        </motion.section>
+        </motion.section>}
 
         {/* Order history */}
         <section className="border border-[#fde047]/20 bg-card">

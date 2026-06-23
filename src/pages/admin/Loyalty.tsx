@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LoyaltyRules {
   id: number;
+  pour_points_enabled: boolean;
   points_per_dollar: number;
   redemption_threshold: number;
   redemption_value_cents: number;
@@ -38,6 +39,21 @@ const RulesCard = () => {
     },
   });
 
+  // Program on/off
+  const [programEnabled, setProgramEnabled] = useState(true);
+
+  const { mutate: toggleProgram, isPending: toggling } = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase.from("loyalty_rules").update({ pour_points_enabled: enabled }).eq("id", 1);
+      if (error) throw error;
+    },
+    onSuccess: (_, enabled) => {
+      toast.success(enabled ? "Pour Points program enabled" : "Pour Points program disabled");
+      qc.invalidateQueries({ queryKey: ["loyalty-rules"] });
+    },
+    onError: (err: Error) => toast.error(`Failed: ${err.message}`),
+  });
+
   // Local form state (initialised from query data)
   const [ptsPerDollar, setPtsPerDollar] = useState(10);
   const [threshold, setThreshold] = useState(100);
@@ -50,6 +66,7 @@ const RulesCard = () => {
   // Sync once rules load
   useEffect(() => {
     if (!rules) return;
+    setProgramEnabled(rules.pour_points_enabled);
     setPtsPerDollar(rules.points_per_dollar);
     setThreshold(rules.redemption_threshold);
     setValueDollars(rules.redemption_value_cents / 100);
@@ -158,6 +175,39 @@ const RulesCard = () => {
         <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="px-5 py-5 space-y-6">
+          {/* Master program toggle */}
+          <div className={`flex items-center justify-between p-4 border ${programEnabled ? "border-[#fde047]/30 bg-[#fde047]/5" : "border-red-500/30 bg-red-500/5"}`}>
+            <div>
+              <p className="text-sm font-display tracking-widest">{programEnabled ? "PROGRAM ACTIVE" : "PROGRAM DISABLED"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {programEnabled
+                  ? "Customers earn Pour Points on purchases and can redeem rewards"
+                  : "Pour Points are hidden site-wide and no points are awarded at checkout"}
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                const next = !programEnabled;
+                setProgramEnabled(next);
+                toggleProgram(next);
+              }}
+              disabled={toggling}
+              className={`gap-2 font-display tracking-widest shrink-0 ${
+                programEnabled
+                  ? "bg-transparent border border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  : "bg-[#fde047] text-black hover:bg-[#fde047]/90"
+              }`}
+              variant="outline"
+            >
+              {toggling
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : programEnabled
+                  ? <><ZapOff className="h-4 w-4" /> Disable Program</>
+                  : <><Zap className="h-4 w-4" /> Enable Program</>
+              }
+            </Button>
+          </div>
+
           {/* Earn / redeem settings */}
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">

@@ -20,6 +20,7 @@ interface LoyaltyRules {
   redemption_threshold: number;
   redemption_value_cents: number;
   points_per_dollar: number;
+  pour_points_enabled: boolean;
 }
 
 export const useLoyalty = () => {
@@ -32,7 +33,7 @@ export const useLoyalty = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("loyalty_rules")
-        .select("redemption_threshold, redemption_value_cents, points_per_dollar")
+        .select("redemption_threshold, redemption_value_cents, points_per_dollar, pour_points_enabled")
         .eq("id", 1)
         .maybeSingle();
       return data ?? null;
@@ -85,5 +86,7 @@ export const useLoyalty = () => {
   const pointsToNextReward = account ? threshold - (account.points_balance % threshold) : threshold;
   const rewardsAvailable = account ? Math.floor(account.points_balance / threshold) : 0;
 
-  return { account, transactions, loading, rules, redeem, refresh, pointsToNextReward, rewardsAvailable };
+  const programEnabled = rules?.pour_points_enabled ?? true;
+
+  return { account, transactions, loading, rules, redeem, refresh, pointsToNextReward, rewardsAvailable, programEnabled };
 };

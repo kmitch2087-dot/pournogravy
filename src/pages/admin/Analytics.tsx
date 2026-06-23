@@ -190,7 +190,7 @@ export default function Analytics() {
 
   // ── Revenue chart ──
   const chartData = (revenue ?? []).map((r) => ({
-    date:    format(parseISO(r.day), "MMM d"),
+    date:    format(parseISO(r.day.replace(" ", "T")), "MMM d"),
     revenue: Number(r.revenue),
     orders:  Number(r.purchases),
   }));

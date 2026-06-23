@@ -68,7 +68,7 @@ const ProgressBar = ({ balance, threshold }: { balance: number; threshold: numbe
 // ─── Main page ────────────────────────────────────────────────────────────────
 const Rewards = () => {
   const { user, loading: authLoading } = useAuth();
-  const { account, loading: loyaltyLoading } = useLoyalty();
+  const { account, loading: loyaltyLoading, programEnabled } = useLoyalty();
 
   const { data: rules, isLoading: rulesLoading } = useQuery<LoyaltyRules | null>({
     queryKey: ["loyalty-rules"],
@@ -93,6 +93,25 @@ const Rewards = () => {
 
   const balance = account?.points_balance ?? 0;
   const isLoading = authLoading || rulesLoading || (!!user && loyaltyLoading);
+
+  if (!isLoading && !programEnabled) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 pt-24">
+        <div className="text-center space-y-4 max-w-sm">
+          <Star className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+          <h1 className="font-display text-3xl tracking-widest">POUR POINTS</h1>
+          <p className="text-muted-foreground font-marker text-sm tracking-wide">
+            Our loyalty program is currently unavailable. Check back soon.
+          </p>
+          <Link to="/shop" className="inline-block mt-4">
+            <Button className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest">
+              SHOP ANYWAY
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pt-24 pb-24">

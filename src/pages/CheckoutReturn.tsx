@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useLoyalty } from "@/hooks/useLoyalty";
 import { CheckCircle2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -14,6 +15,7 @@ const CheckoutReturn = () => {
   const { clearCart } = useCart();
   const { user } = useAuth();
   const { trackPurchase } = useAnalytics();
+  const { programEnabled } = useLoyalty();
 
   const pointsEarned = Math.floor(revenue);
 
@@ -42,8 +44,8 @@ const CheckoutReturn = () => {
           </p>
         </motion.div>
 
-        {/* Pour Points earned (auth users only) */}
-        {user && pointsEarned > 0 && (
+        {/* Pour Points earned (auth users only, program enabled) */}
+        {user && pointsEarned > 0 && programEnabled && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
