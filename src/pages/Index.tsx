@@ -38,8 +38,12 @@ const Index = () => {
   const { getValue } = useSiteContent();
   const { data: allProducts = [] } = useMergedProducts();
   const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
+  const validQuotes = activeQuotes.filter(q => q?.trim());
+  const safeQuoteIndex = validQuotes.length > 0 ? quoteIndex % validQuotes.length : 0;
   const [heroPaused, setHeroPaused] = useState(false);
   const heroPauseResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const validQuotesLenRef = useRef(validQuotes.length);
+  validQuotesLenRef.current = validQuotes.length;
   const [glassVisible, setGlassVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(false);
   const slidePhase = useRef<'in' | 'out' | 'hidden'>('hidden');
@@ -111,7 +115,10 @@ const Index = () => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
     const id = setInterval(() => {
-      setQuoteIndex((i) => (i + 1) % activeQuotes.length);
+      setQuoteIndex((i) => {
+        const len = validQuotesLenRef.current;
+        return len > 0 ? (i + 1) % len : 0;
+      });
     }, 6000);
     return () => clearInterval(id);
   }, []);
@@ -409,7 +416,7 @@ const Index = () => {
                           className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
                           style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
                         >
-                          <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                          <span className="flex flex-col leading-tight text-left">HOOK ME UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
                         </Button>
                       </Link>
                     </div>
@@ -430,7 +437,7 @@ const Index = () => {
                 variant="outline"
                 className="w-full h-11 font-display tracking-widest border-[#fde047] text-[#fde047] bg-transparent hover:bg-[#fde047]/10"
               >
-                <span className="flex flex-col leading-tight text-left">HOOK IT UP.<span className="text-xs tracking-normal font-sans text-[#fde047]/70">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                <span className="flex flex-col leading-tight text-left">HOOK ME UP.<span className="text-xs tracking-normal font-sans text-[#fde047]/70">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
               </Button>
             </Link>
           )}
@@ -757,16 +764,18 @@ const Index = () => {
           </p>
           <div className="relative min-h-[140px] md:min-h-[200px] flex items-center justify-center">
             <AnimatePresence mode="wait">
-              <motion.blockquote
-                key={quoteIndex}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="font-marker text-2xl md:text-4xl lg:text-5xl tracking-wider leading-tight max-w-4xl mx-auto stamp-rotate uppercase"
-              >
-                "<RichText html={activeQuotes[quoteIndex]} />"
-              </motion.blockquote>
+              {validQuotes.length > 0 && (
+                <motion.blockquote
+                  key={safeQuoteIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.5 }}
+                  className="font-marker text-2xl md:text-4xl lg:text-5xl tracking-wider leading-tight max-w-4xl mx-auto stamp-rotate uppercase"
+                >
+                  "<RichText html={validQuotes[safeQuoteIndex]} />"
+                </motion.blockquote>
+              )}
             </AnimatePresence>
           </div>
           <p className="text-muted-foreground text-xs md:text-sm mt-8 font-display tracking-widest uppercase">
@@ -775,13 +784,13 @@ const Index = () => {
 
           {/* dot indicators */}
           <div className="flex justify-center gap-2 mt-6">
-            {activeQuotes.map((_, i) => (
+            {validQuotes.map((_, i) => (
               <button
                 key={i}
                 aria-label={`Show quote ${i + 1}`}
                 onClick={() => setQuoteIndex(i)}
                 className={`h-1.5 rounded-full transition-all ${
-                  i === quoteIndex ? "w-8 bg-[#fde047]" : "w-1.5 bg-foreground/20 hover:bg-foreground/40"
+                  i === safeQuoteIndex ? "w-8 bg-[#fde047]" : "w-1.5 bg-foreground/20 hover:bg-foreground/40"
                 }`}
               />
             ))}

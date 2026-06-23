@@ -76,15 +76,18 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
 
   const setValue = useCallback(
     async (page: string, section: string, key: string, value: string) => {
-      // Optimistic local update
       setRows((prev) =>
         prev.map((r) =>
           r.page === page && r.section === section && r.key === key ? { ...r, value } : r
         )
       );
-      await supabase
+      const { error } = await supabase
         .from("site_content")
-        .upsert({ page, section, key, value, updated_at: new Date().toISOString() }, { onConflict: "page,section,key" });
+        .update({ value, updated_at: new Date().toISOString() })
+        .eq("page", page)
+        .eq("section", section)
+        .eq("key", key);
+      if (error) throw new Error(error.message);
     },
     []
   );
@@ -97,9 +100,13 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
           r.page === page && r.section === section && r.key === "visible" ? { ...r, value } : r
         )
       );
-      await supabase
+      const { error } = await supabase
         .from("site_content")
-        .upsert({ page, section, key: "visible", value, updated_at: new Date().toISOString() }, { onConflict: "page,section,key" });
+        .upsert(
+          { page, section, key: "visible", label: "visible", value, updated_at: new Date().toISOString() },
+          { onConflict: "page,section,key" }
+        );
+      if (error) throw new Error(error.message);
     },
     []
   );

@@ -23,22 +23,6 @@ function pickCartPhrase(phrases: string[]): string {
 }
 
 // ─── Easter egg fallbacks ──────────────────────────────────────────────────
-const FALLBACK_TABLE_NAMES = [
-  "69", "Pool Bathroom", "THAT Guy Again", "The Needy End",
-  "Last Call Corner", "VIP (lol)", "Industry Night",
-  "Purgatory", "Bar 12", "The Karen Section",
-];
-const FALLBACK_SERVER_NAMES = [
-  "Some Poor Bastard", "Opie (he's stuck here)",
-  "Whoever Drew Short Straw", "Your Problem Now",
-  "The One Who Cares", "Not Me", "Ask Literally Anyone Else",
-];
-const FALLBACK_SPECIAL_INSTRUCTIONS = [
-  "No substitutions. I mean it.", "Extra needy, apparently.",
-  "Allergic to tipping well.", "Has opinions about ice.",
-  "Will ask for manager. Will tip 10%.", "Ordered the well, asked for top shelf.",
-  "Said 'surprise me' then complained.", "Third time tonight. God help us.",
-];
 const FALLBACK_FOOTER_NOTES = [
   "Management not responsible for decisions made after shot #4.",
   "Tip your bartender or don't come back.",
@@ -80,17 +64,6 @@ const useEasterEggs = () =>
     throwOnError: false,
   });
 
-function getBarTime(slug: string): string {
-  let hash = 0;
-  for (const ch of slug) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
-  const hour = (hash % 5) + 19; // 7pm - 11pm range (19-23)
-  const min = (hash >> 4) % 60;
-  const sec = (hash >> 8) % 60;
-  const h = hour > 12 ? hour - 12 : hour;
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  return `${h}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')} ${ampm}`;
-}
-
 // ─── Zoom image map — keyed by product.id ──────────────────────────────────
 const ZOOM_IMAGES: Record<string, string> = {
   'last-call-for-karen-tee':          '/karen_graphic_zoom.webp',
@@ -122,41 +95,14 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
   const seedRef = useRef<number>(Math.floor(Math.random() * 99999));
   const seed = seedRef.current;
 
-  // Stable stain position — randomised per card, stable per render
-  const stainX = useMemo(() => 10 + (seed % 60), [seed]);
-  const stainY = useMemo(() => 10 + ((seed * 7) % 60), [seed]);
-
-  // Random check number (4-digit), stable per card
-  const checkNumber = useMemo(
-    () => String(1000 + (seed % 9000)).padStart(4, "0"),
-    [seed],
-  );
-
-  // Deterministic bar time — unique per product slug, consistent across renders
-  const checkTime = getBarTime(product.id ?? (product as { slug?: string }).slug ?? '');
-
   // ── Easter eggs ──────────────────────────────────────────────────────────
   const { data: eggsData } = useEasterEggs();
 
-  const { tableName, serverName, specialInstruction, footerNote } =
-    useMemo(() => {
-      const byCategory = (cat: string): string[] => {
-        const found = (eggsData ?? []).filter((e) => e.category === cat).map((e) => e.text);
-        return found.length > 0 ? found : null!;
-      };
-
-      const tableArr  = byCategory("table_name")          ?? FALLBACK_TABLE_NAMES;
-      const serverArr = byCategory("server_name")         ?? FALLBACK_SERVER_NAMES;
-      const instrArr  = byCategory("special_instruction") ?? FALLBACK_SPECIAL_INSTRUCTIONS;
-      const footerArr = byCategory("footer_note")         ?? FALLBACK_FOOTER_NOTES;
-
-      return {
-        tableName:          seededPick(tableArr,  seed),
-        serverName:         seededPick(serverArr, seed + 1),
-        specialInstruction: seededPick(instrArr,  seed + 2),
-        footerNote:         seededPick(footerArr, seed + 3),
-      };
-    }, [eggsData, seed]);
+  const footerNote = useMemo(() => {
+    const found = (eggsData ?? []).filter(e => e.category === 'footer_note').map(e => e.text);
+    const arr = found.length > 0 ? found : FALLBACK_FOOTER_NOTES;
+    return seededPick(arr, seed + 3);
+  }, [eggsData, seed]);
 
   // Add-to-cart phrase: DB phrases with no-repeat, fall back to CTA_PHRASES
   const addToCartPhrases = useMemo(() => {
@@ -190,56 +136,10 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
     >
-      {/* ── Receipt card shell ── */}
-      <div
-        className="relative font-mono overflow-hidden"
-        style={{ backgroundColor: "#faf6f0" }}
-      >
-        {/* Water / coffee stain overlay — unique position per card */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            background: `radial-gradient(ellipse 55% 40% at ${stainX}% ${stainY}%, rgba(139,90,43,0.09) 0%, transparent 70%),
-                         radial-gradient(ellipse 30% 25% at ${100 - stainX}% ${100 - stainY}%, rgba(180,130,60,0.06) 0%, transparent 65%)`,
-          }}
-        />
-
-        {/* ── HEADER ROW: TABLE + CHECK # ── */}
-        <div className="relative z-10 flex items-start justify-between px-3 pt-2 pb-0.5">
-          <span className="text-[10px] text-gray-600 leading-tight">
-            TABLE: <span className="font-bold text-gray-800">{tableName}</span>
-          </span>
-          <div className="text-right">
-            {/* Badges live in the top-right header area */}
-            <div className="flex flex-col items-end gap-0.5 mb-0.5">
-              {isNew && (
-                <span className="bg-[#fde047] text-black px-1.5 py-0 text-[9px] font-bold tracking-widest uppercase">
-                  NEW
-                </span>
-              )}
-              {product.badge && (
-                <span className="bg-black text-white px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
-                  {product.badge}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] text-gray-600">
-              CHECK #{checkNumber}
-            </span>
-          </div>
-        </div>
-
-        {/* ── TIME ROW ── */}
-        <div className="relative z-10 flex justify-end px-3 pb-1">
-          <span className="text-[9px] text-gray-500">{checkTime}</span>
-        </div>
-
-        {/* ── DASHED SEPARATOR ── */}
-        <div className="relative z-10 border-dashed border-t border-gray-400 mx-3 my-1" />
+      <div className="relative overflow-hidden bg-card">
 
         {/* ── PRODUCT IMAGE — full width, no rounded corners, wishlist heart overlaid ── */}
-        <div className="relative z-10 aspect-square bg-[#111] overflow-hidden">
+        <div className="relative aspect-square bg-[#111] overflow-hidden">
           <Link to={`/product/${product.id}`} aria-label={`View ${product.name}`} className="group block w-full h-full">
             {cardImages.length > 0 ? (
               <>
@@ -280,6 +180,20 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
             <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           </Link>
 
+          {/* Badges — overlaid top-left */}
+          <div className="absolute top-2 left-2 flex flex-col gap-0.5 z-20">
+            {isNew && (
+              <span className="bg-[#fde047] text-black px-1.5 py-0 text-[9px] font-bold tracking-widest uppercase">
+                NEW
+              </span>
+            )}
+            {product.badge && (
+              <span className="bg-black text-white px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
+                {product.badge}
+              </span>
+            )}
+          </div>
+
           {/* Wishlist heart — overlaid top-right */}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product.id); }}
@@ -292,44 +206,37 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
           </button>
         </div>
 
-        {/* ── DASHED SEPARATOR ── */}
-        <div className="relative z-10 border-dashed border-t border-gray-400 mx-3 my-1" />
-
         {/* ── ITEM LINE: name left, price right ── */}
         <Link to={`/product/${product.id}`} className="group block">
-          <div className="relative z-10 flex items-baseline justify-between px-3 py-1">
-            <span className="text-[11px] font-bold text-gray-900 pr-2 leading-tight">
+          <div className="flex items-baseline justify-between px-3 pt-2 pb-1">
+            <span className="text-[11px] font-bold text-foreground pr-2 leading-tight">
               {product.name.toUpperCase()}
             </span>
-            <span className="text-[11px] font-bold text-gray-900 whitespace-nowrap">
+            <span className="text-[11px] font-bold text-foreground whitespace-nowrap">
               ${product.price.toFixed(2)}
             </span>
           </div>
 
           {/* ── STAR RATING ── */}
           {rating && (
-            <div className="relative z-10 flex items-center gap-0.5 px-3 pb-0.5">
+            <div className="flex items-center gap-0.5 px-3 pb-0.5">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star
                   key={s}
                   className={`w-2.5 h-2.5 ${
                     s <= Math.round(rating.avg)
                       ? "fill-[#fde047] text-[#fde047]"
-                      : "text-gray-300"
+                      : "text-muted-foreground"
                   }`}
                 />
               ))}
-              <span className="text-[9px] text-gray-400 ml-0.5">({rating.count})</span>
+              <span className="text-[9px] text-muted-foreground ml-0.5">({rating.count})</span>
             </div>
           )}
-
         </Link>
 
-        {/* ── DASHED SEPARATOR ── */}
-        <div className="relative z-10 border-dashed border-t border-gray-400 mx-3 my-1" />
-
         {/* ── ADD TO CART BUTTON — full width, yellow, black text, no rounding ── */}
-        <div className="relative z-10 px-3 pb-2">
+        <div className="px-3 pt-1 pb-2">
           <Link
             to={`/product/${product.id}`}
             className="flex items-center justify-between w-full bg-[#fde047] text-black px-3 py-2 font-mono text-[10px] font-bold tracking-widest uppercase hover:bg-[#fbbf24] transition-colors rounded-none"
@@ -340,8 +247,8 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
         </div>
 
         {/* ── FOOTER NOTE + SHARE ── */}
-        <div className="relative z-10 px-3 pb-2 flex items-end justify-between">
-          <span className="text-[8px] text-gray-400 italic leading-tight">
+        <div className="px-3 pb-2 flex items-end justify-between">
+          <span className="text-[8px] text-muted-foreground italic leading-tight">
             {footerNote}
           </span>
           <ShareButton
