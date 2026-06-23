@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,37 +160,187 @@ const StatDetailDialog = ({
 
 const WELCOME_KEY = "pg_opie_welcomed";
 
-const WelcomeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => (
-  <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-    <DialogContent className="max-w-md border-[#fde047]/40 bg-card" style={{ boxShadow: "0 0 60px rgba(253,224,71,0.15)" }}>
-      <DialogHeader>
-        <DialogTitle className="font-display tracking-widest text-2xl text-[#fde047]">
-          ITS ABOUT DAMN TIME!
-        </DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4 pt-1">
-        <p className="text-sm leading-relaxed text-foreground">
-          I'm so proud of you for finally getting this passion project up and running. I am also very
-          humbled and thankful that you chose me to work with on it.
-        </p>
-        <p className="text-sm leading-relaxed text-foreground">
-          Here's to many more larger than life ideas — ADHD mental breakdowns — and telling bad
-          customers where to go and how to get there in such a way that they actually look forward
-          to the trip.
-        </p>
-        <p className="text-sm italic text-[#fde047] text-right font-marker tracking-wide">
-          — Kristin
-        </p>
-        <button
-          onClick={onClose}
-          className="w-full mt-2 py-3 bg-[#fde047] text-black font-display tracking-widest text-sm hover:bg-[#fbbf24] transition-colors"
+const CONFIRM_PHRASE = "LETS GET TO WORK";
+
+// YouTube video ID for "Make It Rain" — paste just the ID from the YouTube URL here
+// e.g. for https://www.youtube.com/watch?v=XXXXXXXXXXX the ID is "XXXXXXXXXXX"
+const MAKE_IT_RAIN_YT_ID = "";
+
+const TINA_GIF = "https://media.giphy.com/media/HGe4zsOVo7Jvy/giphy.gif";
+
+// ── Welcome + confirm dialog ───────────────────────────────────────────────────
+
+const WelcomeDialog = ({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  const [input, setInput] = useState("");
+  const canConfirm = input === CONFIRM_PHRASE;
+
+  useEffect(() => { if (!open) setInput(""); }, [open]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && canConfirm) onConfirm();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent
+        className="max-w-md border-[#fde047]/40 bg-card"
+        style={{ boxShadow: "0 0 60px rgba(253,224,71,0.15)" }}
+      >
+        <DialogHeader>
+          <DialogTitle className="font-display tracking-widest text-2xl text-[#fde047]">
+            ITS ABOUT DAMN TIME!
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Kristin's note */}
+        <div className="space-y-3 pt-1">
+          <p className="text-sm leading-relaxed text-foreground">
+            I'm so proud of you for finally getting this passion project up and running. I am also
+            very humbled and thankful that you chose me to work with on it.
+          </p>
+          <p className="text-sm leading-relaxed text-foreground">
+            Here's to many more larger than life ideas — ADHD mental breakdowns — and telling bad
+            customers where to go and how to get there in such a way that they actually look forward
+            to the trip.
+          </p>
+          <p className="text-sm italic text-[#fde047] text-right font-marker tracking-wide">
+            — Kristin
+          </p>
+        </div>
+
+        {/* System warning */}
+        <div className="mt-4 border border-white/10 bg-white/[0.03] p-4 space-y-3 rounded-sm">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="text-[#fde047] font-medium">⚠ SYSTEM:</span> Completing this form
+            will reset all order and financial data to zero so your dashboard reflects true revenue
+            from the moment you go live. Once done, it's gone — there's no undo. If you're ready
+            to make it official, type{" "}
+            <span className="font-mono text-[#fde047]">{CONFIRM_PHRASE}</span> below. Otherwise,
+            hit Cancel.
+          </p>
+
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={CONFIRM_PHRASE}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] font-mono tracking-widest placeholder:text-muted-foreground/30 transition-colors"
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2.5 border border-border text-xs font-display tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              CANCEL
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={!canConfirm}
+              className="flex-1 py-2.5 bg-[#fde047] text-black text-xs font-display tracking-widest hover:bg-[#fbbf24] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            >
+              ENTER
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ── Celebration overlay ────────────────────────────────────────────────────────
+
+const CelebrationOverlay = ({ onClose }: { onClose: () => void }) => {
+  // Inject keyframes once
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "bill-fall-keyframes";
+    style.textContent = `
+      @keyframes billFall {
+        0%   { transform: translateY(-80px) rotate(0deg);   opacity: 1;   }
+        100% { transform: translateY(110vh)  rotate(540deg); opacity: 0.6; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.getElementById("bill-fall-keyframes")?.remove(); };
+  }, []);
+
+  const bills = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => ({
+        id: i,
+        left:     `${Math.random() * 100}%`,
+        delay:    `${Math.random() * 4}s`,
+        duration: `${2.5 + Math.random() * 3}s`,
+        size:     `${1.2 + Math.random() * 1.4}rem`,
+      })),
+    []
+  );
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center overflow-hidden">
+      {/* Falling bills */}
+      {bills.map((b) => (
+        <span
+          key={b.id}
+          className="absolute top-0 select-none pointer-events-none"
+          style={{
+            left:      b.left,
+            fontSize:  b.size,
+            animation: `billFall ${b.duration} linear ${b.delay} infinite`,
+          }}
         >
-          LET'S GET TO WORK
-        </button>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+          💵
+        </span>
+      ))}
+
+      {/* Tina */}
+      <img
+        src={TINA_GIF}
+        alt="Tina Belcher dancing"
+        className="relative z-10 w-56 md:w-72 lg:w-80 drop-shadow-2xl"
+        style={{ imageRendering: "auto" }}
+      />
+
+      {/* "MAKE IT RAIN" label */}
+      <p
+        className="relative z-10 mt-4 font-display text-3xl md:text-5xl tracking-widest text-[#fde047]"
+        style={{ textShadow: "0 0 40px rgba(253,224,71,0.8)" }}
+      >
+        MAKE IT RAIN
+      </p>
+
+      {/* Hidden YouTube audio */}
+      {MAKE_IT_RAIN_YT_ID && (
+        <iframe
+          className="absolute opacity-0 pointer-events-none"
+          style={{ width: 1, height: 1 }}
+          src={`https://www.youtube.com/embed/${MAKE_IT_RAIN_YT_ID}?autoplay=1&loop=1&playlist=${MAKE_IT_RAIN_YT_ID}`}
+          allow="autoplay; encrypted-media"
+          title="Make It Rain"
+        />
+      )}
+
+      <button
+        onClick={onClose}
+        className="relative z-10 mt-8 px-10 py-3 bg-[#fde047] text-black font-display tracking-widest text-sm hover:bg-[#fbbf24] transition-colors"
+      >
+        CLOSE
+      </button>
+    </div>
+  );
+};
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 
@@ -199,13 +349,16 @@ const Dashboard = () => {
   const [hasSeenWelcome, setHasSeenWelcome] = useState(
     () => localStorage.getItem(WELCOME_KEY) === "true"
   );
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen]       = useState(false);
+  const [celebrating, setCelebrating]       = useState(false);
 
-  const handleWelcomeOpen  = () => setWelcomeOpen(true);
-  const handleWelcomeClose = () => {
+  const handleWelcomeOpen    = () => setWelcomeOpen(true);
+  const handleWelcomeCancel  = () => setWelcomeOpen(false); // keep button visible
+  const handleWelcomeConfirm = () => {
     localStorage.setItem(WELCOME_KEY, "true");
     setHasSeenWelcome(true);
     setWelcomeOpen(false);
+    setCelebrating(true);
   };
 
   const { data: stats, isLoading } = useQuery({
@@ -405,7 +558,13 @@ const Dashboard = () => {
         onClose={() => setActiveDialog(null)}
       />
 
-      <WelcomeDialog open={welcomeOpen} onClose={handleWelcomeClose} />
+      <WelcomeDialog
+        open={welcomeOpen}
+        onCancel={handleWelcomeCancel}
+        onConfirm={handleWelcomeConfirm}
+      />
+
+      {celebrating && <CelebrationOverlay onClose={() => setCelebrating(false)} />}
     </div>
   );
 };
