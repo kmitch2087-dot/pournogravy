@@ -156,10 +156,57 @@ const StatDetailDialog = ({
   );
 };
 
+// ── Welcome dialog (one-time) ──────────────────────────────────────────────────
+
+const WELCOME_KEY = "pg_opie_welcomed";
+
+const WelcomeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => (
+  <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <DialogContent className="max-w-md border-[#fde047]/40 bg-card" style={{ boxShadow: "0 0 60px rgba(253,224,71,0.15)" }}>
+      <DialogHeader>
+        <DialogTitle className="font-display tracking-widest text-2xl text-[#fde047]">
+          ITS ABOUT DAMN TIME!
+        </DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 pt-1">
+        <p className="text-sm leading-relaxed text-foreground">
+          I'm so proud of you for finally getting this passion project up and running. I am also very
+          humbled and thankful that you chose me to work with on it.
+        </p>
+        <p className="text-sm leading-relaxed text-foreground">
+          Here's to many more larger than life ideas — ADHD mental breakdowns — and telling bad
+          customers where to go and how to get there in such a way that they actually look forward
+          to the trip.
+        </p>
+        <p className="text-sm italic text-[#fde047] text-right font-marker tracking-wide">
+          — Kristin
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full mt-2 py-3 bg-[#fde047] text-black font-display tracking-widest text-sm hover:bg-[#fbbf24] transition-colors"
+        >
+          LET'S GET TO WORK
+        </button>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 
 const Dashboard = () => {
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(
+    () => localStorage.getItem(WELCOME_KEY) === "true"
+  );
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+
+  const handleWelcomeOpen  = () => setWelcomeOpen(true);
+  const handleWelcomeClose = () => {
+    localStorage.setItem(WELCOME_KEY, "true");
+    setHasSeenWelcome(true);
+    setWelcomeOpen(false);
+  };
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-stats"],
@@ -230,6 +277,15 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 font-ui">
+      {!hasSeenWelcome && (
+        <button
+          onClick={handleWelcomeOpen}
+          className="w-full py-3 border border-[#fde047]/40 bg-[#fde047]/5 text-[#fde047] font-display tracking-widest text-sm hover:bg-[#fde047]/10 transition-colors animate-pulse"
+        >
+          RESET DATA
+        </button>
+      )}
+
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Total revenue"
@@ -348,6 +404,8 @@ const Dashboard = () => {
         type={activeDialog}
         onClose={() => setActiveDialog(null)}
       />
+
+      <WelcomeDialog open={welcomeOpen} onClose={handleWelcomeClose} />
     </div>
   );
 };
