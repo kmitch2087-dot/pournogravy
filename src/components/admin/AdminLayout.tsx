@@ -39,6 +39,7 @@ import {
   FileImage,
   Sparkles,
   PieChart,
+  PenLine,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -58,6 +59,7 @@ const navItems: NavItem[] = [
   { to: "/admin/inbox",          label: "Inbox",            icon: Mail,            end: false, badgeKey: "inbox" },
   { to: "/admin/orders",         label: "Orders",           icon: ShoppingBag,     end: false },
   { to: "/admin/products",       label: "Products",         icon: Package,         end: false },
+  { to: "/admin/content",        label: "Content",          icon: PenLine,         end: false },
   { to: "/admin/custom-requests",label: "Custom Requests",  icon: MessageSquare,   end: false },
   { to: "/admin/reviews",        label: "Reviews",          icon: Star,            end: false },
   { to: "/admin/settings",       label: "Settings",         icon: Settings,        end: false },
@@ -70,7 +72,6 @@ const navItems: NavItem[] = [
   { to: "/admin/customers",     label: "Customer Lookup",      icon: Users,           end: false },
   { to: "/admin/subscribers",   label: "Email Subscribers",    icon: Mail,            end: false },
   { to: "/admin/discount-codes",label: "Discount Codes",       icon: Tag,             end: false },
-  { to: "/admin/content",       label: "Content",              icon: FileText,        end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
   { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
   { to: "/admin/financials",    label: "Financials & Taxes",   icon: PieChart,        end: false },
