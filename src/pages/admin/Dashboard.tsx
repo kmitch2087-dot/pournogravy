@@ -161,10 +161,10 @@ const StatDetailDialog = ({
 const WELCOME_KEY = "pg_opie_welcomed";
 
 const CONFIRM_PHRASE = "LETS GET TO WORK";
+const PREVIEW_PHRASE = "KRISTIN"; // Kristin's preview key — triggers animation without consuming the one-time use
 
-// YouTube video ID for "Make It Rain" — paste just the ID from the YouTube URL here
-// e.g. for https://www.youtube.com/watch?v=XXXXXXXXXXX the ID is "XXXXXXXXXXX"
-const MAKE_IT_RAIN_YT_ID = "";
+const MAKE_IT_RAIN_YT_ID = "oPLoj5FqvnE";
+const MAKE_IT_RAIN_START_SEC = 75; // 1:15
 
 const TINA_GIF = "https://media.giphy.com/media/HGe4zsOVo7Jvy/giphy.gif";
 
@@ -177,15 +177,17 @@ const WelcomeDialog = ({
 }: {
   open: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (isPreview: boolean) => void;
 }) => {
   const [input, setInput] = useState("");
-  const canConfirm = input === CONFIRM_PHRASE;
+  const isOpie    = input === CONFIRM_PHRASE;
+  const isKristin = input === PREVIEW_PHRASE;
+  const canConfirm = isOpie || isKristin;
 
   useEffect(() => { if (!open) setInput(""); }, [open]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && canConfirm) onConfirm();
+    if (e.key === "Enter" && canConfirm) onConfirm(isKristin);
   };
 
   return (
@@ -246,7 +248,7 @@ const WelcomeDialog = ({
               CANCEL
             </button>
             <button
-              onClick={onConfirm}
+              onClick={() => onConfirm(isKristin)}
               disabled={!canConfirm}
               className="flex-1 py-2.5 bg-[#fde047] text-black text-xs font-display tracking-widest hover:bg-[#fbbf24] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
@@ -326,7 +328,7 @@ const CelebrationOverlay = ({ onClose }: { onClose: () => void }) => {
         <iframe
           className="absolute opacity-0 pointer-events-none"
           style={{ width: 1, height: 1 }}
-          src={`https://www.youtube.com/embed/${MAKE_IT_RAIN_YT_ID}?autoplay=1&loop=1&playlist=${MAKE_IT_RAIN_YT_ID}`}
+          src={`https://www.youtube.com/embed/${MAKE_IT_RAIN_YT_ID}?autoplay=1&loop=1&playlist=${MAKE_IT_RAIN_YT_ID}&start=${MAKE_IT_RAIN_START_SEC}`}
           allow="autoplay; encrypted-media"
           title="Make It Rain"
         />
@@ -354,9 +356,11 @@ const Dashboard = () => {
 
   const handleWelcomeOpen    = () => setWelcomeOpen(true);
   const handleWelcomeCancel  = () => setWelcomeOpen(false); // keep button visible
-  const handleWelcomeConfirm = () => {
-    localStorage.setItem(WELCOME_KEY, "true");
-    setHasSeenWelcome(true);
+  const handleWelcomeConfirm = (isPreview: boolean) => {
+    if (!isPreview) {
+      localStorage.setItem(WELCOME_KEY, "true");
+      setHasSeenWelcome(true);
+    }
     setWelcomeOpen(false);
     setCelebrating(true);
   };
