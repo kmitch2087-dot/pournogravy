@@ -103,6 +103,16 @@ const FIELD_HINTS: Record<string, string> = {
   "faq|items|q7_a":  "Answer to question 7",
   "faq|items|q8_q":  "FAQ question 8 text",
   "faq|items|q8_a":  "Answer to question 8",
+  // faq > cta
+  "faq|cta|prompt":    "Bottom prompt text — e.g. 'Didn't answer your question?'",
+  "faq|cta|link_text": "Bottom CTA link text linking to the Contact page",
+  // about > body
+  "about|body|p1": "First body paragraph — brand origin story",
+  "about|body|p2": "Second body paragraph — who POURnogravy is for",
+  "about|body|p3": "Third body paragraph — origin of the designs",
+  // home > reviews
+  "home|reviews|label":   "Small eyebrow label above the customer reviews section",
+  "home|reviews|heading": "Heading for the customer reviews section",
 };
 
 // ─── Types that save on change (no blur needed) ───────────────────────────────
