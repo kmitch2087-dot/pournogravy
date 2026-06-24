@@ -57,7 +57,7 @@ const Settings       = lazy(() => import("./pages/admin/Settings"));
 const UserManual     = lazy(() => import("./pages/admin/UserManual"));
 const ProjectStatus  = lazy(() => import("./pages/admin/ProjectStatus"));
 const Inbox          = lazy(() => import("./pages/admin/Inbox"));
-const EditRequests    = lazy(() => import("./pages/admin/EditRequests"));
+const Finances        = lazy(() => import("./pages/admin/Finances"));
 const MerchDrops     = lazy(() => import("./pages/admin/MerchDrops"));
 const Analytics      = lazy(() => import("./pages/admin/Analytics"));
 const Loyalty        = lazy(() => import("./pages/admin/Loyalty"));
@@ -66,16 +66,9 @@ const Subscribers    = lazy(() => import("./pages/admin/Subscribers"));
 const DiscountCodes  = lazy(() => import("./pages/admin/DiscountCodes"));
 const Content        = lazy(() => import("./pages/admin/Content"));
 const BlogAdmin      = lazy(() => import("./pages/admin/BlogAdmin"));
-const InvoiceTracker  = lazy(() => import("./pages/admin/InvoiceTracker"));
 const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
 const EasterEggs      = lazy(() => import("./pages/admin/EasterEggs"));
 const PrintFiles      = lazy(() => import("./pages/admin/PrintFiles"));
-const Financials      = lazy(() => import("./pages/admin/Financials"));
-const BookkeepingOverview  = lazy(() => import("./pages/admin/BookkeepingOverview"));
-const BookkeepingExpenses  = lazy(() => import("./pages/admin/BookkeepingExpenses"));
-const BookkeepingProducts  = lazy(() => import("./pages/admin/BookkeepingProducts"));
-const BookkeepingReports   = lazy(() => import("./pages/admin/BookkeepingReports"));
-const BookkeepingTaxPacket = lazy(() => import("./pages/admin/BookkeepingTaxPacket"));
 
 // ─── Analytics: auto page_view on every route change ─────────────────────────
 const AnalyticsTracker = () => {
@@ -92,7 +85,13 @@ const PageLoader = () => (
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => {
+    // Guard: don't jump the outer page when a modal/dialog is open
+    const hasOpenDialog = document.querySelector('[role="dialog"]') !== null;
+    if (!hasOpenDialog) {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
   return null;
 };
 
@@ -163,7 +162,6 @@ const App = () => (
                       <Route path="manual"            element={<UserManual />} />
                       <Route path="project-status"    element={<ProjectStatus />} />
                       <Route path="inbox"             element={<Inbox />} />
-                      <Route path="edit-requests"     element={<EditRequests />} />
                       <Route path="merch-drops"       element={<MerchDrops />} />
                       <Route path="analytics"         element={<Analytics />} />
                       <Route path="loyalty"           element={<Loyalty />} />
@@ -172,16 +170,17 @@ const App = () => (
                       <Route path="discount-codes"    element={<DiscountCodes />} />
                       <Route path="content"           element={<Content />} />
                       <Route path="blog"              element={<BlogAdmin />} />
-                      <Route path="invoices"          element={<InvoiceTracker />} />
                       <Route path="email-templates"   element={<Navigate to="/admin/inbox?tab=templates" replace />} />
                       <Route path="easter-eggs"       element={<EasterEggs />} />
                       <Route path="print-files"       element={<PrintFiles />} />
-                      <Route path="financials"        element={<Financials />} />
-                      <Route path="bookkeeping"             element={<BookkeepingOverview />} />
-                      <Route path="bookkeeping/expenses"    element={<BookkeepingExpenses />} />
-                      <Route path="bookkeeping/products"    element={<BookkeepingProducts />} />
-                      <Route path="bookkeeping/reports"     element={<BookkeepingReports />} />
-                      <Route path="bookkeeping/tax-packet"  element={<BookkeepingTaxPacket />} />
+                      <Route path="finances"          element={<Finances />} />
+                      <Route path="financials"        element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="invoices"          element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="bookkeeping"             element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="bookkeeping/expenses"    element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="bookkeeping/products"    element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="bookkeeping/reports"     element={<Navigate to="/admin/finances" replace />} />
+                      <Route path="bookkeeping/tax-packet"  element={<Navigate to="/admin/finances" replace />} />
                     </Route>
                     <Route path="/reviews"     element={<PublicReviews />} />
                     <Route path="/blog"        element={<Blog />} />
