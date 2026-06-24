@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,7 @@ import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { cn } from "@/lib/utils";
+import { setProductLive } from "@/lib/publishProduct";
 
 const AVAILABLE_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
@@ -301,6 +303,7 @@ const ProductEdit = () => {
   const [initialized, setInitialized] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [publishAt, setPublishAt] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainUploadRef = useRef<HTMLInputElement>(null);
@@ -334,6 +337,7 @@ const ProductEdit = () => {
   // ── Reset when navigating to a different product ──────────────────────────
   useEffect(() => {
     setInitialized(false);
+    setPublishAt(null);
     // Keep slugOverride:true so that if the user edits the name before the new
     // product's data arrives, we don't auto-regenerate the slug from the name.
     setForm({ ...defaultForm(), slugOverride: true });
@@ -404,6 +408,7 @@ const ProductEdit = () => {
         ogDescription: (product as Record<string, unknown>).og_description as string ?? '',
         ogImage: (product as Record<string, unknown>).og_image as string ?? '',
       });
+      setPublishAt((product as Record<string, unknown>).publish_at as string | null ?? null);
       setInitialized(true);
     } else if (isNew && fromSlug) {
       const sp = staticProducts.find((p) => p.id === fromSlug);
@@ -584,9 +589,6 @@ const ProductEdit = () => {
         humor: true, description: true, longDescription: true, badAdvice: true,
       },
       price_cents: Math.round(Number(form.price_dollars) * 100),
-      is_active: form.isLive,
-      published: form.isLive,
-      status: form.isLive ? "published" : "draft",
       featured: form.featured,
       badge: form.badge || null,
       images: images.length > 0 ? images : [],
@@ -605,29 +607,32 @@ const ProductEdit = () => {
       og_title:       form.ogTitle       || null,
       og_description: form.ogDescription || null,
       og_image:       form.ogImage       || null,
+      publish_at:     publishAt,
     };
 
     let error;
+    let savedId: string | null = id ?? null;
     if (!isNew) {
-      // Stamp went_live_at on first publish if not already set
-      if (form.isLive && !wentLiveAt) {
-        const { data: existing } = await supabase
-          .from("products")
-          .select("went_live_at")
-          .eq("id", id!)
-          .maybeSingle();
-        if (!existing?.went_live_at) {
-          wentLiveAt = new Date().toISOString();
-        }
-      }
-      payload.went_live_at = wentLiveAt;
       ({ error } = await supabase.from("products").update(payload).eq("id", id!));
     } else {
-      if (form.isLive && !wentLiveAt) {
-        wentLiveAt = new Date().toISOString();
-      }
+      // For new products, seed publish fields so setProductLive can read went_live_at correctly
+      payload.is_active = false;
+      payload.published = false;
+      payload.status = "draft";
       payload.went_live_at = wentLiveAt;
-      ({ error } = await supabase.from("products").insert([payload]));
+      const { data: inserted, error: insertErr } = await supabase
+        .from("products")
+        .insert([payload])
+        .select("id")
+        .single();
+      error = insertErr;
+      savedId = inserted?.id ?? null;
+    }
+
+    // Call setProductLive to handle is_active / published / status / went_live_at atomically
+    if (!error && savedId) {
+      const { error: publishErr } = await setProductLive(supabase, savedId, form.isLive);
+      if (publishErr) error = publishErr;
     }
 
     setSaving(false);
@@ -1290,6 +1295,25 @@ const ProductEdit = () => {
                   onCheckedChange={(v) => setF({ isLive: v })}
                   className="data-[state=checked]:bg-[#fde047]"
                 />
+              </div>
+              {publishAt && !form.isLive && (
+                <Badge variant="outline" className="text-[10px] border-[#fde047]/50 text-[#fde047]">
+                  Scheduled: {format(new Date(publishAt), 'MMM d, h:mm a')}
+                </Badge>
+              )}
+              <div className="space-y-1.5">
+                <label className="text-xs font-marker tracking-widest text-muted-foreground uppercase">
+                  Schedule go-live (optional)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={publishAt ? publishAt.slice(0, 16) : ''}
+                  onChange={(e) => setPublishAt(e.target.value ? new Date(e.target.value).toISOString() : null)}
+                  className="w-full px-3 py-2 text-sm bg-transparent border border-border focus:outline-none focus:border-[#fde047] transition-colors"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  If set, product goes live automatically at this time. Cleared when published manually.
+                </p>
               </div>
               <div className="flex items-center justify-between">
                 <div>
