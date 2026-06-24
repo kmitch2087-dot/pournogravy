@@ -95,6 +95,9 @@ const Orders = () => {
   const [resendingPrinter, setResendingPrinter] = useState(false);
   const [resendResult, setResendResult] = useState("");
 
+  // Send review request state
+  const [sendingReview, setSendingReview] = useState(false);
+
   // Refund dialog state
   const [refundOpen, setRefundOpen] = useState(false);
   const [refunding, setRefunding] = useState(false);
@@ -110,7 +113,7 @@ const Orders = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, email, status, total_cents, currency, created_at, tracking_number, tracking_carrier")
+        .select("id, email, status, total_cents, currency, created_at, tracking_number, tracking_carrier, review_token, review_email_sent_at, review_submitted_at")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -266,6 +269,39 @@ const Orders = () => {
       setResendResult(error.message);
     } else {
       setResendResult("Sent — new magic link generated");
+    }
+  };
+
+  const handleSendReviewRequest = async () => {
+    if (!detail?.order?.email || !detail?.order?.review_token) return;
+    setSendingReview(true);
+    try {
+      const reviewUrl = `https://pournogravy.com/review?token=${detail.order.review_token}`;
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          templateKey: "review_request",
+          recipient: detail.order.email,
+          relatedKind: "order",
+          relatedId: detail.order.id,
+          variables: {
+            customer_name: detail.order.email.split("@")[0],
+            order_number: detail.order.id.slice(-8).toUpperCase(),
+            review_url: reviewUrl,
+          },
+        },
+      });
+      if (error) throw error;
+      await supabase
+        .from("orders")
+        .update({ review_email_sent_at: new Date().toISOString() })
+        .eq("id", detail.order.id);
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-order", selectedId] });
+      toast.success("Review request sent!");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setSendingReview(false);
     }
   };
 
@@ -599,6 +635,46 @@ const Orders = () => {
                     <p className="text-xs text-muted-foreground mt-2">{resendResult}</p>
                   )}
                 </div>
+
+                {/* Send review request */}
+                {detail.order.email && (
+                  <div className="border-t border-border pt-4">
+                    <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase mb-2">Review</p>
+                    {detail.order.review_submitted_at ? (
+                      <p className="text-xs text-green-400">
+                        ✓ Customer submitted a review{" "}
+                        {format(new Date(detail.order.review_submitted_at as string), "MMM d, yyyy")}
+                      </p>
+                    ) : detail.order.review_email_sent_at ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Request sent {format(new Date(detail.order.review_email_sent_at as string), "MMM d")} — not yet reviewed
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSendReviewRequest}
+                          disabled={sendingReview}
+                          className="text-xs"
+                        >
+                          {sendingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                          Resend Request
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendReviewRequest}
+                        disabled={sendingReview}
+                        className="border-[#fde047]/30 text-[#fde047] hover:bg-[#fde047]/10"
+                      >
+                        {sendingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                        Send Review Request
+                      </Button>
+                    )}
+                  </div>
+                )}
 
               </div>
             )}

@@ -52,6 +52,7 @@ const ProductEdit    = lazy(() => import("./pages/admin/ProductEdit"));
 const CustomRequests = lazy(() => import("./pages/admin/CustomRequests"));
 const Reviews        = lazy(() => import("./pages/admin/Reviews"));
 const PublicReviews  = lazy(() => import("./pages/Reviews"));
+const ReviewSubmit   = lazy(() => import("./pages/ReviewSubmit"));
 const Settings       = lazy(() => import("./pages/admin/Settings"));
 const UserManual     = lazy(() => import("./pages/admin/UserManual"));
 const ProjectStatus  = lazy(() => import("./pages/admin/ProjectStatus"));
@@ -182,6 +183,7 @@ const App = () => (
                       <Route path="bookkeeping/tax-packet"  element={<Navigate to="/admin/finances" replace />} />
                     </Route>
                     <Route path="/reviews"     element={<PublicReviews />} />
+                    <Route path="/review"      element={<ReviewSubmit />} />
                     <Route path="/blog"        element={<Blog />} />
                     <Route path="/blog/:slug"  element={<BlogPost />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
