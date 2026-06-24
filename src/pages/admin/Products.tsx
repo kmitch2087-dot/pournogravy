@@ -17,6 +17,7 @@ import {
 import { Plus, Loader2, Search, Pencil, Trash2, CalendarDays } from "lucide-react";
 import { fmtMoney, slugify } from "@/lib/admin";
 import { toast } from "sonner";
+import { setProductLive } from "@/lib/publishProduct";
 
 type CategoryTab = "all" | "apparel" | "accessories";
 
@@ -136,18 +137,8 @@ const Products = () => {
     setToggling(key);
     try {
       if (p.id) {
-        // DB product — fetch current went_live_at to decide whether to stamp it
-        const { data: existing } = await supabase
-          .from("products")
-          .select("went_live_at")
-          .eq("id", p.id)
-          .maybeSingle();
-        const { error } = await supabase.from("products").update({
-          is_active: newVal,
-          published: newVal,
-          status: newVal ? "published" : "draft",
-          ...(newVal && !existing?.went_live_at ? { went_live_at: new Date().toISOString() } : {}),
-        }).eq("id", p.id);
+        // DB product — delegate to shared publish helper
+        const { error } = await setProductLive(supabase, p.id, newVal);
         if (error) throw error;
       } else {
         // Static-only product — create a DB row
