@@ -34,6 +34,8 @@ interface DbProductRow {
   og_image: string | null;
   og_title: string | null;
   og_description: string | null;
+  product_group_id: string | null;
+  display_order: number | null;
 }
 
 const dbRowToProduct = (r: DbProductRow): Product => {
@@ -80,6 +82,8 @@ const dbRowToProduct = (r: DbProductRow): Product => {
     og_image: r.og_image ?? undefined,
     og_title: r.og_title ?? undefined,
     og_description: r.og_description ?? undefined,
+    product_group_id: r.product_group_id ?? undefined,
+    display_order: r.display_order ?? undefined,
   };
 };
 

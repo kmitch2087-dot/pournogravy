@@ -85,7 +85,7 @@ const CTA_PHRASES = [
   "ONE MORE ROUND",
 ];
 
-const ProductCard = ({ product, priority = false }: { product: Product; priority?: boolean }) => {
+const ProductCard = ({ product, priority = false, groupSize }: { product: Product; priority?: boolean; groupSize?: number }) => {
   const { isSaved, toggle } = useWishlist();
   const ratings = useProductRatings();
   const saved = isSaved(product.id);
@@ -190,6 +190,11 @@ const ProductCard = ({ product, priority = false }: { product: Product; priority
             {product.badge && (
               <span className="bg-black text-white px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
                 {product.badge}
+              </span>
+            )}
+            {groupSize && groupSize > 1 && (
+              <span className="bg-black/70 text-white/80 px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase border border-white/20">
+                {groupSize}+ styles
               </span>
             )}
           </div>

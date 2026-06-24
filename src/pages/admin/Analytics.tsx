@@ -19,6 +19,9 @@ interface DailyRevenue  { day: string; revenue: number; purchases: number; }
 interface FunnelRow     { event_type: string; sessions: number; }
 interface TopProduct    { product_id: string; views: number; cart_adds: number; purchases: number; }
 interface RecentOrder   { id: string; created_at: string; total_cents: number; status: string; email?: string; }
+interface RevenueByProduct { product_name: string; revenue: number; units: number; }
+interface SizeRow       { size: string; count: number; }
+interface RepeatCustomer { email: string; order_count: number; }
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 
@@ -68,6 +71,71 @@ const useRecentOrders = () =>
       return (data ?? []) as RecentOrder[];
     },
     staleTime: 30_000,
+  });
+
+const useRevenueByProduct = () =>
+  useQuery<RevenueByProduct[]>({
+    queryKey: ["analytics-revenue-by-product"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("unit_price_cents, quantity, product_snapshot");
+      if (error) throw error;
+      const map = new Map<string, { revenue: number; units: number }>();
+      for (const row of (data ?? [])) {
+        const snap = row.product_snapshot as Record<string, unknown> | null;
+        const name = (snap?.name as string | null) ?? "Unknown Product";
+        const rev = ((row.unit_price_cents ?? 0) * (row.quantity ?? 1)) / 100;
+        const existing = map.get(name) ?? { revenue: 0, units: 0 };
+        map.set(name, { revenue: existing.revenue + rev, units: existing.units + (row.quantity ?? 1) });
+      }
+      return Array.from(map.entries())
+        .map(([product_name, vals]) => ({ product_name, ...vals }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 12);
+    },
+    staleTime: 60_000,
+  });
+
+const useSizeDistribution = () =>
+  useQuery<SizeRow[]>({
+    queryKey: ["analytics-size-distribution"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("product_snapshot, quantity");
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const row of (data ?? [])) {
+        const snap = row.product_snapshot as Record<string, unknown> | null;
+        const size = (snap?.size as string | null) ?? (snap?.variant as string | null) ?? "N/A";
+        map.set(size, (map.get(size) ?? 0) + (row.quantity ?? 1));
+      }
+      return Array.from(map.entries())
+        .map(([size, count]) => ({ size, count }))
+        .sort((a, b) => b.count - a.count);
+    },
+    staleTime: 60_000,
+  });
+
+const useRepeatCustomers = () =>
+  useQuery<{ repeatCount: number; totalCount: number }>({
+    queryKey: ["analytics-repeat-customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("email")
+        .not("email", "is", null);
+      if (error) throw error;
+      const emailCounts = new Map<string, number>();
+      for (const row of (data ?? [])) {
+        if (row.email) emailCounts.set(row.email, (emailCounts.get(row.email) ?? 0) + 1);
+      }
+      const totalCount = emailCounts.size;
+      const repeatCount = [...emailCounts.values()].filter((c) => c > 1).length;
+      return { repeatCount, totalCount };
+    },
+    staleTime: 60_000,
   });
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -129,10 +197,13 @@ const orderStatusColor: Record<string, string> = {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Analytics() {
-  const { data: revenue,     isLoading: revLoading,  refetch: refetchRevenue   } = useRevenue();
-  const { data: funnel,      isLoading: funnelLoading                           } = useFunnel();
-  const { data: topProducts, isLoading: topLoading                              } = useTopProducts();
-  const { data: recentOrders, isLoading: ordersLoading                          } = useRecentOrders();
+  const { data: revenue,        isLoading: revLoading,    refetch: refetchRevenue } = useRevenue();
+  const { data: funnel,         isLoading: funnelLoading                          } = useFunnel();
+  const { data: topProducts,    isLoading: topLoading                             } = useTopProducts();
+  const { data: recentOrders,   isLoading: ordersLoading                          } = useRecentOrders();
+  const { data: revenueByProd,  isLoading: revByProdLoading                       } = useRevenueByProduct();
+  const { data: sizeData,       isLoading: sizeLoading                            } = useSizeDistribution();
+  const { data: repeatData                                                         } = useRepeatCustomers();
 
   // ── Derived KPIs ──
   const totalRevenue  = revenue?.reduce((s, r) => s + Number(r.revenue), 0)   ?? 0;
@@ -403,6 +474,65 @@ export default function Analytics() {
           </div>
         )}
       </SectionCard>
+
+      {/* Repeat Customer Rate + Revenue by Product */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <SectionCard title="Revenue by Product">
+          {revByProdLoading ? (
+            <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
+          ) : !revenueByProd || revenueByProd.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">No sales data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart layout="vertical" data={revenueByProd} margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tickFormatter={(v) => `$${v}`} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis type="category" dataKey="product_name" width={120} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="revenue" fill="#fde047" radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Size Distribution">
+          {sizeLoading ? (
+            <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
+          ) : !sizeData || sizeData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">No order data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={sizeData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="size" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill="#60a5fa" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* Repeat Customer Rate */}
+      {repeatData && repeatData.totalCount > 0 && (
+        <SectionCard title="Customer Loyalty">
+          <div className="flex items-center gap-8">
+            <div>
+              <p className="text-3xl font-bold tabular-nums">
+                {repeatData.totalCount > 0
+                  ? `${((repeatData.repeatCount / repeatData.totalCount) * 100).toFixed(1)}%`
+                  : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">repeat customer rate</p>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>{repeatData.repeatCount} customers ordered more than once</p>
+              <p>{repeatData.totalCount} unique customers total</p>
+            </div>
+          </div>
+        </SectionCard>
+      )}
 
       {/* Pipeline live notice */}
       {!revLoading && totalOrders === 0 && (

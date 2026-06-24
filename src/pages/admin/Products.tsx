@@ -14,31 +14,64 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Loader2, Search, Pencil, Trash2, CalendarDays } from "lucide-react";
+import { Plus, Loader2, Search, Pencil, Trash2, CalendarDays, GripVertical } from "lucide-react";
 import { fmtMoney, slugify } from "@/lib/admin";
 import { toast } from "sonner";
 import { setProductLive } from "@/lib/publishProduct";
+import {
+  DndContext, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type CategoryTab = "all" | "apparel" | "accessories";
 
 interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
-  featured: boolean; category: string | null;
+  featured: boolean; category: string | null; display_order: number | null;
 }
 
 type MergedProduct = {
-  id: string | null;       // null = static-only, not yet in DB
+  id: string | null;
   slug: string;
   name: string;
   price_cents: number;
   currency: string;
   is_active: boolean;
-  published: boolean;      // actual DB published flag (drives the Live toggle)
+  published: boolean;
   image_url: string | null;
-  isStatic: boolean;       // came from products.ts
+  isStatic: boolean;
   inDrop: boolean;
-  category: string;        // 'apparel' | 'accessories'
+  category: string;
+  display_order: number;
+};
+
+// ─── Sortable row ─────────────────────────────────────────────────────────────
+const SortableRow = ({ id, children }: { id: string; children: (drag: React.ReactNode) => React.ReactNode }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      {children(
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+    </TableRow>
+  );
 };
 
 const Products = () => {
@@ -48,14 +81,20 @@ const Products = () => {
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [reorderedList, setReorderedList] = useState<MergedProduct[]>([]);
   const { data: staticProducts = [] } = useMergedProducts();
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const { data: dbProducts = [], isLoading } = useQuery<DbProduct[]>({
     queryKey: ["admin-products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order")
+        .order("display_order", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbProduct[];
@@ -95,6 +134,7 @@ const Products = () => {
         isStatic: false,
         inDrop: dropIdSet.has(p.id),
         category: p.category ?? "apparel",
+        display_order: p.display_order ?? 0,
       });
     }
 
@@ -113,6 +153,7 @@ const Products = () => {
           isStatic: true,
           inDrop: false,
           category: "apparel",
+          display_order: 0,
         });
       }
     }
@@ -190,6 +231,38 @@ const Products = () => {
     }
   };
 
+  const handleEnterReorder = () => {
+    setReorderedList([...filtered]);
+    setReorderMode(true);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = reorderedList.findIndex((p) => (p.id ?? p.slug) === active.id);
+    const newIndex = reorderedList.findIndex((p) => (p.id ?? p.slug) === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    setReorderedList((prev) => arrayMove(prev, oldIndex, newIndex));
+  };
+
+  const handleSaveOrder = async () => {
+    const dbOnly = reorderedList.filter((p) => p.id !== null);
+    if (dbOnly.length === 0) return;
+    setReordering(true);
+    try {
+      const updates = dbOnly.map((p, i) => ({ id: p.id!, display_order: i }));
+      const { error } = await supabase.from("products").upsert(updates);
+      if (error) throw error;
+      toast.success("Order saved!");
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      setReorderMode(false);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setReordering(false);
+    }
+  };
+
   // Category tab counts
   const tabCounts = useMemo(() => ({
     all: merged.length,
@@ -214,11 +287,30 @@ const Products = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            disabled={reorderMode}
           />
         </div>
-        <Button asChild className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest">
-          <Link to="/admin/products/new"><Plus className="h-4 w-4 mr-1.5" /> NEW PRODUCT</Link>
-        </Button>
+        <div className="flex gap-2">
+          {reorderMode ? (
+            <>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => setReorderMode(false)} disabled={reordering}>
+                Cancel
+              </Button>
+              <Button size="sm" className="bg-[#fde047] text-black hover:bg-[#fde047]/90 text-xs font-display tracking-widest" onClick={handleSaveOrder} disabled={reordering}>
+                {reordering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "SAVE ORDER"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" className="text-xs" onClick={handleEnterReorder}>
+                <GripVertical className="h-3.5 w-3.5 mr-1" /> Reorder
+              </Button>
+              <Button asChild className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest">
+                <Link to="/admin/products/new"><Plus className="h-4 w-4 mr-1.5" /> NEW PRODUCT</Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Category sub-tabs */}
@@ -246,6 +338,56 @@ const Products = () => {
           <div className="py-20 text-center text-sm text-muted-foreground">
             {search ? "Nothing matches that." : "No products found."}
           </div>
+        ) : reorderMode ? (
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={reorderedList.map((p) => p.id ?? p.slug)}
+              strategy={verticalListSortingStrategy}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8" />
+                    <TableHead className="w-14" />
+                    <TableHead>Product</TableHead>
+                    <TableHead className="w-28">Category</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reorderedList.map((p) => {
+                    const key = p.id ?? p.slug;
+                    return (
+                      <SortableRow key={key} id={key}>
+                        {(dragHandle) => (
+                          <>
+                            <TableCell className="w-8 pl-2">{dragHandle}</TableCell>
+                            <TableCell>
+                              {p.image_url ? (
+                                <img src={p.image_url} alt={p.name} className="h-10 w-10 object-cover rounded-sm border border-border" />
+                              ) : (
+                                <div className="h-10 w-10 bg-muted rounded-sm" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-medium">{p.name}</span>
+                              <div className="text-xs text-muted-foreground mt-0.5">{p.slug}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-widest">{p.category}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-display tracking-wider">
+                              {fmtMoney(p.price_cents, p.currency)}
+                            </TableCell>
+                          </>
+                        )}
+                      </SortableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </SortableContext>
+          </DndContext>
         ) : (
           <Table>
             <TableHeader>
@@ -289,10 +431,7 @@ const Products = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] px-1.5 py-0 uppercase tracking-widest"
-                      >
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-widest">
                         {p.category}
                       </Badge>
                     </TableCell>
@@ -305,29 +444,13 @@ const Products = () => {
                       ) : (() => {
                         const state = getLiveState(p);
                         if (state === "live") return (
-                          <Badge
-                            onClick={() => handleToggleLive(p, false)}
-                            className="cursor-pointer bg-green-500/20 text-green-400 border-green-500/30 text-[9px] px-2 py-0.5 hover:bg-green-500/30 transition"
-                          >
-                            LIVE
-                          </Badge>
+                          <Badge onClick={() => handleToggleLive(p, false)} className="cursor-pointer bg-green-500/20 text-green-400 border-green-500/30 text-[9px] px-2 py-0.5 hover:bg-green-500/30 transition">LIVE</Badge>
                         );
                         if (state === "listed") return (
-                          <Badge
-                            onClick={() => handleToggleLive(p, false)}
-                            title="Visible in shop but cannot be purchased — set a Stripe Price ID first."
-                            className="cursor-pointer bg-amber-500/20 text-amber-400 border-amber-500/30 text-[9px] px-2 py-0.5 hover:bg-amber-500/30 transition"
-                          >
-                            LISTED
-                          </Badge>
+                          <Badge onClick={() => handleToggleLive(p, false)} title="Visible in shop but cannot be purchased — set a Stripe Price ID first." className="cursor-pointer bg-amber-500/20 text-amber-400 border-amber-500/30 text-[9px] px-2 py-0.5 hover:bg-amber-500/30 transition">LISTED</Badge>
                         );
                         return (
-                          <Badge
-                            onClick={() => handleToggleLive(p, true)}
-                            className="cursor-pointer bg-muted text-muted-foreground border-border text-[9px] px-2 py-0.5 hover:bg-muted/70 transition"
-                          >
-                            DRAFT
-                          </Badge>
+                          <Badge onClick={() => handleToggleLive(p, true)} className="cursor-pointer bg-muted text-muted-foreground border-border text-[9px] px-2 py-0.5 hover:bg-muted/70 transition">DRAFT</Badge>
                         );
                       })()}
                     </TableCell>
