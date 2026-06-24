@@ -242,12 +242,14 @@ const WelcomeDialog = ({
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onCancel}
               className="flex-1 py-2.5 border border-border text-xs font-display tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
             >
               CANCEL
             </button>
             <button
+              type="button"
               onClick={() => onConfirm(isKristin)}
               disabled={!canConfirm}
               className="flex-1 py-2.5 bg-[#fde047] text-black text-xs font-display tracking-widest hover:bg-[#fbbf24] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
@@ -443,17 +445,6 @@ const Dashboard = () => {
           RESET DATA
         </button>
       )}
-
-      {/* Preview trigger — admin-only, always visible, only Kristin knows it's here */}
-      <div className="flex justify-end -mt-4">
-        <button
-          type="button"
-          onClick={() => setCelebrating(true)}
-          className="text-[9px] font-marker tracking-widest text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors"
-        >
-          ✦ preview
-        </button>
-      </div>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <StatCard
