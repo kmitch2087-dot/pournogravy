@@ -166,8 +166,7 @@ const PREVIEW_PHRASE = "KRISTIN"; // Kristin's preview key — triggers animatio
 const MAKE_IT_RAIN_YT_ID = "oPLoj5FqvnE";
 const MAKE_IT_RAIN_START_SEC = 75; // 1:15
 
-const TINA_GIF             = "https://media.giphy.com/media/WO6xBeRC7AA8MplkrR/giphy.gif";
-const TINA_GIF_TRANSPARENT = "https://media.giphy.com/media/WO6xBeRC7AA8MplkrR/giphy-transparent.gif";
+const TINA_GIF = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object/public/products/ui/tina-belcher.gif";
 
 // ── Welcome + confirm dialog ───────────────────────────────────────────────────
 
@@ -312,8 +311,7 @@ const CelebrationOverlay = ({ onClose }: { onClose: () => void }) => {
 
       {/* Tina */}
       <img
-        src={TINA_GIF_TRANSPARENT}
-        onError={(e) => { (e.currentTarget as HTMLImageElement).src = TINA_GIF; }}
+        src={TINA_GIF}
         alt="Tina Belcher dancing"
         className="relative z-10 w-auto drop-shadow-2xl"
         style={{ maxHeight: "65vh", imageRendering: "auto" }}
