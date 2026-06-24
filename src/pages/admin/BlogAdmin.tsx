@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Plus, Pencil, Trash2, Eye, EyeOff, Upload, Loader2, ExternalLink,
+  ArrowLeft, ArrowRight, Plus, Pencil, Trash2, Eye, EyeOff, Upload, Loader2, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,10 +44,18 @@ const PostEditor = ({
   initial,
   onSave,
   onBack,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
 }: {
   initial: Partial<BlogPost> & { id?: string };
   onSave: () => void;
   onBack: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }) => {
   const [form, setForm] = useState({
     title: initial.title ?? "",
@@ -139,6 +147,29 @@ const PostEditor = ({
           <ArrowLeft className="h-4 w-4" />
           <span className="font-display tracking-widest text-xs">ALL POSTS</span>
         </button>
+
+        {/* Prev / Next navigation — only shown when editing an existing post */}
+        {initial.id && (onPrev || onNext) && (
+          <div className="flex items-center gap-1 ml-2">
+            <button
+              onClick={onPrev}
+              disabled={!hasPrev}
+              title="Previous post"
+              className="p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onNext}
+              disabled={!hasNext}
+              title="Next post"
+              className="p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {initial.slug && (
           <a
             href={`/blog/${initial.slug}`}
@@ -320,6 +351,10 @@ const BlogAdmin = () => {
   };
 
   if (editing !== null) {
+    const editingIdx = editing.id && posts ? posts.findIndex((p) => p.id === editing.id) : -1;
+    const hasPrev = editingIdx > 0;
+    const hasNext = posts != null && editingIdx >= 0 && editingIdx < posts.length - 1;
+
     return (
       <PostEditor
         initial={editing}
@@ -328,6 +363,10 @@ const BlogAdmin = () => {
           qc.invalidateQueries({ queryKey: ["admin-blog-posts"] });
           setEditing(null);
         }}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        onPrev={() => { if (hasPrev && posts) setEditing(posts[editingIdx - 1]); }}
+        onNext={() => { if (hasNext && posts) setEditing(posts[editingIdx + 1]); }}
       />
     );
   }
