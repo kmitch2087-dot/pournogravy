@@ -92,7 +92,13 @@ const PageLoader = () => (
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => {
+    // Guard: don't jump the outer page when a modal/dialog is open
+    const hasOpenDialog = document.querySelector('[role="dialog"]') !== null;
+    if (!hasOpenDialog) {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
   return null;
 };
 
