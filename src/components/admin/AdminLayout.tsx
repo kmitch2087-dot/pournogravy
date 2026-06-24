@@ -63,7 +63,6 @@ const navItems: NavItem[] = [
   { to: "/admin/custom-requests",label: "Custom Requests",  icon: MessageSquare,   end: false },
   { to: "/admin/reviews",        label: "Reviews",          icon: Star,            end: false },
   { to: "/admin/settings",       label: "Settings",         icon: Settings,        end: false },
-  { to: "/admin/edit-requests",  label: "Client Edit Requests", icon: StickyNote,  end: false },
   { to: "/admin/manual",         label: "Admin User Manual",icon: BookOpen,        end: false },
   { to: "/admin/analytics",      label: "Analytics",        icon: LineChart,       end: false },
   { to: "/admin/project-status", label: "Project Status",   icon: BarChart2,       end: false },
@@ -73,9 +72,7 @@ const navItems: NavItem[] = [
   { to: "/admin/subscribers",   label: "Email Subscribers",    icon: Mail,            end: false },
   { to: "/admin/discount-codes",label: "Discount Codes",       icon: Tag,             end: false },
   { to: "/admin/blog",          label: "Blog",                 icon: BookOpen,        end: false },
-  { to: "/admin/invoices",      label: "Invoice Tracker",      icon: Receipt,         end: false },
-  { to: "/admin/financials",    label: "Financials & Taxes",   icon: PieChart,        end: false },
-  { to: "/admin/bookkeeping",  label: "Bookkeeping",          icon: BookOpen,        end: false },
+  { to: "/admin/finances",      label: "Finances",             icon: PieChart,        end: false },
   { to: "/admin/easter-eggs",   label: "Easter Eggs",           icon: Sparkles,        end: false },
   { to: "/admin/print-files",    label: "Print Files",           icon: FileImage,       end: false },
 ];
