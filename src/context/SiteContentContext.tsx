@@ -76,17 +76,37 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
 
   const setValue = useCallback(
     async (page: string, section: string, key: string, value: string) => {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.page === page && r.section === section && r.key === key ? { ...r, value } : r
-        )
-      );
+      setRows((prev) => {
+        const exists = prev.some(
+          (r) => r.page === page && r.section === section && r.key === key
+        );
+        if (exists) {
+          return prev.map((r) =>
+            r.page === page && r.section === section && r.key === key ? { ...r, value } : r
+          );
+        }
+        // Optimistically add a new row so the UI reflects the change immediately
+        const newRow: SiteContentRow = {
+          id: crypto.randomUUID(),
+          page,
+          section,
+          key,
+          label: key,
+          value,
+          value_type: "text",
+          options: null,
+          default_value: null,
+          sort_order: 999,
+          is_published: true,
+        };
+        return [...prev, newRow];
+      });
       const { error } = await supabase
         .from("site_content")
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq("page", page)
-        .eq("section", section)
-        .eq("key", key);
+        .upsert(
+          { page, section, key, value, updated_at: new Date().toISOString() },
+          { onConflict: "page,section,key" }
+        );
       if (error) throw new Error(error.message);
     },
     []
