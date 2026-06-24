@@ -48,7 +48,6 @@ export default function ReviewSubmit() {
 
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [rating, setRating] = useState(0);
-  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -157,7 +156,7 @@ export default function ReviewSubmit() {
           <div className="text-center py-12 border border-[#fde047]/30 rounded-lg p-6 space-y-3">
             <Star className="h-8 w-8 mx-auto" fill="#fde047" stroke="#fde047" />
             <p className="font-marker text-xl tracking-wider text-[#fde047]">THANKS!</p>
-            <p className="text-muted-foreground text-sm">Your review has been submitted and is live on the site.</p>
+            <p className="text-muted-foreground text-sm">Thank you for your review! A new barback gets their first flare up of plantar fasciitis every time someone leaves a review!</p>
           </div>
         ) : (
           <div className="border border-border rounded-lg p-6 space-y-5">
@@ -205,17 +204,6 @@ export default function ReviewSubmit() {
                 onChange={(e) => setReviewerName(e.target.value)}
                 placeholder="First name or handle"
                 maxLength={60}
-              />
-            </div>
-
-            {/* Title */}
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Title</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Sum it up in a line"
-                maxLength={80}
               />
             </div>
 

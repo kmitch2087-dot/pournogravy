@@ -457,16 +457,6 @@ const ProductDetail = () => {
               <h1 className="font-display text-3xl md:text-5xl tracking-wider leading-[0.95]">
                 {product.name}
               </h1>
-              {product.section_visibility?.humor !== false && (product.subheading || product.humor) && (
-                <div
-                  className="font-marker text-sm md:text-base tracking-[0.15em] text-[#fde047] italic mt-3"
-                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.4)" }}
-                >
-                  {(product.subheading || product.humor || '').startsWith('<')
-                    ? <span dangerouslySetInnerHTML={{ __html: product.subheading || product.humor || '' }} />
-                    : <span>{product.subheading || product.humor}</span>}
-                </div>
-              )}
 
               {avgRating !== null && (
                 <div className="flex items-center gap-1.5 mt-2">
@@ -480,6 +470,16 @@ const ProductDetail = () => {
                   >
                     {reviews!.length} {reviews!.length === 1 ? 'review' : 'reviews'} ↓
                   </a>
+                </div>
+              )}
+              {product.section_visibility?.humor !== false && (product.subheading || product.humor) && (
+                <div
+                  className="font-marker text-sm md:text-base tracking-[0.15em] text-[#fde047] italic mt-3"
+                  style={{ textShadow: "0 0 8px rgba(253,224,71,0.4)" }}
+                >
+                  {(product.subheading || product.humor || '').startsWith('<')
+                    ? <span dangerouslySetInnerHTML={{ __html: product.subheading || product.humor || '' }} />
+                    : <span>{product.subheading || product.humor}</span>}
                 </div>
               )}
 

@@ -94,7 +94,9 @@ export const useMergedProducts = () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((r) => dbRowToProduct(r as DbProductRow));
     },

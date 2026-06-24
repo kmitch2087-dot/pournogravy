@@ -225,44 +225,24 @@ const UserManual = () => {
             <ExternalBtn href="https://pournogravy.com" label="Open pournogravy.com" />
           </SectionCard>
 
-          {/* Section 3 — Edit Bubble */}
-          <SectionCard id="edit-bubble" num={3} icon={StickyNote} title="Leaving Feedback for Kristin" adminPath="/admin/edit-requests">
+          {/* Section 3 — Contact Kristin */}
+          <SectionCard id="contact-kristin" num={3} icon={StickyNote} title="Reaching Out to Kristin" adminPath="/admin">
             <p className="text-muted-foreground">
-              While you're browsing the live site (or anywhere in the admin), you'll see a small
-              <span className="mx-1 inline-flex items-center gap-1 bg-[#fde047] text-black text-xs font-bold px-2 py-0.5 rounded-sm">✏ Notes</span>
-              bubble in the bottom-right corner of your screen. This is your direct line to Kristin
-              for feedback, change requests, questions, and critiques.
+              Need to request a change, flag something that looks off, or ask a question? Use the
+              <span className="mx-1 inline-flex items-center gap-1 bg-[#fde047] text-black text-xs font-bold px-2 py-0.5 rounded-sm">? Help</span>
+              button at the bottom of the admin sidebar. It opens a panel with a direct message form.
             </p>
 
             <p className="font-medium text-foreground pt-1">How to use it:</p>
             <div className="space-y-2">
-              <Step n={1}><strong>Click the bubble</strong> to expand it into a notepad.</Step>
-              <Step n={2}><strong>Type anything</strong> — a change you want, something that looks off, a question, a new idea. The placeholder text says it all: <em>"Add your thoughts/edits/questions/critiques here."</em></Step>
-              <Step n={3}><strong>Click Save Note</strong> when you're done. Your note is locked in, Kristin gets an email, and it's saved forever.</Step>
-              <Step n={4}><strong>Keep browsing.</strong> Scroll, click around, open the next page — the bubble follows you everywhere.</Step>
+              <Step n={1}><strong>Click the Help button</strong> at the bottom-left of the admin sidebar.</Step>
+              <Step n={2}><strong>Click "Contact Kristin"</strong> inside the Help panel.</Step>
+              <Step n={3}><strong>Type your message</strong> — a change request, question, or anything you've noticed.</Step>
+              <Step n={4}><strong>Send it.</strong> Kristin gets notified and will follow up with you directly.</Step>
             </div>
 
-            <InfoTable
-              rows={[
-                ["Shrink button", "The chevron (∨) in the bubble header collapses it back to a small pill so it stays out of your way"],
-                ["Drag to move", "Grab the grip handle (⠿) on the left of the bubble header and drag it anywhere on screen"],
-                ["Past notes", "Scroll down inside the open bubble to see everything you've previously saved, newest first"],
-                ["One note = one save", "Each time you click Save Note, that's a permanent entry — you can't edit it afterward, just add new ones"],
-              ]}
-            />
-
             <Callout variant="tip">
-              <strong>Nothing gets acted on automatically.</strong> Kristin reads your notes and will reach out to discuss before making any changes. Think of it as a running list of ideas — not a work order.
-            </Callout>
-
-            <p className="font-medium text-foreground pt-1">Viewing all your notes in one place:</p>
-            <p className="text-muted-foreground">
-              Go to <strong>Admin → Client Edit Requests</strong> (the sticky note icon in the left sidebar).
-              Every note you've ever saved is listed there, with the timestamp and which page you were on when you wrote it.
-            </p>
-
-            <Callout variant="info">
-              The bubble only appears when you're logged in as admin. Customers will never see it.
+              <strong>Nothing gets acted on automatically.</strong> Kristin reads your messages and will reach out to discuss before making any changes. Think of it as a direct line — not a work order.
             </Callout>
           </SectionCard>
 
