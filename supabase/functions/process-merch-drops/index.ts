@@ -1,16 +1,21 @@
 /**
  * process-merch-drops
  * ───────────────────
- * Called manually from the admin dashboard OR wired to a scheduled trigger.
+ * Called manually from the admin dashboard OR wired to a pg_cron schedule.
  *
- * 1. Finds SCHEDULED drops whose drop date has passed → flips to ACTIVE,
- *    sets all linked products to is_active = true.
- * 2. Finds ACTIVE drops whose ad_launch_at has passed and email_sent = false
- *    → sends the branded marketing email, marks email_sent = true.
+ * Case 1: Products with publish_at <= now and is_active = false → flip live.
+ * Case 2: Merch drops whose scheduled_drop_at <= now and status = 'scheduled'
+ *         → flip to 'active', activate all linked products.
+ * Case 3: Active/scheduled drops whose ad_launch_at has passed and email_sent = false
+ *         → send the branded marketing email, mark email_sent = true + email_sent_at = now.
+ * Case 4: Scheduled drops 6–8 days out (or ad_launch_at passed) with no email_sent_at
+ *         → send advance-notice email blast to subscribers.
  *
- * Wire this to a schedule via:
- *   - Supabase pg_cron (Pro plan): SELECT cron.schedule('process-drops', '* * * * *', $$SELECT net.http_post(...)$$);
- *   - OR a Cloudflare Scheduled Worker that invokes this function.
+ * Wire to a schedule via:
+ *   SELECT cron.schedule('process-merch-drops', '*\/5 * * * *',
+ *     $$SELECT net.http_post(url := 'https://<ref>.supabase.co/functions/v1/process-merch-drops',
+ *                            headers := '{"Content-Type":"application/json"}'::jsonb,
+ *                            body := '{}'::jsonb)$$);
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -19,7 +24,6 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY")!;
 
 Deno.serve(async (req) => {
-  // Allow CORS for manual invocation from admin dashboard
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
   }
@@ -29,7 +33,30 @@ Deno.serve(async (req) => {
   const log: string[] = [];
 
   try {
-    // ── 1. Auto-publish scheduled drops ──────────────────
+    // ── Case 1: Auto-publish products with publish_at <= now ─────────────────
+    const { data: scheduledProducts } = await supabase
+      .from("products")
+      .select("id, name")
+      .lte("publish_at", now)
+      .eq("is_active", false)
+      .not("publish_at", "is", null);
+
+    for (const product of scheduledProducts ?? []) {
+      const { error } = await supabase.from("products").update({
+        is_active: true,
+        published: true,
+        status: "published",
+        publish_at: null,
+        went_live_at: now,
+      }).eq("id", product.id);
+      if (!error) {
+        log.push(`✅ Scheduled product activated: "${product.name}"`);
+      } else {
+        log.push(`⚠️  Failed to activate product "${product.name}": ${error.message}`);
+      }
+    }
+
+    // ── Case 2: Auto-publish scheduled drops whose drop date has passed ──────
     const { data: dueDrops, error: dueErr } = await supabase
       .from("merch_drops")
       .select("id, name")
@@ -50,13 +77,18 @@ Deno.serve(async (req) => {
 
       if (dropProducts && dropProducts.length > 0) {
         const productIds = dropProducts.map((r: { product_id: string }) => r.product_id);
-        await supabase.from("products").update({ is_active: true, status: "active" }).in("id", productIds);
+        await supabase.from("products").update({
+          is_active: true,
+          published: true,
+          status: "published",
+          went_live_at: now,
+        }).in("id", productIds);
       }
 
       log.push(`✅ Activated drop: "${drop.name}" + ${dropProducts?.length ?? 0} products`);
     }
 
-    // ── 2. Send pending marketing emails ─────────────────
+    // ── Case 3: Send pending marketing emails (ad_launch_at passed, not sent) ─
     const { data: emailDue, error: emailErr } = await supabase
       .from("merch_drops")
       .select("*")
@@ -68,12 +100,72 @@ Deno.serve(async (req) => {
     if (emailErr) throw emailErr;
 
     for (const drop of emailDue ?? []) {
-      const sent = await sendDropEmail(drop, RESEND_API_KEY);
+      const subscribers = await getSubscribers(supabase);
+      const sent = await sendDropEmail(drop, RESEND_API_KEY, subscribers);
       if (sent) {
-        await supabase.from("merch_drops").update({ email_sent: true }).eq("id", drop.id);
-        log.push(`📧 Email sent for drop: "${drop.name}"`);
+        await supabase.from("merch_drops").update({
+          email_sent: true,
+          email_sent_at: now,
+        }).eq("id", drop.id);
+        log.push(`📧 Email sent for drop: "${drop.name}" (${subscribers.length} subscribers)`);
       } else {
         log.push(`⚠️  Email FAILED for drop: "${drop.name}"`);
+      }
+    }
+
+    // ── Case 4: Advance-notice blast for upcoming drops (6–8 days out) ───────
+    const sixDays   = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+    const eightDays = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: upcomingDrops } = await supabase
+      .from("merch_drops")
+      .select("id, name, scheduled_drop_at, ad_launch_at, email_sent_at")
+      .eq("status", "scheduled")
+      .is("email_sent_at", null)
+      .gte("scheduled_drop_at", sixDays)
+      .lte("scheduled_drop_at", eightDays);
+
+    // Also check drops whose ad_launch_at has passed but haven't had an advance email yet
+    const { data: adLaunchDrops } = await supabase
+      .from("merch_drops")
+      .select("id, name, scheduled_drop_at, ad_launch_at, email_sent_at")
+      .eq("status", "scheduled")
+      .is("email_sent_at", null)
+      .lte("ad_launch_at", now)
+      .not("ad_launch_at", "is", null);
+
+    // Deduplicate by id
+    const advanceMap = new Map<string, Record<string, unknown>>();
+    for (const d of [...(upcomingDrops ?? []), ...(adLaunchDrops ?? [])]) {
+      if (!advanceMap.has(d.id)) advanceMap.set(d.id, d as Record<string, unknown>);
+    }
+
+    if (advanceMap.size > 0 && RESEND_API_KEY) {
+      const subscribers = await getSubscribers(supabase);
+
+      for (const drop of advanceMap.values()) {
+        const dropDateStr = drop.scheduled_drop_at as string | null;
+        const dropDate = dropDateStr
+          ? new Date(dropDateStr).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+          : "soon";
+
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: "POURnogravy <opie@pournogravy.com>",
+            to: subscribers.length > 0 ? subscribers : ["kmitch2087@gmail.com"],
+            subject: `New drop incoming: ${(drop.name as string) ?? "Something big"} — ${dropDate}`,
+            html: buildDropEmailHtml(drop),
+          }),
+        });
+
+        if (res.ok) {
+          await supabase.from("merch_drops").update({ email_sent_at: now }).eq("id", drop.id as string);
+          log.push(`📧 Advance blast sent for drop "${drop.name as string}" (${subscribers.length} subscribers)`);
+        } else {
+          log.push(`⚠️  Advance blast FAILED for drop "${drop.name as string}"`);
+        }
       }
     }
 
@@ -90,7 +182,25 @@ Deno.serve(async (req) => {
   }
 });
 
-async function sendDropEmail(drop: Record<string, unknown>, apiKey: string): Promise<boolean> {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getSubscribers(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  try {
+    const { data } = await supabase
+      .from("email_subscribers")
+      .select("email")
+      .eq("active", true);
+    return (data ?? []).map((s: { email: string }) => s.email).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function sendDropEmail(
+  drop: Record<string, unknown>,
+  apiKey: string,
+  subscribers: string[],
+): Promise<boolean> {
   try {
     const subject = (drop.email_subject as string) || `🍺 Something's dropping. Staff meeting. You're invited.`;
     const html = buildDropEmailHtml(drop);
@@ -100,7 +210,7 @@ async function sendDropEmail(drop: Record<string, unknown>, apiKey: string): Pro
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: "POURnogravy <opie@pournogravy.com>",
-        to:   ["kmitch2087@gmail.com"], // TODO: replace with subscriber list query
+        to: subscribers.length > 0 ? subscribers : ["kmitch2087@gmail.com"],
         subject,
         html,
       }),
@@ -116,10 +226,12 @@ function buildDropEmailHtml(drop: Record<string, unknown>): string {
   const name       = drop.name as string;
   const blurb      = drop.email_blurb as string | null;
   const flyerUrl   = drop.flyer_url as string | null;
-  const dropDate   = drop.scheduled_drop_at as string;
-  const formattedDate = new Date(dropDate).toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric", year: "numeric",
-  });
+  const dropDate   = drop.scheduled_drop_at as string | null;
+  const formattedDate = dropDate
+    ? new Date(dropDate).toLocaleDateString("en-US", {
+        weekday: "long", month: "long", day: "numeric", year: "numeric",
+      })
+    : "soon";
 
   const flyerSection = flyerUrl
     ? `<img src="${flyerUrl}" alt="${name}" style="width:100%;max-width:560px;border-radius:6px;display:block;margin:24px auto;" />`
