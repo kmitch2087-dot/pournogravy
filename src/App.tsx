@@ -18,7 +18,6 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import Index from "./pages/Index";
 import { DropAnnouncementBar } from "./components/DropAnnouncementBar";
-import EditBubble from "./components/EditBubble";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
@@ -192,7 +191,6 @@ const App = () => (
                   </Routes>
                 </Suspense>
               </PublicChrome>
-              <EditBubble />
             </CartProvider>
             </WishlistProvider>
             </SiteContentProvider>
