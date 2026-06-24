@@ -18,6 +18,18 @@ export class AdminErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[AdminErrorBoundary] caught:", error, info.componentStack);
+
+    // Stale chunk after a new deploy — reload once to get fresh asset hashes
+    const isChunkError =
+      error.message.includes("dynamically imported module") ||
+      error.message.includes("Failed to fetch");
+    if (isChunkError) {
+      const reloadKey = "pg_chunk_reload";
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, "1");
+        window.location.reload();
+      }
+    }
   }
 
   render() {
