@@ -73,6 +73,10 @@ export interface Product {
   og_title?: string;
   /** Custom share preview description (og:description). Falls back to humor or description. */
   og_description?: string;
+  /** Product group UUID — products in the same group show a style switcher on each other's pages */
+  product_group_id?: string;
+  /** Admin-controlled sort position in the shop (lower = earlier) */
+  display_order?: number;
 }
 
 export const collections = [

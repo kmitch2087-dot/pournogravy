@@ -2,7 +2,7 @@ import SEO from "@/components/SEO";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { ShareButton } from "@/components/ShareButton";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { RichText } from "@/components/RichText";
 import { type ProductVariant, type ProductColor } from "@/data/products";
 import { useMergedProducts } from "@/lib/productSource";
@@ -18,8 +18,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
+interface GroupMember {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get("preview") === "1";
 
@@ -97,6 +104,23 @@ const ProductDetail = () => {
       return data ?? [];
     },
     enabled: !!id,
+  });
+
+  // Product group members — other products in the same style group
+  const { data: groupMembers } = useQuery<GroupMember[]>({
+    queryKey: ["product-group", product?.product_group_id],
+    queryFn: async () => {
+      if (!product?.product_group_id) return [];
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, slug")
+        .eq("product_group_id", product.product_group_id)
+        .eq("is_active", true)
+        .neq("slug", id ?? "");
+      if (error) throw error;
+      return (data ?? []) as GroupMember[];
+    },
+    enabled: !!product?.product_group_id && !isPreview,
   });
 
   const submitReview = useMutation({
@@ -518,6 +542,33 @@ const ProductDetail = () => {
               </button>
               .
             </div>
+
+            {/* Style switcher — shown when product belongs to a group */}
+            {groupMembers && groupMembers.length > 0 && (
+              <div>
+                <p className="text-xs font-display tracking-widest uppercase text-muted-foreground mb-2">Style</p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Current product pill (active) */}
+                  <button
+                    className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-[#fde047] bg-[#fde047] text-black transition-all"
+                    style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
+                    disabled
+                  >
+                    {product.name}
+                  </button>
+                  {/* Other group members */}
+                  {groupMembers.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => navigate(`/product/${m.slug}`)}
+                      className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-border/40 pt-6 space-y-6">
               <p className="text-2xl md:text-3xl font-display tracking-wider">

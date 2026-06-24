@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -66,9 +66,11 @@ interface FormState {
   ogTitle: string;
   ogDescription: string;
   ogImage: string;
+  // Product grouping
+  product_group_id: string | null;
 }
 
-const DEFAULT_SECTION_ORDER = ["humor", "description", "longDescription", "badAdvice"];
+const DEFAULT_SECTION_ORDER = ["reviews", "humor", "description", "longDescription", "badAdvice"];
 
 const defaultForm = (): FormState => ({
   slug: "",
@@ -98,6 +100,7 @@ const defaultForm = (): FormState => ({
   ogTitle: '',
   ogDescription: '',
   ogImage: '',
+  product_group_id: null,
 });
 
 // ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
@@ -305,6 +308,13 @@ const ProductEdit = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishAt, setPublishAt] = useState<string | null>(null);
 
+  // OG auto-populate: track whether user has manually edited each OG field
+  const [ogTouched, setOgTouched] = useState({ title: false, description: false });
+
+  // Group linking UI state
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupLinking, setGroupLinking] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainUploadRef = useRef<HTMLInputElement>(null);
 
@@ -320,6 +330,19 @@ const ProductEdit = () => {
       return (data ?? []) as { id: string; name: string }[];
     },
     enabled: !isNew,
+  });
+
+  // All products for group-linking dropdown (id, name, slug, product_group_id)
+  const { data: allProductsForGroup = [] } = useQuery<{ id: string; name: string; slug: string; product_group_id: string | null }[]>({
+    queryKey: ["admin-products-for-group"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, slug, product_group_id")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; slug: string; product_group_id: string | null }[];
+    },
   });
 
   const { data: product, isLoading } = useQuery({
@@ -407,6 +430,12 @@ const ProductEdit = () => {
         ogTitle: (product as Record<string, unknown>).og_title as string ?? '',
         ogDescription: (product as Record<string, unknown>).og_description as string ?? '',
         ogImage: (product as Record<string, unknown>).og_image as string ?? '',
+        product_group_id: (product as Record<string, unknown>).product_group_id as string | null ?? null,
+      });
+      // Mark OG fields as touched if they already have content
+      setOgTouched({
+        title: !!((product as Record<string, unknown>).og_title as string),
+        description: !!((product as Record<string, unknown>).og_description as string),
       });
       setPublishAt((product as Record<string, unknown>).publish_at as string | null ?? null);
       setInitialized(true);
@@ -475,8 +504,30 @@ const ProductEdit = () => {
   };
 
   const handleNameChange = (name: string) => {
-    setF(form.slugOverride ? { name } : { name, slug: slugify(name) });
+    const patch: Partial<FormState> = form.slugOverride ? { name } : { name, slug: slugify(name) };
+    // Auto-populate og_title from name if user hasn't manually set it
+    if (!ogTouched.title) patch.ogTitle = name;
+    setF(patch);
   };
+
+  const handleDescriptionChange = useCallback((html: string) => {
+    const patch: Partial<FormState> = { description: html };
+    // Auto-populate og_description from description+humor if user hasn't manually set it
+    if (!ogTouched.description) {
+      const combined = (html.replace(/<[^>]*>/g, '') + ' ' + form.humor).trim().slice(0, 160);
+      patch.ogDescription = combined;
+    }
+    setF(patch);
+  }, [form.humor, ogTouched.description]);
+
+  const handleHumorChange = useCallback((humor: string) => {
+    const patch: Partial<FormState> = { humor };
+    if (!ogTouched.description) {
+      const combined = (form.description.replace(/<[^>]*>/g, '') + ' ' + humor).trim().slice(0, 160);
+      patch.ogDescription = combined;
+    }
+    setF(patch);
+  }, [form.description, ogTouched.description]);
 
   const handleSlugChange = (raw: string) => {
     setF({ slug: slugify(raw), slugOverride: raw !== "" });
@@ -534,6 +585,35 @@ const ProductEdit = () => {
       ? form.sizes.filter((s) => s !== size)
       : [...form.sizes, size];
     setF({ sizes: next });
+  };
+
+  // ── Product group linking ─────────────────────────────────────────────────
+  const handleLinkToGroup = async (targetId: string) => {
+    const target = allProductsForGroup.find((p) => p.id === targetId);
+    if (!target) return;
+    setGroupLinking(true);
+    try {
+      let groupId = target.product_group_id;
+      // If target has no group yet, generate a new UUID and assign to both
+      if (!groupId) {
+        groupId = crypto.randomUUID();
+        const { error } = await supabase.from("products").update({ product_group_id: groupId }).eq("id", targetId);
+        if (error) throw error;
+      }
+      // Assign same group to current product (in state; will persist on save)
+      setF({ product_group_id: groupId });
+      toast.success(`Linked to group with "${target.name}"`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to link group");
+    } finally {
+      setGroupLinking(false);
+      setGroupSearch("");
+    }
+  };
+
+  const handleRemoveFromGroup = () => {
+    setF({ product_group_id: null });
+    toast.success("Removed from product group");
   };
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -604,10 +684,11 @@ const ProductEdit = () => {
       fulfillment_type: form.fulfillment_type,
       // Keep fulfillment_route in sync with the legacy column
       fulfillment_route: mapFulfillmentTypeToRoute(form.fulfillment_type),
-      og_title:       form.ogTitle       || null,
-      og_description: form.ogDescription || null,
-      og_image:       form.ogImage       || null,
-      publish_at:     publishAt,
+      og_title:         form.ogTitle       || null,
+      og_description:   form.ogDescription || null,
+      og_image:         form.ogImage       || null,
+      publish_at:       publishAt,
+      product_group_id: form.product_group_id,
     };
 
     let error;
@@ -848,7 +929,7 @@ const ProductEdit = () => {
                     onToggleVisible={toggleSectionVisibility}>
                     <Input
                       value={form.humor}
-                      onChange={(e) => setF({ humor: e.target.value })}
+                      onChange={(e) => handleHumorChange(e.target.value)}
                       placeholder="One-liner shown as the yellow italic subheading on the product page"
                     />
                   </DraggableSection>
@@ -860,7 +941,7 @@ const ProductEdit = () => {
                     onToggleVisible={toggleSectionVisibility}>
                     <RichTextEditor
                       value={form.description}
-                      onChange={(html) => setF({ description: html })}
+                      onChange={handleDescriptionChange}
                       placeholder="The main product copy shown on the product page."
                       minHeight="100px"
                     />
@@ -978,7 +1059,7 @@ const ProductEdit = () => {
                 </Label>
                 <Input
                   value={form.ogTitle}
-                  onChange={(e) => setF({ ogTitle: e.target.value })}
+                  onChange={(e) => { setOgTouched((prev) => ({ ...prev, title: true })); setF({ ogTitle: e.target.value }); }}
                   placeholder={form.name || 'Product name (brand appended automatically)'}
                   maxLength={60}
                 />
@@ -994,7 +1075,7 @@ const ProductEdit = () => {
                 </Label>
                 <Textarea
                   value={form.ogDescription}
-                  onChange={(e) => setF({ ogDescription: e.target.value })}
+                  onChange={(e) => { setOgTouched((prev) => ({ ...prev, description: true })); setF({ ogDescription: e.target.value }); }}
                   placeholder={form.humor || form.description || 'Short description for link previews'}
                   rows={2}
                   maxLength={160}
@@ -1004,6 +1085,74 @@ const ProductEdit = () => {
                   {form.ogDescription.length}/160 — keep under 160
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── PRODUCT GROUP ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest text-sm">STYLE GROUP</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Link this product to others in the same style family. A style switcher will appear on each product's page.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {form.product_group_id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground font-mono truncate flex-1">Group: {form.product_group_id}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/40 hover:bg-destructive/10 text-xs h-7"
+                    onClick={handleRemoveFromGroup}
+                  >
+                    Remove from Group
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-widest">Link to another product</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={groupSearch}
+                      onChange={(e) => setGroupSearch(e.target.value)}
+                      placeholder="Search product name…"
+                      className="text-sm h-8"
+                    />
+                  </div>
+                  {groupSearch.trim().length > 0 && (
+                    <div className="border border-border rounded-md divide-y divide-border max-h-48 overflow-y-auto bg-card">
+                      {allProductsForGroup
+                        .filter(
+                          (p) =>
+                            p.id !== id &&
+                            p.name.toLowerCase().includes(groupSearch.toLowerCase())
+                        )
+                        .slice(0, 8)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            disabled={groupLinking}
+                            onClick={() => handleLinkToGroup(p.id)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors flex items-center justify-between gap-2"
+                          >
+                            <span>{p.name}</span>
+                            {p.product_group_id && (
+                              <span className="text-[9px] text-muted-foreground border border-border px-1.5 py-0.5 rounded shrink-0">has group</span>
+                            )}
+                          </button>
+                        ))}
+                      {allProductsForGroup.filter(
+                        (p) => p.id !== id && p.name.toLowerCase().includes(groupSearch.toLowerCase())
+                      ).length === 0 && (
+                        <p className="px-3 py-2 text-xs text-muted-foreground">No matching products</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

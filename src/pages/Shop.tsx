@@ -56,6 +56,17 @@ const Shop = () => {
     [mergedProducts]
   );
 
+  // Count how many products share each product_group_id (for the "X+ styles" badge)
+  const groupSizeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of visible) {
+      if (p.product_group_id) {
+        map.set(p.product_group_id, (map.get(p.product_group_id) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [visible]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = visible.filter((p) => {
@@ -68,7 +79,13 @@ const Shop = () => {
     if (sortBy === "price-asc") return [...base].sort((a, b) => a.price - b.price);
     if (sortBy === "price-desc") return [...base].sort((a, b) => b.price - a.price);
     if (sortBy === "alpha") return [...base].sort((a, b) => a.name.localeCompare(b.name));
-    return base;
+    // Default: sort by display_order ASC, then by name as tiebreaker
+    return [...base].sort((a, b) => {
+      const ao = a.display_order ?? 0;
+      const bo = b.display_order ?? 0;
+      if (ao !== bo) return ao - bo;
+      return a.name.localeCompare(b.name);
+    });
   }, [query, sortBy, visible]);
 
   return (
@@ -188,7 +205,11 @@ const Shop = () => {
                   }}
                 />
                 <div className="relative">
-                  <ProductCard product={product} priority={i < 3} />
+                  <ProductCard
+                    product={product}
+                    priority={i < 3}
+                    groupSize={product.product_group_id ? groupSizeMap.get(product.product_group_id) : undefined}
+                  />
                 </div>
               </motion.div>
             ))}
