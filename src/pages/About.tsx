@@ -71,10 +71,7 @@ const About = () => {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
             >
-              We're not a corporate clothing brand with a mission statement written by an
-              intern. We're career bartenders, servers, barbacks, and hospitality lifers who've
-              been in the weeds more times than we can count — and we're still standing
-              (barely).
+              <RichText html={getValue("about", "body", "p1", "We're not a corporate clothing brand with a mission statement written by an intern. We're career bartenders, servers, barbacks, and hospitality lifers who've been in the weeds more times than we can count — and we're still standing (barely).")} />
             </motion.p>
 
             {/* Stamp pull-quote */}
@@ -105,10 +102,7 @@ const About = () => {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
             >
-              POURnogravy is for the people who smile through gritted teeth, who master the art
-              of the fake laugh, and who've memorized every excuse a bad tipper has ever used.
-              We make shirts that say what you're already thinking — because you can't say it
-              to their face (HR, liability, whatever).
+              <RichText html={getValue("about", "body", "p2", "POURnogravy is for the people who smile through gritted teeth, who master the art of the fake laugh, and who've memorized every excuse a bad tipper has ever used. We make shirts that say what you're already thinking — because you can't say it to their face (HR, liability, whatever).")} />
             </motion.p>
 
             <motion.p
@@ -116,10 +110,7 @@ const About = () => {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
             >
-              Every design is born from real stories, real shifts, and real rage. If someone's
-              ever snapped their fingers at you, called you "sweetie" in that voice, or
-              explained your job to you while spilling their drink — you already know the
-              uniform.
+              <RichText html={getValue("about", "body", "p3", "Every design is born from real stories, real shifts, and real rage. If someone's ever snapped their fingers at you, called you \"sweetie\" in that voice, or explained your job to you while spilling their drink — you already know the uniform.")} />
             </motion.p>
           </div>
 

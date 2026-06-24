@@ -129,13 +129,13 @@ const FAQ = () => {
         {/* Can't find answer CTA */}
         <div className="mt-12 text-center border-t border-border pt-10">
           <p className="text-sm text-muted-foreground mb-4">
-            Didn't answer your question?
+            {getValue("faq", "cta", "prompt", "Didn't answer your question?")}
           </p>
           <Link
             to="/contact"
             className="font-display text-sm tracking-widest uppercase text-[#fde047] hover:underline underline-offset-4"
           >
-            Shoot us a message →
+            {getValue("faq", "cta", "link_text", "Shoot us a message →")}
           </Link>
         </div>
       </section>

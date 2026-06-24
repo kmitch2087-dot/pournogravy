@@ -514,7 +514,9 @@ const Index = () => {
       </section>
 
       {/* Super Powers section — Opie's original Shopify copy */}
-      <section className="relative noise-overlay overflow-hidden" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 800px' }}>
+      {/* Note: overflow-hidden removed — background is absolute/inset-0 and does not need clipping;
+          overflow-hidden + contentVisibility containment was clipping the third "But Wait" item */}
+      <section className="relative noise-overlay" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 1200px' }}>
         <div
           className="absolute inset-0 -z-0"
           style={{
@@ -706,10 +708,10 @@ const Index = () => {
           <div className="container mx-auto px-4 py-20 md:py-24">
             <div className="text-center mb-12">
               <p className="font-marker text-xs md:text-sm tracking-widest text-[#fde047] mb-2 uppercase">
-                Verified humans
+                <RichText html={getValue("home", "reviews", "label", "Verified humans")} />
               </p>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider leading-none">
-                WHAT THE BAR SAYS
+                <RichText html={getValue("home", "reviews", "heading", "WHAT THE BAR SAYS")} />
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
