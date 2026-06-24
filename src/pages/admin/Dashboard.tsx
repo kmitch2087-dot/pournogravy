@@ -181,7 +181,7 @@ const WelcomeDialog = ({
 }) => {
   const [input, setInput] = useState("");
   const isOpie    = input === CONFIRM_PHRASE;
-  const isKristin = input === PREVIEW_PHRASE;
+  const isKristin = input.toUpperCase() === PREVIEW_PHRASE;
   const canConfirm = isOpie || isKristin;
 
   useEffect(() => { if (!open) setInput(""); }, [open]);
