@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { AdminTabBar } from "@/components/admin/AdminTabBar";
 
-const FinancialsPage   = lazy(() => import("./Financials"));
-const InvoiceTrackerPage = lazy(() => import("./InvoiceTracker"));
+const FinancialsPage         = lazy(() => import("./Financials"));
+const InvoiceTrackerPage     = lazy(() => import("./InvoiceTracker"));
 const BookkeepingOverviewPage = lazy(() => import("./BookkeepingOverview"));
 
 const TAB_LOADER = (
@@ -23,36 +23,21 @@ const TABS = [
   { id: "products",   label: "Products" },
   { id: "reports",    label: "Reports" },
   { id: "tax-packet", label: "Tax Packet" },
-] as const;
+];
 
-type TabId = (typeof TABS)[number]["id"];
+type TabId = "overview" | "invoices" | "expenses" | "products" | "reports" | "tax-packet";
 
 export default function Finances() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   return (
     <div className="space-y-0">
-      {/* Tab bar */}
-      <div className="border-b border-border mb-6">
-        <div className="flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={[
-                "px-4 py-2.5 text-sm font-display tracking-widest whitespace-nowrap transition-colors",
-                activeTab === tab.id
-                  ? "border-b-2 border-[#fde047] text-[#fde047]"
-                  : "text-muted-foreground hover:text-foreground border-b-2 border-transparent",
-              ].join(" ")}
-            >
-              {tab.label.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+      <AdminTabBar
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as TabId)}
+      />
 
-      {/* Tab content */}
       {activeTab === "overview" && (
         <Suspense fallback={TAB_LOADER}>
           <FinancialsPage />
