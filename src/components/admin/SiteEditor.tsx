@@ -153,12 +153,25 @@ export function FieldInput({
     return <ImageUploadField current={current} onChange={onChange} row={row} />;
   }
 
-  // text / default — rich text editor
+  // html — rich text editor with formatting toolbar
+  if (row.value_type === "html") {
+    return (
+      <RichTextInput
+        value={current}
+        onChange={onChange}
+        placeholder={row.default_value ?? ""}
+      />
+    );
+  }
+
+  // text / default — plain textarea (never wraps in HTML tags)
   return (
-    <RichTextInput
+    <textarea
       value={current}
-      onChange={onChange}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={row.default_value ?? ""}
+      rows={current.length > 80 || current.includes("\n") ? 3 : 1}
+      className="w-full bg-transparent border border-border px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-[#fde047] resize-none transition-colors"
     />
   );
 }
