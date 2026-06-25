@@ -303,8 +303,6 @@ export function SiteEditor() {
   const pageRows = rows.filter((r) => r.page === pageName);
   const sections = [...new Set(pageRows.map((r) => r.section))];
 
-  if (sections.length === 0) return null;
-
   return (
     <>
       {/* Toggle button */}
@@ -353,6 +351,9 @@ export function SiteEditor() {
 
               {/* Sections */}
               <div className="p-4 space-y-3 flex-1">
+                {sections.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-8">Loading content…</p>
+                )}
                 {sections.map((section) => (
                   <SectionGroup
                     key={section}
