@@ -30,14 +30,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
-const PAGES = ["home", "shop", "about", "contact", "faq"] as const;
+const PAGES = ["home", "shop", "about", "contact", "faq", "global"] as const;
 type PageKey = (typeof PAGES)[number];
 
 const PAGE_LABELS: Record<PageKey, string> = {
-  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ",
+  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ", global: "Global",
 };
 const PAGE_URLS: Record<PageKey, string> = {
-  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq",
+  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq", global: "/",
 };
 
 // ─── Original seeded superpowers keys — no delete button on these ─────────────
@@ -45,11 +45,12 @@ const ORIGINAL_SUPERPOWER_KEYS = new Set(["label", "item_1", "item_2", "item_3"]
 
 // ─── Structural sections — no delete button on these ─────────────────────────
 const STRUCTURAL_SECTIONS: Record<string, Set<string>> = {
-  home:    new Set(["hero", "quotes", "featured", "superpowers", "extras", "manifesto", "cta", "newsletter", "reviews"]),
-  shop:    new Set(["header"]),
+  home:    new Set(["hero", "marquee", "announcement", "quotes", "featured", "superpowers", "extras", "manifesto", "cta", "newsletter", "reviews"]),
+  shop:    new Set(["header", "cart", "checkout"]),
   about:   new Set(["hero", "pullquote", "manifesto", "cta", "body"]),
   contact: new Set(["hero", "header", "sidebar"]),
   faq:     new Set(["hero", "header", "items", "cta"]),
+  global:  new Set(["footer"]),
 };
 
 // ─── Field hints (static) ─────────────────────────────────────────────────────
@@ -129,6 +130,15 @@ const FIELD_HINTS: Record<string, string> = {
   "about|body|p3": "Third body paragraph — origin of the designs",
   "home|reviews|label":   "Small eyebrow label above the customer reviews section",
   "home|reviews|heading": "Heading for the customer reviews section",
+  "home|marquee|text":                "The scrolling ticker text across the top of the home page",
+  "home|announcement|label":         "Label prefix in the announcement bar (e.g. 'Pre-Shift Bulletin:')",
+  "home|hero|cta_button":            "Hero CTA button text — the main shop link in the hero",
+  "home|hero|cta_sub":               "Small subtext inside the hero CTA button (e.g. '(Not so much ice.)')",
+  "shop|cart|empty_state":           "Text shown when the cart is empty",
+  "shop|checkout|shipping_note":     "Small note below the cart total about shipping",
+  "shop|checkout|email_prompt":      "Prompt shown when asking for guest email at checkout",
+  "shop|checkout|gratuity":          "The italic 'gratuity' line on the cart receipt",
+  "global|footer|tagline":           "The tagline at the bottom of every page footer",
 };
 
 // ─── Types that save on change (no blur needed) ───────────────────────────────
@@ -552,11 +562,15 @@ const Content = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [addingPower, setAddingPower] = useState(false);
+  const [addingFooterNote, setAddingFooterNote] = useState(false);
   const [deletingSection, setDeletingSection] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<{ section: string; key: string } | null>(null);
 
   const pageRows  = rows.filter((r) => r.page === activePage);
-  const sections  = [...new Set(pageRows.map((r) => r.section))];
+  // For shop page, inject a "__layout__" pseudo-section at the top for drag-reorder
+  const sections  = activePage === "shop"
+    ? ["__layout__", ...new Set(pageRows.map((r) => r.section))]
+    : [...new Set(pageRows.map((r) => r.section))];
 
   // Auto-select first section when page changes
   useEffect(() => {
@@ -583,20 +597,30 @@ const Content = () => {
     return STRUCTURAL_SECTIONS[activePage]?.has(section) ?? false;
   };
 
-  // Add a new superpower item
+  // Add a new superpower item (uses sp_N keys; item_N are the original seeded keys)
   const handleAddSuperpower = async () => {
     const powerRows = rows.filter(
-      (r) => r.page === "home" && r.section === "superpowers" && r.key.startsWith("item_")
+      (r) => r.page === "home" && r.section === "superpowers" && r.key.startsWith("sp_")
     );
     const nums = powerRows
-      .map((r) => parseInt(r.key.replace("item_", ""), 10))
+      .map((r) => parseInt(r.key.replace("sp_", ""), 10))
       .filter((n) => !isNaN(n));
-    const nextN = nums.length > 0 ? Math.max(...nums) + 1 : 4;
+    const nextN = nums.length > 0 ? Math.max(...nums) + 1 : 1;
     setAddingPower(true);
     try {
-      await setValue("home", "superpowers", `item_${nextN}`, "New feature — click to edit");
+      const { error } = await supabase.from("site_content").insert({
+        page: "home",
+        section: "superpowers",
+        key: `sp_${nextN}`,
+        label: `Superpower ${nextN}`,
+        value: "New superpower — click to edit",
+        default_value: "New superpower — click to edit",
+        value_type: "text",
+        sort_order: 100 + nextN,
+      });
+      if (error) throw error;
       refetch();
-      toast.success(`Superpower item_${nextN} added`);
+      toast.success("Superpower added");
       // Switch to superpowers section
       setActivePage("home");
       setActiveSection("superpowers");
@@ -605,6 +629,38 @@ const Content = () => {
       toast.error(`Failed to add — ${msg}`);
     } finally {
       setAddingPower(false);
+    }
+  };
+
+  // Add a new footer note (cart_variants)
+  const handleAddFooterNote = async () => {
+    const noteRows = rows.filter(
+      (r) => r.page === "shop" && r.section === "cart_variants" && r.key.startsWith("v_")
+    );
+    const nums = noteRows
+      .map((r) => parseInt(r.key.replace("v_", ""), 10))
+      .filter((n) => !isNaN(n));
+    const nextN = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    setAddingFooterNote(true);
+    try {
+      const { error } = await supabase.from("site_content").insert({
+        page: "shop",
+        section: "cart_variants",
+        key: `v_${nextN}`,
+        label: `Footer note ${nextN}`,
+        value: "New footer note — click to edit",
+        default_value: "New footer note — click to edit",
+        value_type: "text",
+        sort_order: nextN,
+      });
+      if (error) throw error;
+      refetch();
+      toast.success("Footer note added");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Failed to add — ${msg}`);
+    } finally {
+      setAddingFooterNote(false);
     }
   };
 
@@ -643,8 +699,9 @@ const Content = () => {
     }
   };
 
-  // Show the "Shop" page as a special drag-reorder view
-  const isShopPage = activePage === "shop";
+  // Shop page has a special layout section, but also has content sections.
+  // We show ShopTab only when "layout" pseudo-section is active.
+  const isShopLayoutSection = activePage === "shop" && activeSection === "__layout__";
 
   return (
     <div
@@ -675,8 +732,8 @@ const Content = () => {
           </div>
         </div>
 
-        {/* Section list — hidden for Shop (which has its own UI) */}
-        {!isShopPage && (
+        {/* Section list — always visible; shop includes a __layout__ pseudo-section */}
+        {(
           <div className="p-3 flex-1 overflow-y-auto flex flex-col gap-2">
             <p className="text-[9px] font-marker tracking-[0.3em] text-muted-foreground uppercase mb-2 px-2">
               Sections
@@ -688,9 +745,11 @@ const Content = () => {
             ) : (
               <div className="space-y-0.5 flex-1">
                 {sections.map((section) => {
-                  const preview = getSectionPreview(section);
+                  const isLayout = section === "__layout__";
+                  const preview = isLayout ? "Product drag-to-reorder" : getSectionPreview(section);
                   const isActive = activeSection === section;
-                  const isStructural = isSectionStructural(section);
+                  const isStructural = isLayout || isSectionStructural(section);
+                  const displayLabel = isLayout ? "LAYOUT" : section;
                   return (
                     <div key={section} className="relative group/sec">
                       <button
@@ -702,7 +761,7 @@ const Content = () => {
                         }`}
                       >
                         <p className="text-[10px] font-display tracking-widest uppercase leading-tight">
-                          {section}
+                          {displayLabel}
                         </p>
                         {preview && (
                           <p className={`text-[9px] mt-0.5 leading-tight truncate ${isActive ? "text-[#a3e635]/60" : "text-muted-foreground/50"}`}>
@@ -744,15 +803,15 @@ const Content = () => {
           <div>
             <h2 className="font-display tracking-widest text-base">
               {PAGE_LABELS[activePage].toUpperCase()}
-              {!isShopPage && activeSection && (
+              {activeSection && activeSection !== "__layout__" && (
                 <span className="text-muted-foreground font-normal"> — {activeSection.toUpperCase()}</span>
               )}
-              {isShopPage && (
+              {isShopLayoutSection && (
                 <span className="text-muted-foreground font-normal"> — LAYOUT</span>
               )}
             </h2>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {isShopPage
+              {isShopLayoutSection
                 ? "Drag products to arrange shop display order"
                 : "Changes go live immediately · Blur any field to save"}
             </p>
@@ -767,8 +826,8 @@ const Content = () => {
           </a>
         </div>
 
-        {/* Shop page: drag-to-reorder product grid */}
-        {isShopPage ? (
+        {/* Shop layout section: drag-to-reorder product grid */}
+        {isShopLayoutSection ? (
           <ShopTab />
         ) : (
           /* Fields */
@@ -788,7 +847,9 @@ const Content = () => {
                   const canDelete =
                     activeSection === "superpowers" && activePage === "home"
                       ? !ORIGINAL_SUPERPOWER_KEYS.has(row.key)
-                      : !isSectionStructural(activeSection);
+                      : activeSection === "cart_variants" && activePage === "shop"
+                        ? true  // all cart_variant rows are deletable
+                        : !isSectionStructural(activeSection);
 
                   return (
                     <InlineField
@@ -817,6 +878,22 @@ const Content = () => {
                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         : <Plus className="h-3.5 w-3.5" />}
                       ADD SUPERPOWER
+                    </button>
+                  </div>
+                )}
+
+                {/* Add Footer Note button — only on shop > cart_variants */}
+                {activePage === "shop" && activeSection === "cart_variants" && (
+                  <div className="pt-4 pb-2">
+                    <button
+                      onClick={handleAddFooterNote}
+                      disabled={addingFooterNote}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-display tracking-widest text-muted-foreground hover:text-[#fde047] border border-dashed border-border/40 hover:border-[#fde047]/40 transition-colors disabled:opacity-50"
+                    >
+                      {addingFooterNote
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Plus className="h-3.5 w-3.5" />}
+                      ADD FOOTER NOTE
                     </button>
                   </div>
                 )}

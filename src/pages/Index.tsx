@@ -6,7 +6,7 @@ import { ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
-import { quotes } from "@/data/products";
+// quotes import removed — carousel now uses site_content DB rows exclusively (no hardcoded fallback)
 import { useMergedProducts } from "@/lib/productSource";
 import { DropHeroBanner } from "@/components/DropHeroBanner";
 import { useEffect, useRef, useState } from "react";
@@ -16,10 +16,9 @@ import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { RichText } from "@/components/RichText";
 
-const TICKER_PHRASE = "Drink more, Bitch less, Tip big, Stay moist!";
-// 10 copies total (5 per half) — the CSS animation translates -50%, so both halves
-// must be identical. 5 copies per half ensures the strip is wider than any viewport.
-const TICKER_ITEMS = Array(10).fill(TICKER_PHRASE);
+// Marquee phrase comes from site_content; hardcoded value is the fallback.
+// TICKER_ITEMS is rebuilt inside the component where getValue is available.
+const TICKER_PHRASE_FALLBACK = "Drink more, Bitch less, Tip big, Stay moist!";
 
 // Fallback product IDs when no active merch drop has products assigned.
 const HERO_PRODUCT_IDS = [
@@ -35,9 +34,16 @@ const Index = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
-  const { getValue } = useSiteContent();
+  const { getValue, rows } = useSiteContent();
+  const tickerPhrase = getValue("home", "marquee", "text", TICKER_PHRASE_FALLBACK);
+  // 10 copies — CSS animation translates -50%, both halves identical. 5 per half > any viewport.
+  const TICKER_ITEMS = Array(10).fill(tickerPhrase);
   const { data: allProducts = [] } = useMergedProducts();
-  const activeQuotes = quotes.map((fallback, i) => getValue("home", "quotes", `q_${i + 1}`, fallback));
+  // DB has all quotes; empty array means carousel simply hides rather than showing hardcoded fallbacks
+  const activeQuotes = rows
+    .filter((r) => r.page === "home" && r.section === "quotes" && r.key.startsWith("q_"))
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+    .map((r) => r.value ?? r.default_value ?? "");
   const validQuotes = activeQuotes.filter(q => q?.trim());
   const safeQuoteIndex = validQuotes.length > 0 ? quoteIndex % validQuotes.length : 0;
   const [heroPaused, setHeroPaused] = useState(false);
@@ -416,7 +422,7 @@ const Index = () => {
                           className="h-11 px-6 font-display tracking-widest bg-[#fde047] text-black hover:bg-[#fde047]/90"
                           style={{ boxShadow: "0 0 20px rgba(253,224,71,0.35)" }}
                         >
-                          <span className="flex flex-col leading-tight text-left">HOOK ME UP.<span className="text-xs tracking-normal font-sans">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                          <span className="flex flex-col leading-tight text-left">{getValue("home", "hero", "cta_button", "HOOK ME UP.")}<span className="text-xs tracking-normal font-sans">{getValue("home", "hero", "cta_sub", "(Not so much ice.)")}</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
                         </Button>
                       </Link>
                     </div>
@@ -437,7 +443,7 @@ const Index = () => {
                 variant="outline"
                 className="w-full h-11 font-display tracking-widest border-[#fde047] text-[#fde047] bg-transparent hover:bg-[#fde047]/10"
               >
-                <span className="flex flex-col leading-tight text-left">HOOK ME UP.<span className="text-xs tracking-normal font-sans text-[#fde047]/70">(Not so much ice.)</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
+                <span className="flex flex-col leading-tight text-left">{getValue("home", "hero", "cta_button", "HOOK ME UP.")}<span className="text-xs tracking-normal font-sans text-[#fde047]/70">{getValue("home", "hero", "cta_sub", "(Not so much ice.)")}</span></span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
               </Button>
             </Link>
           )}
@@ -541,23 +547,22 @@ const Index = () => {
                 <RichText html={getValue("home", "superpowers", "label", "Super Powers include:")} />
               </p>
               <ul className="space-y-3">
-                {([
-                  "Offend a Karen without having to open your mouth.",
-                  "Go out and show fellow bartenders that you're a bartender too without having to verbally announce it (You entitled freak!).",
-                  "Call out the general public on certain undesirable behaviors.",
-                ] as const).map((fallback, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-start gap-3 text-base md:text-lg text-white leading-relaxed"
-                  >
-                    <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
-                    <RichText html={getValue("home", "superpowers", `item_${i + 1}`, fallback)} />
-                  </motion.li>
-                ))}
+                {rows
+                  .filter((r) => r.page === "home" && r.section === "superpowers" && r.key !== "label")
+                  .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+                  .map((r, i) => (
+                    <motion.li
+                      key={r.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-start gap-3 text-base md:text-lg text-white leading-relaxed"
+                    >
+                      <span className="text-[#fde047] font-marker mt-0.5 shrink-0">☠</span>
+                      <RichText html={r.value ?? r.default_value ?? ""} />
+                    </motion.li>
+                  ))}
               </ul>
             </div>
 
