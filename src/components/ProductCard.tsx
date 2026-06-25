@@ -260,7 +260,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
             productName={product.name}
             productUrl={`/product/${product.id}`}
             productImage={cardImages[0]
-              ? `https://pournogravy.com${cardImages[0]}`
+              ? (cardImages[0].startsWith('http') ? cardImages[0] : `https://pournogravy.com${cardImages[0]}`)
               : undefined}
             className="shrink-0 ml-2"
           />

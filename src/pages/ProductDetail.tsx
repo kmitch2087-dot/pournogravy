@@ -407,7 +407,7 @@ const ProductDetail = () => {
                   productName={product.name}
                   productUrl={`/product/${product.id}`}
                   productImage={product.images?.[0]
-                    ? `https://pournogravy.com${product.images[0]}`
+                    ? (product.images[0].startsWith('http') ? product.images[0] : `https://pournogravy.com${product.images[0]}`)
                     : undefined}
                   compact={true}
                 />

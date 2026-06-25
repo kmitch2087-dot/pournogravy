@@ -104,7 +104,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase
         .from("site_content")
         .upsert(
-          { page, section, key, value, updated_at: new Date().toISOString() },
+          { page, section, key, label: key, value, value_type: "text", updated_at: new Date().toISOString() },
           { onConflict: "page,section,key" }
         );
       if (error) throw new Error(error.message);
