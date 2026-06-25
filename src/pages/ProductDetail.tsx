@@ -544,31 +544,52 @@ const ProductDetail = () => {
             </div>
 
             {/* Style switcher — shown when product belongs to a group */}
-            {groupMembers && groupMembers.length > 0 && (
-              <div>
-                <p className="text-xs font-display tracking-widest uppercase text-muted-foreground mb-2">Style</p>
-                <div className="flex flex-wrap gap-2">
-                  {/* Current product pill (active) */}
-                  <button
-                    className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-[#fde047] bg-[#fde047] text-black transition-all"
-                    style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
-                    disabled
-                  >
-                    {product.name}
-                  </button>
-                  {/* Other group members */}
-                  {groupMembers.map((m) => (
+            {groupMembers && groupMembers.length > 0 && (() => {
+              // Derive short labels by stripping the longest common prefix
+              const allNames = [product.name, ...groupMembers.map((m) => m.name)];
+              const commonPrefixLen = (() => {
+                let len = 0;
+                const first = allNames[0];
+                outer: for (let i = 0; i < first.length; i++) {
+                  for (const name of allNames.slice(1)) {
+                    if (name[i]?.toLowerCase() !== first[i]?.toLowerCase()) break outer;
+                  }
+                  len = i + 1;
+                }
+                return len;
+              })();
+              const shortLabel = (name: string) => {
+                const stripped = name.slice(commonPrefixLen).trim();
+                if (!stripped) return name.slice(0, 20);
+                return stripped.length > 20 ? stripped.slice(0, 20) + "…" : stripped;
+              };
+
+              return (
+                <div>
+                  <p className="font-marker text-[11px] tracking-[0.25em] text-[#ff1744] uppercase mb-2">Style</p>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Current product pill (active) */}
                     <button
-                      key={m.id}
-                      onClick={() => navigate(`/product/${m.slug}`)}
-                      className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
+                      className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-[#fde047] bg-[#fde047] text-black transition-all"
+                      style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
+                      disabled
                     >
-                      {m.name}
+                      {shortLabel(product.name)}
                     </button>
-                  ))}
+                    {/* Other group members */}
+                    {groupMembers.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => navigate(`/product/${m.slug}`)}
+                        className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
+                      >
+                        {shortLabel(m.name)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="border-t border-border/40 pt-6 space-y-6">
               <p className="text-2xl md:text-3xl font-display tracking-wider">
