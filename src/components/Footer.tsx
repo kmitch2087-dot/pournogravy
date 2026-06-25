@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { Instagram, Facebook } from "lucide-react";
+import { useSiteContent } from "@/context/SiteContentContext";
 
 const Footer = () => {
+  const { getValue } = useSiteContent();
   return (
     <footer role="contentinfo" className="relative bg-black text-white overflow-hidden">
       {/* neon top border */}
@@ -135,7 +137,7 @@ const Footer = () => {
               </Link>
             </div>
             <p className="font-marker text-xs tracking-[0.3em] text-white/30 uppercase">
-              ☠ Drink responsibly. Clock out loudly.
+              {getValue('global', 'footer', 'tagline', '☠ Drink responsibly. Clock out loudly.')}
             </p>
           </div>
 

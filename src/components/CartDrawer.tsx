@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteContent } from "@/context/SiteContentContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ShoppingBag, Tag, X, Loader2 } from "lucide-react";
@@ -30,6 +31,7 @@ const CartDrawer = () => {
     totalPrice, totalItems, appliedDiscount, applyDiscount, clearDiscount, discountedTotal,
   } = useCart();
   const { user } = useAuth();
+  const { getValue } = useSiteContent();
   const navigate = useNavigate();
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
@@ -186,7 +188,7 @@ const CartDrawer = () => {
                 <ShoppingBag className="h-7 w-7" style={{ color: "#9a6030" }} />
               </div>
               <p className="font-marker text-sm tracking-wider uppercase" style={{ color: "#7a5020" }}>
-                Empty. Like your customer's tip jar.
+                {getValue('shop', 'cart', 'empty_state', "Empty. Like your customer's tip jar.")}
               </p>
               <Link to="/shop" onClick={closeCart}>
                 <Button
@@ -355,7 +357,7 @@ const CartDrawer = () => {
 
               {/* Gratuity line */}
               <p className="text-xs italic" style={{ color: "#7a5020" }}>
-                GRATUITY NOT INCLUDED (but karma is)
+                {getValue('shop', 'checkout', 'gratuity', 'GRATUITY NOT INCLUDED (but karma is)')}
               </p>
 
               {/* Total */}
@@ -368,13 +370,13 @@ const CartDrawer = () => {
               </div>
 
               <p className="text-[11px] font-mono" style={{ color: "#9a7050" }}>
-                Shipping + tax calculated at checkout.
+                {getValue('shop', 'checkout', 'shipping_note', 'Shipping + tax calculated at checkout.')}
               </p>
 
               {/* Guest email prompt */}
               {showEmailPrompt && !user && (
                 <div className="space-y-2">
-                  <p className="text-xs font-mono" style={{ color: "#5a3a10" }}>Enter your email to continue:</p>
+                  <p className="text-xs font-mono" style={{ color: "#5a3a10" }}>{getValue('shop', 'checkout', 'email_prompt', 'Enter your email to continue:')}</p>
                   <div className="flex gap-2">
                     <input
                       type="email"
