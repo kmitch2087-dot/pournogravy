@@ -595,7 +595,8 @@ const ProductDetail = () => {
               <p className="text-2xl md:text-3xl font-display tracking-wider">
                 ${product.price.toFixed(2)}
               </p>
-              {/* Fit / gender variant selector — only shown when product has variants */}
+              {/* Fit / gender variant selector — only shown when product has variants.
+                  "Selected:" label is guarded by {selectedVariant && ...} — hides when nothing chosen. */}
               {product.variants && product.variants.length > 1 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
