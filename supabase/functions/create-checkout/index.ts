@@ -63,18 +63,22 @@ Deno.serve(async (req) => {
 
     const { data: dbProducts, error: prodError } = await supabase
       .from("products")
-      .select("id, slug, price_cents, is_active, status, drop_date")
+      .select("id, slug, price_cents, is_active, status, drop_date, shipping_override_cents")
       .in("slug", slugs);
     if (prodError) throw prodError;
 
     const now = Date.now();
-    const productMap = new Map<string, { id: string; price_cents: number }>();
+    const productMap = new Map<string, { id: string; price_cents: number; shipping_override_cents: number | null }>();
     for (const p of dbProducts ?? []) {
       const isLive =
         p.is_active &&
         (p.status === "published" ||
           (p.status === "scheduled" && p.drop_date && new Date(p.drop_date).getTime() <= now));
-      if (isLive) productMap.set(p.slug, { id: p.id, price_cents: p.price_cents });
+      if (isLive) productMap.set(p.slug, {
+        id: p.id,
+        price_cents: p.price_cents,
+        shipping_override_cents: p.shipping_override_cents ?? null,
+      });
     }
 
     for (const i of items) {
@@ -96,6 +100,7 @@ Deno.serve(async (req) => {
       ...i,
       unit_price_cents: productMap.get(i.slug)!.price_cents,
       product_id: productMap.get(i.slug)!.id,
+      shipping_override_cents: productMap.get(i.slug)!.shipping_override_cents,
     }));
 
     const subtotal = safeItems.reduce((s, i) => s + i.unit_price_cents * i.quantity, 0);
@@ -127,6 +132,14 @@ Deno.serve(async (req) => {
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discountCents);
 
+    // Shipping override: if ALL line items have a shipping_override_cents value set,
+    // use the maximum override value instead of the standard shipping rate.
+    const overrideValues = safeItems.map((i) => i.shipping_override_cents);
+    const allHaveOverride = overrideValues.every((v) => v !== null && v !== undefined);
+    const shippingOverrideCents = allHaveOverride
+      ? Math.max(...(overrideValues as number[]))
+      : null;
+
     // Fetch shipping config from settings (row id=1)
     const { data: settingsRow } = await supabase
       .from("settings")
@@ -136,7 +149,9 @@ Deno.serve(async (req) => {
 
     const shippingFeeCents = settingsRow?.shipping_fee_cents ?? 599;
     const freeThreshold = settingsRow?.free_shipping_threshold_cents ?? null;
-    const shippingCents = (freeThreshold !== null && subtotalAfterDiscount >= freeThreshold) ? 0 : shippingFeeCents;
+    const shippingCents = shippingOverrideCents !== null
+      ? shippingOverrideCents
+      : (freeThreshold !== null && subtotalAfterDiscount >= freeThreshold) ? 0 : shippingFeeCents;
     const total = subtotalAfterDiscount + shippingCents;
 
     // Create the pending order
