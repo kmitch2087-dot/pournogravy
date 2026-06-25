@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,9 +17,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Upload, X, Plus, ExternalLink, Eye, GripVertical } from "lucide-react";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { slugify } from "@/lib/admin";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
@@ -1518,24 +1516,30 @@ const ProductEdit = () => {
         </div>
       </div>
 
-      {/* Preview modal */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] p-0 overflow-hidden">
-          <div className="flex flex-col h-full">
-            <DialogHeader className="px-4 py-3 border-b border-border shrink-0">
-              <DialogTitle className="font-display tracking-widest text-sm">
-                PREVIEW — {form.name || previewSlug}
-              </DialogTitle>
-            </DialogHeader>
-            <iframe
-              key={previewOpen ? previewSlug : "closed"}
-              src={previewOpen ? `/product/${previewSlug}?preview=1` : undefined}
-              className="flex-1 min-h-0 w-full border-0"
-              title="Product preview"
-            />
+      {/* Preview overlay — portal-mounted so Radix scroll-lock doesn't block iframe scrolling */}
+      {previewOpen && createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+            <span className="font-display tracking-widest text-sm uppercase">
+              Preview — {form.name || previewSlug}
+            </span>
+            <button
+              onClick={() => setPreviewOpen(false)}
+              className="p-1.5 rounded hover:bg-muted transition-colors"
+              aria-label="Close preview"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
+          <iframe
+            key={previewSlug}
+            src={`/product/${previewSlug}?preview=1`}
+            style={{ flex: 1, minHeight: 0, width: "100%", border: "none", display: "block" }}
+            title="Product preview"
+          />
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
