@@ -22,7 +22,6 @@ import {
   Menu,
   Moon,
   Sun,
-  Monitor,
   ExternalLink,
   BookOpen,
   HelpCircle,
@@ -318,15 +317,12 @@ const AdminLayout = () => {
     navigate("/admin/login");
   };
 
-  const cycleTheme = () => {
-    if (theme === "dark") setTheme("light");
-    else if (theme === "light") setTheme("system");
-    else setTheme("dark");
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
-  const ThemeIcon = theme === "dark" ? Sun : theme === "light" ? Monitor : Moon;
-  const themeLabel =
-    theme === "dark" ? "Light mode" : theme === "light" ? "System theme" : "Dark mode";
+  const ThemeIcon = resolvedTheme === "dark" ? Sun : Moon;
+  const themeLabel = resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
   const currentTitle =
     navItems.find((i) =>
@@ -385,7 +381,7 @@ const AdminLayout = () => {
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={cycleTheme}>
+                  <Button variant="ghost" size="icon" onClick={toggleTheme}>
                     <ThemeIcon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
