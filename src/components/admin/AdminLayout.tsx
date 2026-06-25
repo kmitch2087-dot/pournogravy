@@ -15,14 +15,12 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  MessageSquare,
   Star,
   Settings,
   LogOut,
   Menu,
   Moon,
   Sun,
-  Monitor,
   ExternalLink,
   BookOpen,
   HelpCircle,
@@ -42,7 +40,7 @@ import {
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { HelpPanel } from "./HelpPanel";
-import { useInboxNotifications } from "@/hooks/useInboxNotifications";
+import { useAdminNotifications, markSectionViewed } from "@/hooks/useAdminNotifications";
 import {
   DndContext,
   closestCenter,
@@ -64,18 +62,18 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   end: boolean;
-  badgeKey?: string;
+  /** Key into AdminNotificationCounts */
+  notifKey?: "inbox" | "orders" | "reviews" | "customRequests";
   description?: string;
 }
 
 const navItems: NavItem[] = [
   { to: "/admin",                label: "Dashboard",            icon: LayoutDashboard, end: true,  description: "Overview of orders, revenue, and quick stats" },
-  { to: "/admin/inbox",          label: "Inbox",                icon: Mail,            end: false, badgeKey: "inbox", description: "Notifications, messages, and email templates" },
-  { to: "/admin/orders",         label: "Orders",               icon: ShoppingBag,     end: false, description: "View and manage customer orders" },
+  { to: "/admin/inbox",          label: "Inbox",                icon: Mail,            end: false, notifKey: "inbox",  description: "Messages, custom requests, and subscribers" },
+  { to: "/admin/orders",         label: "Orders",               icon: ShoppingBag,     end: false, notifKey: "orders", description: "View and manage customer orders" },
   { to: "/admin/products",       label: "Products",             icon: Package,         end: false, description: "Manage the product catalog and listings" },
   { to: "/admin/content",        label: "Content",              icon: PenLine,         end: false, description: "Edit homepage, announcements, and site copy" },
-  { to: "/admin/custom-requests",label: "Custom Requests",      icon: MessageSquare,   end: false, description: "Custom garment inquiry submissions from customers" },
-  { to: "/admin/reviews",        label: "Reviews",              icon: Star,            end: false, description: "Manage customer reviews and ratings" },
+  { to: "/admin/reviews",        label: "Reviews",              icon: Star,            end: false, notifKey: "reviews", description: "Manage customer reviews and ratings" },
   { to: "/admin/settings",       label: "Settings",             icon: Settings,        end: false, description: "Business info, fulfillment, and email settings" },
   { to: "/admin/manual",         label: "Admin User Manual",    icon: BookOpen,        end: false, description: "How-to guide for operating the admin dashboard" },
   { to: "/admin/analytics",      label: "Analytics",            icon: LineChart,       end: false, description: "Site traffic, page views, and visitor data" },
@@ -83,7 +81,6 @@ const navItems: NavItem[] = [
   { to: "/admin/merch-drops",    label: "Merch Drop Calendar",  icon: CalendarDays,    end: false, description: "Plan and schedule upcoming product drops" },
   { to: "/admin/loyalty",        label: "Pour Points",          icon: Coins,           end: false, description: "Customer loyalty rewards and point balances" },
   { to: "/admin/customers",      label: "Customer Lookup",      icon: Users,           end: false, description: "Search and view individual customer records" },
-  { to: "/admin/subscribers",    label: "Email Subscribers",    icon: Mail,            end: false, description: "Newsletter subscriber list and export" },
   { to: "/admin/discount-codes", label: "Discount Codes",       icon: Tag,             end: false, description: "Create and manage promotional discount codes" },
   { to: "/admin/blog",           label: "Blog",                 icon: BookOpen,        end: false, description: "Write and publish blog posts (The Shift Log)" },
   { to: "/admin/finances",       label: "Finances",             icon: PieChart,        end: false, description: "Revenue, invoices, expenses, and tax estimates" },
@@ -91,15 +88,35 @@ const navItems: NavItem[] = [
   { to: "/admin/print-files",    label: "Print Files",          icon: FileImage,       end: false, description: "Manage printable design files for fulfillment" },
 ];
 
+// Map route prefix → notifKey(s) so we can mark section as viewed on navigation.
+// /admin/inbox now handles both inbox messages and custom requests (consolidated in F4).
+const ROUTE_NOTIF_MAP: Array<{ prefix: string; keys: Array<"inbox" | "orders" | "reviews" | "customRequests"> }> = [
+  { prefix: "/admin/inbox",   keys: ["inbox", "customRequests"] },
+  { prefix: "/admin/orders",  keys: ["orders"]                  },
+  { prefix: "/admin/reviews", keys: ["reviews"]                 },
+];
+
+// ─── Red notification badge on an icon ───────────────────────────────────────
+
+const NotifBadge = ({ count }: { count: number }) =>
+  count > 0 ? (
+    <span
+      aria-label={`${count} notification${count !== 1 ? "s" : ""}`}
+      className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff1744] px-1 text-[10px] font-semibold text-white pointer-events-none"
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  ) : null;
+
 // ─── Sortable nav item (desktop only) ────────────────────────────────────────
 
 const SortableNavItem = ({
   item,
-  badges,
+  notifCounts,
   onNavigate,
 }: {
   item: NavItem;
-  badges?: Record<string, number>;
+  notifCounts?: Record<string, number>;
   onNavigate?: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -112,7 +129,7 @@ const SortableNavItem = ({
     zIndex: isDragging ? 50 : undefined,
   };
 
-  const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
+  const count = item.notifKey ? (notifCounts?.[item.notifKey] ?? 0) : 0;
 
   return (
     <div ref={setNodeRef} style={style} className="relative flex items-center group">
@@ -135,13 +152,12 @@ const SortableNavItem = ({
             className="flex-1 flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm hover:bg-muted/50 text-muted-foreground transition"
             activeClassName="bg-[#fde047]/10 text-[#fde047] font-medium border-l-2 border-[#fde047]"
           >
-            <item.icon className="h-4 w-4 shrink-0" />
+            {/* Icon wrapper — relative so the badge can be positioned on it */}
+            <span className="relative shrink-0">
+              <item.icon className="h-4 w-4" />
+              <NotifBadge count={count} />
+            </span>
             <span className="flex-1">{item.label}</span>
-            {count > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#fde047] px-1.5 text-[10px] font-bold text-black">
-                {count > 99 ? "99+" : count}
-              </span>
-            )}
           </NavLink>
         </TooltipTrigger>
         {item.description && (
@@ -158,14 +174,14 @@ const SortableNavItem = ({
 
 const SidebarContent = ({
   onNavigate,
-  badges,
+  notifCounts,
   compact,
   navRef,
   sortedNavItems,
   navOrder,
 }: {
   onNavigate?: () => void;
-  badges?: Record<string, number>;
+  notifCounts?: Record<string, number>;
   compact?: boolean;
   navRef?: React.RefObject<HTMLDivElement>;
   sortedNavItems?: NavItem[];
@@ -186,7 +202,7 @@ const SidebarContent = ({
       <div className="flex-1 p-2 overflow-y-auto">
         <div className="grid grid-cols-2 gap-1">
           {navItems.map((item) => {
-            const count = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
+            const count = item.notifKey ? (notifCounts?.[item.notifKey] ?? 0) : 0;
             return (
               <NavLink
                 key={item.to}
@@ -196,13 +212,12 @@ const SidebarContent = ({
                 className="relative flex flex-col items-center gap-1.5 py-3 px-2 text-[10px] rounded-sm hover:bg-muted/50 text-muted-foreground transition text-center leading-tight"
                 activeClassName="bg-[#fde047]/10 text-[#fde047] font-medium border border-[#fde047]/30"
               >
-                <item.icon className="h-5 w-5 shrink-0" />
+                {/* Icon with badge */}
+                <span className="relative">
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <NotifBadge count={count} />
+                </span>
                 <span>{item.label}</span>
-                {count > 0 && (
-                  <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#fde047] px-1 text-[9px] font-bold text-black">
-                    {count > 99 ? "99+" : count}
-                  </span>
-                )}
               </NavLink>
             );
           })}
@@ -231,7 +246,7 @@ const SidebarContent = ({
               <SortableNavItem
                 key={item.to}
                 item={item}
-                badges={badges}
+                notifCounts={notifCounts}
                 onNavigate={onNavigate}
               />
             ))}
@@ -255,14 +270,30 @@ const SidebarContent = ({
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const navigate              = useNavigate();
   const location              = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [helpOpen, setHelpOpen]     = useState(false);
 
-  const { unreadCount } = useInboxNotifications();
-  const badges = { inbox: unreadCount };
+  const { counts, refresh } = useAdminNotifications();
+
+  // Inbox badge shows combined inbox messages + custom requests count
+  const notifCounts: Record<string, number> = {
+    inbox:          counts.inbox + counts.customRequests,
+    orders:         counts.orders,
+    reviews:        counts.reviews,
+    customRequests: counts.customRequests,
+  };
+
+  // When the user navigates to a tracked section, mark it as viewed and refresh counts
+  useEffect(() => {
+    const match = ROUTE_NOTIF_MAP.find((r) => location.pathname.startsWith(r.prefix));
+    if (match) {
+      match.keys.forEach((k) => markSectionViewed(k));
+      refresh();
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag-to-reorder state (desktop only) ──
   const [navOrder, setNavOrder] = useState<string[]>(() => {
@@ -318,15 +349,12 @@ const AdminLayout = () => {
     navigate("/admin/login");
   };
 
-  const cycleTheme = () => {
-    if (theme === "dark") setTheme("light");
-    else if (theme === "light") setTheme("system");
-    else setTheme("dark");
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
-  const ThemeIcon = theme === "dark" ? Sun : theme === "light" ? Monitor : Moon;
-  const themeLabel =
-    theme === "dark" ? "Light mode" : theme === "light" ? "System theme" : "Dark mode";
+  const ThemeIcon = resolvedTheme === "dark" ? Sun : Moon;
+  const themeLabel = resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
   const currentTitle =
     navItems.find((i) =>
@@ -347,7 +375,7 @@ const AdminLayout = () => {
             onDragEnd={handleDragEnd}
           >
             <SidebarContent
-              badges={badges}
+              notifCounts={notifCounts}
               navRef={navScrollRef}
               sortedNavItems={sortedNavItems}
               navOrder={navOrder}
@@ -358,7 +386,7 @@ const AdminLayout = () => {
         {/* Mobile sidebar */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="w-60 p-0 bg-card">
-            <SidebarContent onNavigate={() => setMobileOpen(false)} badges={badges} compact />
+            <SidebarContent onNavigate={() => setMobileOpen(false)} notifCounts={notifCounts} compact />
           </SheetContent>
         </Sheet>
 
@@ -385,7 +413,7 @@ const AdminLayout = () => {
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={cycleTheme}>
+                  <Button variant="ghost" size="icon" onClick={toggleTheme}>
                     <ThemeIcon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>

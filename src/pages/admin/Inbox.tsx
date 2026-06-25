@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -23,14 +24,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import {
   Mail, MailOpen, Send, Loader2, RefreshCw, ArrowLeft, User,
   Inbox as InboxIcon, Clock, Trash2, PenLine, RotateCcw,
-  AlertCircle, Users,
+  AlertCircle, Users, Download, TrendingUp, CheckCircle, Archive,
+  ArrowUpDown, Star, ShoppingBag,
 } from "lucide-react";
-import { format, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
 import EmailTemplates from "./EmailTemplates";
+import { statusClass, REQUEST_STATUSES } from "@/lib/admin";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,7 +99,7 @@ interface EmailTemplate {
   variables: string[];
 }
 
-type MailTab = "inbox" | "sent" | "trash" | "templates";
+type MailTab = "inbox" | "sent" | "trash" | "templates" | "custom-requests" | "subscribers";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +154,7 @@ const InboxTab = () => {
   const [showThread, setShowThread] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date>(new Date());
 
   const { data: messages = [], isLoading, refetch } = useQuery<InboxMessage[]>({
     queryKey: ["inbox-messages"],
@@ -146,9 +165,18 @@ const InboxTab = () => {
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
+      setLastSynced(new Date());
       return (data ?? []) as InboxMessage[];
     },
   });
+
+  // Auto-refresh every 15 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const threads = useMemo<Thread[]>(() => {
     const map = new Map<string, InboxMessage[]>();
@@ -297,10 +325,22 @@ const InboxTab = () => {
                 Delete
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()} title="Refresh">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => refetch()}
+              title={`Last synced: ${formatDistanceToNow(lastSynced, { addSuffix: true })}`}
+            >
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
           </div>
+        </div>
+        {/* Last synced indicator */}
+        <div className="px-4 py-1 border-b border-border/50 bg-muted/20 shrink-0">
+          <span className="text-[10px] text-muted-foreground">
+            Last synced: {formatDistanceToNow(lastSynced, { addSuffix: true })}
+          </span>
         </div>
 
         {/* Thread rows */}
@@ -1043,13 +1083,589 @@ const ComposeDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
   );
 };
 
+// ── CustomRequestsTab ─────────────────────────────────────────────────────────
+
+type CRTab = "active" | "done" | "archived";
+
+const crStatusClass = (status: string) =>
+  statusClass ? statusClass(status) : "text-xs text-muted-foreground";
+
+const CustomRequestsTab = () => {
+  const qc = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const selectedId = params.get("cr_id");
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sortAsc, setSortAsc] = useState(false);
+  const [crTab, setCrTab] = useState<CRTab>("active");
+
+  const { data: requests, isLoading } = useQuery({
+    queryKey: ["admin-requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("custom_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const sorted = (list: typeof requests) =>
+    (list ?? []).slice().sort((a, b) => {
+      const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return sortAsc ? diff : -diff;
+    });
+
+  const active   = sorted((requests ?? []).filter((r) => !r.archived_at && r.status !== "completed"));
+  const done     = sorted((requests ?? []).filter((r) => !r.archived_at && r.status === "completed"));
+  const archived = sorted((requests ?? []).filter((r) => !!r.archived_at));
+
+  const displayed = crTab === "active" ? active : crTab === "done" ? done : archived;
+  const detail = requests?.find((r) => r.id === selectedId);
+
+  const markDone = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("custom_requests").update({ status: "completed" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Marked as done"); qc.invalidateQueries({ queryKey: ["admin-requests"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const archiveReq = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("custom_requests").update({ archived_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Archived"); qc.invalidateQueries({ queryKey: ["admin-requests"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const unarchiveReq = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("custom_requests").update({ archived_at: null }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Unarchived"); qc.invalidateQueries({ queryKey: ["admin-requests"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateRequest = async (patch: { status?: string; internal_notes?: string | null }) => {
+    if (!selectedId) return;
+    const { error } = await supabase.from("custom_requests").update(patch).eq("id", selectedId);
+    if (error) toast.error(error.message);
+    else { toast.success("Updated"); qc.invalidateQueries({ queryKey: ["admin-requests"] }); }
+  };
+
+  const sendReply = async () => {
+    if (!detail || !reply.trim()) return;
+    setSending(true);
+    const { error } = await supabase.functions.invoke("send-notification", {
+      body: {
+        templateKey: "custom_request_reply",
+        recipient: detail.email,
+        relatedKind: "custom_request",
+        relatedId: detail.id,
+        variables: { customer_name: detail.name, garment: detail.garment, message: reply },
+      },
+    });
+    setSending(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Reply queued");
+    await updateRequest({ status: "contacted" });
+    setReply("");
+  };
+
+  const tabClass = (t: CRTab) =>
+    `px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 transition-colors ${
+      crTab === t ? "border-[#fde047] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+    }`;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-4 md:p-6 flex-1 overflow-y-auto space-y-4">
+        {/* Sub-tab bar */}
+        <div className="flex items-center gap-0 border-b border-border">
+          <button className={tabClass("active")} onClick={() => setCrTab("active")}>
+            Active
+            {active.length > 0 && (
+              <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-sm">{active.length}</span>
+            )}
+          </button>
+          <button className={tabClass("done")} onClick={() => setCrTab("done")}>
+            Done
+            {done.length > 0 && (
+              <span className="ml-1.5 text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-sm">{done.length}</span>
+            )}
+          </button>
+          <button className={tabClass("archived")} onClick={() => setCrTab("archived")}>
+            Archived
+            {archived.length > 0 && (
+              <span className="ml-1.5 text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-sm">{archived.length}</span>
+            )}
+          </button>
+          <div className="ml-auto flex items-center gap-2 pb-2">
+            <Button variant="outline" size="sm" onClick={() => setSortAsc((v) => !v)} className="gap-1.5">
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              {sortAsc ? "Oldest first" : "Newest first"}
+            </Button>
+            <span className="text-xs text-muted-foreground">{displayed.length} request{displayed.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+
+        <Card className="overflow-hidden">
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : displayed.length === 0 ? (
+            <div className="py-20 text-center text-sm text-muted-foreground">
+              {crTab === "active" && "No active requests."}
+              {crTab === "done" && "Nothing marked done yet."}
+              {crTab === "archived" && "Archive is empty."}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Garment</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayed.map((r) => (
+                  <TableRow
+                    key={r.id}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      const next = new URLSearchParams(params);
+                      next.set("cr_id", r.id);
+                      setParams(next);
+                    }}
+                  >
+                    <TableCell>
+                      <div className="font-medium">{r.name}</div>
+                      <div className="text-xs text-muted-foreground">{r.email}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">{r.garment}</TableCell>
+                    <TableCell>
+                      <span className={crStatusClass(r.status)}>{r.status}</span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(r.created_at), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {crTab !== "done" && r.status !== "completed" && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="text-xs h-7 gap-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                            disabled={markDone.isPending}
+                            onClick={() => markDone.mutate(r.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" /> Done
+                          </Button>
+                        )}
+                        {crTab !== "archived" && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="text-xs h-7 gap-1 text-muted-foreground hover:text-foreground"
+                            disabled={archiveReq.isPending}
+                            onClick={() => archiveReq.mutate(r.id)}
+                          >
+                            <Archive className="h-3 w-3" /> Archive
+                          </Button>
+                        )}
+                        {crTab === "archived" && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="text-xs h-7 gap-1"
+                            disabled={unarchiveReq.isPending}
+                            onClick={() => unarchiveReq.mutate(r.id)}
+                          >
+                            <RotateCcw className="h-3 w-3" /> Unarchive
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      </div>
+
+      <Sheet
+        open={!!selectedId}
+        onOpenChange={(o) => {
+          if (!o) { const next = new URLSearchParams(params); next.delete("cr_id"); setParams(next); }
+        }}
+      >
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="font-display tracking-widest">CUSTOM REQUEST</SheetTitle>
+          </SheetHeader>
+          {detail && (
+            <div className="space-y-6 mt-6">
+              <div className="space-y-2 text-sm">
+                {[
+                  ["Name",        detail.name],
+                  ["Email",       detail.email],
+                  detail.phone        ? ["Phone",       detail.phone]       : null,
+                  ["Garment",     detail.garment],
+                  detail.design_id    ? ["Design ID",   detail.design_id]   : null,
+                  detail.design_name  ? ["Design name", detail.design_name] : null,
+                ]
+                  .filter(Boolean)
+                  .map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="text-right">{value}</span>
+                    </div>
+                  ))}
+              </div>
+              {detail.notes && (
+                <div>
+                  <p className="font-marker text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-2">Notes from customer</p>
+                  <p className="text-sm bg-muted/30 border border-border p-3 rounded-sm whitespace-pre-wrap">{detail.notes}</p>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label>Internal notes</Label>
+                <Textarea
+                  defaultValue={detail.internal_notes ?? ""}
+                  onBlur={(e) =>
+                    e.target.value !== (detail.internal_notes ?? "") &&
+                    updateRequest({ internal_notes: e.target.value || null })
+                  }
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={detail.status} onValueChange={(v) => updateRequest({ status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {REQUEST_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 pt-1">
+                {detail.status !== "completed" && (
+                  <Button size="sm" variant="outline" className="gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                    onClick={() => { markDone.mutate(detail.id); const next = new URLSearchParams(params); next.delete("cr_id"); setParams(next); }}>
+                    <CheckCircle className="h-3.5 w-3.5" /> Mark Done
+                  </Button>
+                )}
+                {!detail.archived_at ? (
+                  <Button size="sm" variant="outline" className="gap-1.5"
+                    onClick={() => { archiveReq.mutate(detail.id); const next = new URLSearchParams(params); next.delete("cr_id"); setParams(next); }}>
+                    <Archive className="h-3.5 w-3.5" /> Archive
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" className="gap-1.5"
+                    onClick={() => { unarchiveReq.mutate(detail.id); const next = new URLSearchParams(params); next.delete("cr_id"); setParams(next); }}>
+                    <RotateCcw className="h-3.5 w-3.5" /> Unarchive
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-2 border-t border-border pt-4">
+                <Label>Send reply to customer</Label>
+                <Textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={5} placeholder="Type your reply…" />
+                <Button
+                  onClick={sendReply}
+                  disabled={!reply.trim() || sending}
+                  className="w-full bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+                >
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "SEND REPLY"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+};
+
+// ── SubscribersTab ────────────────────────────────────────────────────────────
+
+interface Subscriber {
+  id: string;
+  email: string;
+  source: string;
+  created_at: string;
+}
+
+const SubscriberDetailDialog = ({
+  subscriber,
+  onClose,
+}: {
+  subscriber: Subscriber | null;
+  onClose: () => void;
+}) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["subscriber-detail", subscriber?.email],
+    enabled: !!subscriber,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      if (!subscriber) return null;
+      const [profileRes, ordersRes] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, created_at").eq("email", subscriber.email).maybeSingle(),
+        supabase.from("orders").select("id, total_cents, status, created_at").eq("email", subscriber.email).order("created_at", { ascending: false }),
+      ]);
+      let loyaltyPoints: number | null = null;
+      if (profileRes.data?.id) {
+        const { data: loyalty } = await supabase.from("loyalty_accounts").select("points_balance").eq("user_id", profileRes.data.id).maybeSingle();
+        loyaltyPoints = loyalty?.points_balance ?? null;
+      }
+      return { profile: profileRes.data ?? null, orders: ordersRes.data ?? [], loyaltyPoints };
+    },
+  });
+
+  const fmtMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  return (
+    <Dialog open={!!subscriber} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display tracking-widest text-base uppercase">Subscriber Detail</DialogTitle>
+        </DialogHeader>
+        {!subscriber ? null : (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-[#fde047]" />
+                <p className="text-sm font-medium">{subscriber.email}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-marker tracking-widest uppercase text-[10px]">Source</span>
+                  <p className="mt-0.5"><Badge variant="outline" className="text-[10px]">{subscriber.source}</Badge></p>
+                </div>
+                <div>
+                  <span className="font-marker tracking-widest uppercase text-[10px]">Subscribed</span>
+                  <p className="mt-0.5">{format(new Date(subscriber.created_at), "MMM d, yyyy")}</p>
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <>
+                {data?.profile ? (
+                  <div className="border border-border rounded p-3 space-y-1">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-marker tracking-widest uppercase text-muted-foreground">Has Account</span>
+                    </div>
+                    {data.profile.display_name && <p className="text-sm">{data.profile.display_name}</p>}
+                    {data.loyaltyPoints !== null && (
+                      <div className="flex items-center gap-1.5">
+                        <Star className="h-3.5 w-3.5 text-[#fde047]" />
+                        <span className="text-sm">
+                          <span className="font-display tracking-wider text-[#fde047]">{data.loyaltyPoints.toLocaleString()}</span>{" "}
+                          <span className="text-xs text-muted-foreground">Pour Points</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No account — subscriber only.</p>
+                )}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-marker tracking-widest uppercase text-muted-foreground">Orders ({data?.orders.length ?? 0})</span>
+                  </div>
+                  {data?.orders.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">No orders yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {data?.orders.map((o) => (
+                        <div key={o.id} className="flex justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                          <span className="text-muted-foreground">{format(new Date(o.created_at), "MMM d, yyyy")}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px]">{o.status}</Badge>
+                            <span className="font-display tracking-wider">{fmtMoney(o.total_cents)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const SubscribersTab = () => {
+  const [selected, setSelected] = useState<Subscriber | null>(null);
+  const [search, setSearch] = useState("");
+
+  const { data: subscribers = [], isLoading } = useQuery<Subscriber[]>({
+    queryKey: ["email-subscribers"],
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_subscribers")
+        .select("id, email, source, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const filtered = search.trim()
+    ? subscribers.filter((s) => s.email.toLowerCase().includes(search.trim().toLowerCase()))
+    : subscribers;
+
+  const exportCSV = () => {
+    const rows = [
+      ["Email", "Source", "Subscribed"],
+      ...filtered.map((s) => [s.email, s.source, new Date(s.created_at).toLocaleDateString()]),
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pournogravy-subscribers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const recentCount = subscribers.filter(
+    (s) => Date.now() - new Date(s.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
+  ).length;
+
+  const weeklyData = (() => {
+    const weeks: Record<string, number> = {};
+    const now = Date.now();
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
+      weeks[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const s of subscribers) {
+      const week = new Date(
+        Math.floor(new Date(s.created_at).getTime() / (7 * 24 * 60 * 60 * 1000)) * (7 * 24 * 60 * 60 * 1000)
+      ).toISOString().slice(0, 10);
+      if (week in weeks) weeks[week]++;
+    }
+    return Object.values(weeks);
+  })();
+  const maxWeek = Math.max(...weeklyData, 1);
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 h-full overflow-y-auto">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Mail className="h-4 w-4 text-[#fde047]" />
+            <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Total</p>
+          </div>
+          <p className="font-display text-3xl tracking-wider text-[#fde047]">{subscribers.length}</p>
+        </div>
+        <div className="border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-4 w-4 text-green-400" />
+            <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Last 30 days</p>
+          </div>
+          <p className="font-display text-3xl tracking-wider text-green-400">{recentCount}</p>
+        </div>
+        <div className="border border-border bg-card p-5 col-span-2 md:col-span-1">
+          <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase mb-3">8-week trend</p>
+          <div className="flex items-end gap-1 h-10">
+            {weeklyData.map((v, i) => (
+              <motion.div
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${(v / maxWeek) * 100}%` }}
+                transition={{ delay: i * 0.05 }}
+                className="flex-1 bg-[#fde047]/60 rounded-sm min-h-[2px]"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* List with search + export */}
+      <div className="border border-border bg-card">
+        <div className="px-5 py-4 border-b border-border flex flex-wrap items-center gap-3">
+          <Mail className="h-4 w-4 text-[#fde047]" />
+          <h2 className="font-display tracking-widest text-sm flex-1">EMAIL SUBSCRIBERS</h2>
+          <Input
+            placeholder="Search by email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-xs w-48"
+          />
+          {subscribers.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 text-xs font-display tracking-widest gap-1.5" onClick={exportCSV}>
+              <Download className="h-3 w-3" /> Export CSV
+            </Button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="font-marker text-muted-foreground italic">{search ? "No matches found." : "No subscribers yet."}</p>
+            {!search && <p className="text-xs text-muted-foreground mt-2">Email signups from the homepage will appear here.</p>}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filtered.map((s, i) => (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: Math.min(i * 0.02, 0.3) }}
+                className="px-5 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                onClick={() => setSelected(s)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setSelected(s)}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <p className="text-sm truncate">{s.email}</p>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="text-[10px] text-muted-foreground font-marker tracking-widest uppercase">{s.source}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <SubscriberDetailDialog subscriber={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+};
+
 // ── Main InboxPage ────────────────────────────────────────────────────────────
 
 const TAB_LABELS: { id: MailTab; label: string }[] = [
-  { id: "inbox",     label: "INBOX"     },
-  { id: "sent",      label: "SENT"      },
-  { id: "trash",     label: "TRASH"     },
-  { id: "templates", label: "TEMPLATES" },
+  { id: "inbox",            label: "MESSAGES"        },
+  { id: "custom-requests",  label: "CUSTOM REQUESTS" },
+  { id: "subscribers",      label: "SUBSCRIBERS"     },
+  { id: "sent",             label: "SENT"            },
+  { id: "trash",            label: "TRASH"           },
+  { id: "templates",        label: "TEMPLATES"       },
 ];
 
 const InboxPage = () => {
@@ -1110,10 +1726,12 @@ const InboxPage = () => {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "inbox"     && <InboxTab />}
-        {activeTab === "sent"      && <SentTab />}
-        {activeTab === "trash"     && <TrashTab />}
-        {activeTab === "templates" && (
+        {activeTab === "inbox"           && <InboxTab />}
+        {activeTab === "custom-requests" && <CustomRequestsTab />}
+        {activeTab === "subscribers"     && <SubscribersTab />}
+        {activeTab === "sent"            && <SentTab />}
+        {activeTab === "trash"           && <TrashTab />}
+        {activeTab === "templates"       && (
           <div className="p-4 md:p-6 h-full overflow-hidden flex">
             <EmailTemplates />
           </div>
