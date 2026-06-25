@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -36,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Truck } from "lucide-react";
 import { fmtMoney, statusClass, ORDER_STATUSES } from "@/lib/admin";
 import { toast } from "sonner";
 
@@ -86,9 +87,12 @@ const Orders = () => {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("id");
 
-  // Ship form state
-  const [carrier, setCarrier] = useState("USPS");
-  const [trackingInput, setTrackingInput] = useState("");
+  // Manual shipment drawer state
+  const [shipDrawerOpen, setShipDrawerOpen] = useState(false);
+  const [shipCarrier, setShipCarrier] = useState("USPS");
+  const [shipTracking, setShipTracking] = useState("");
+  const [shipEstDelivery, setShipEstDelivery] = useState("");
+  const [shipNote, setShipNote] = useState("Your order is on its way!");
   const [shipping, setShipping] = useState(false);
 
   // Resend printer state
@@ -136,14 +140,21 @@ const Orders = () => {
     enabled: !!selectedId,
   });
 
-  // Seed local carrier/tracking from the order whenever detail loads
+  // Reset ship drawer fields when a new order is selected
   useEffect(() => {
     if (detail?.order) {
-      setCarrier(detail.order.tracking_carrier ?? "USPS");
-      setTrackingInput(detail.order.tracking_number ?? "");
+      setShipCarrier(detail.order.tracking_carrier ?? "USPS");
+      setShipTracking(detail.order.tracking_number ?? "");
+      setShipEstDelivery("");
+      setShipNote("Your order is on its way!");
       setResendResult("");
     }
   }, [detail?.order?.id]);
+
+  // Close ship drawer when order detail sheet closes
+  useEffect(() => {
+    if (!selectedId) setShipDrawerOpen(false);
+  }, [selectedId]);
 
   // Build year→month→count tree for sidebar
   const tree = useMemo(() => {
@@ -177,36 +188,32 @@ const Orders = () => {
       return next;
     });
 
-  const updateOrder = async (patch: {
-    status?: string;
-    tracking_number?: string | null;
-    tracking_carrier?: string | null;
-  }) => {
-    if (!selectedId) return;
-    const { error } = await supabase.from("orders").update(patch).eq("id", selectedId);
-    if (error) {
-      toast.error(error.message);
-      throw error;
-    }
-    qc.invalidateQueries({ queryKey: ["admin-order", selectedId] });
-    qc.invalidateQueries({ queryKey: ["admin-orders"] });
-  };
-
-  const handleMarkAsShipped = async () => {
+  const handleMarkAsShippedManual = async () => {
     if (!detail?.order) return;
-    if (!trackingInput.trim()) {
-      toast.error("Enter a tracking number first");
+    if (!shipTracking.trim()) {
+      toast.error("Tracking number is required");
       return;
     }
     setShipping(true);
     try {
-      await updateOrder({
-        status: "shipped",
-        tracking_carrier: carrier,
-        tracking_number: trackingInput.trim(),
-      });
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          status: "shipped",
+          tracking_carrier: shipCarrier,
+          tracking_number: shipTracking.trim(),
+          estimated_delivery: shipEstDelivery || null,
+        })
+        .eq("id", detail.order.id);
 
-      const { error } = await supabase.functions.invoke("send-notification", {
+      if (updateErr) {
+        toast.error(updateErr.message);
+        return;
+      }
+
+      // Fire customer shipped email via send-notification.
+      // Uses the "order_shipped" template (confirmed present in email_templates).
+      const { error: emailErr } = await supabase.functions.invoke("send-notification", {
         body: {
           templateKey: "order_shipped",
           recipient: detail.order.email,
@@ -214,21 +221,24 @@ const Orders = () => {
           relatedId: detail.order.id,
           variables: {
             customer_name: detail.order.email?.split("@")[0] ?? "Customer",
-            order_number: detail.order.id.slice(0, 8),
-            tracking_carrier: carrier,
-            tracking_number: trackingInput.trim(),
-            tracking_url: carrierUrl(carrier, trackingInput.trim()),
+            order_number: detail.order.id.slice(0, 8).toUpperCase(),
+            tracking_carrier: shipCarrier,
+            tracking_number: shipTracking.trim(),
+            tracking_url: carrierUrl(shipCarrier, shipTracking.trim()),
+            note: shipNote.trim(),
           },
         },
       });
 
-      if (error) {
-        toast.error(`Order marked shipped but email failed: ${error.message}`);
+      if (emailErr) {
+        toast.error(`Order marked shipped but email failed: ${emailErr.message}`);
       } else {
-        toast.success("Marked as shipped — customer notified");
+        toast.success("Order marked as shipped. Customer notified.");
       }
-    } catch {
-      // updateOrder already toasted the error
+
+      setShipDrawerOpen(false);
+      qc.invalidateQueries({ queryKey: ["admin-order", selectedId] });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
     } finally {
       setShipping(false);
     }
@@ -246,10 +256,11 @@ const Orders = () => {
         relatedId: detail.order.id,
         variables: {
           customer_name: detail.order.email.split("@")[0],
-          order_number: detail.order.id.slice(0, 8),
+          order_number: detail.order.id.slice(0, 8).toUpperCase(),
           tracking_carrier: tc,
           tracking_number: tn,
           tracking_url: carrierUrl(tc, tn),
+          note: "",
         },
       },
     });
@@ -449,6 +460,7 @@ const Orders = () => {
           )}
         </Card>
 
+        {/* Order detail sheet */}
         <Sheet open={!!selectedId} onOpenChange={(o) => !o && setParams({})}>
           <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
             <SheetHeader>
@@ -532,43 +544,28 @@ const Orders = () => {
                   </div>
 
                   {detail.order.status !== "shipped" ? (
-                    /* Mark as shipped form */
-                    <div className="space-y-3 bg-muted/20 border border-border rounded-sm p-4">
-                      <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase">Mark as Shipped</p>
+                    /* Mark as shipped — auto note + manual entry */
+                    <div className="space-y-2 bg-muted/20 border border-border rounded-sm p-4">
+                      <p className="text-xs font-marker tracking-widest text-muted-foreground uppercase mb-3">Mark as Shipped</p>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Carrier</Label>
-                          <Select value={carrier} onValueChange={setCarrier}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="USPS">USPS</SelectItem>
-                              <SelectItem value="UPS">UPS</SelectItem>
-                              <SelectItem value="FedEx">FedEx</SelectItem>
-                              <SelectItem value="DHL">DHL</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Tracking #</Label>
-                          <Input
-                            value={trackingInput}
-                            onChange={(e) => setTrackingInput(e.target.value)}
-                            placeholder="1Z999AA10123456784"
-                          />
-                        </div>
-                      </div>
-
+                      {/* Auto-trigger note — disabled */}
                       <Button
-                        onClick={handleMarkAsShipped}
-                        disabled={shipping || !trackingInput.trim()}
-                        className="w-full bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+                        disabled
+                        variant="outline"
+                        className="w-full opacity-50 cursor-not-allowed border-dashed text-muted-foreground font-display tracking-widest text-xs"
+                        title="This fires automatically when the printer submits tracking via the magic link"
                       >
-                        {shipping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Mark as Shipped &amp; Notify Customer
+                        <Truck className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        Auto-triggered when printer submits tracking
+                      </Button>
+
+                      {/* Manual entry button */}
+                      <Button
+                        variant="outline"
+                        onClick={() => setShipDrawerOpen(true)}
+                        className="w-full border-[#fde047]/40 text-[#fde047] hover:bg-[#fde047]/10 hover:border-[#fde047]/70 font-display tracking-widest"
+                      >
+                        Enter tracking manually →
                       </Button>
                     </div>
                   ) : (
@@ -681,6 +678,92 @@ const Orders = () => {
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Manual shipment dialog — opens on top of the order detail sheet */}
+      <Dialog open={shipDrawerOpen} onOpenChange={(o) => !shipping && setShipDrawerOpen(o)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-widest">Enter Tracking Manually</DialogTitle>
+            <DialogDescription>
+              Order #{selectedId?.slice(0, 8)} · This marks the order as shipped and notifies the customer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Carrier */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ship-carrier" className="text-xs">Carrier</Label>
+              <Select value={shipCarrier} onValueChange={setShipCarrier}>
+                <SelectTrigger id="ship-carrier">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USPS">USPS</SelectItem>
+                  <SelectItem value="UPS">UPS</SelectItem>
+                  <SelectItem value="FedEx">FedEx</SelectItem>
+                  <SelectItem value="DHL">DHL</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tracking number */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ship-tracking" className="text-xs">
+                Tracking Number <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="ship-tracking"
+                value={shipTracking}
+                onChange={(e) => setShipTracking(e.target.value)}
+                placeholder="1Z999AA10123456784"
+                className="font-mono"
+              />
+            </div>
+
+            {/* Estimated delivery */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ship-est-delivery" className="text-xs">Estimated Delivery <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                id="ship-est-delivery"
+                type="date"
+                value={shipEstDelivery}
+                onChange={(e) => setShipEstDelivery(e.target.value)}
+              />
+            </div>
+
+            {/* Note to customer */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ship-note" className="text-xs">Note to Customer <span className="text-muted-foreground">(optional)</span></Label>
+              <Textarea
+                id="ship-note"
+                value={shipNote}
+                onChange={(e) => setShipNote(e.target.value)}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShipDrawerOpen(false)}
+              disabled={shipping}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMarkAsShippedManual}
+              disabled={shipping || !shipTracking.trim()}
+              className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest"
+            >
+              {shipping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Mark as Shipped + Notify Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Refund confirmation dialog */}
       <Dialog open={refundOpen} onOpenChange={(o) => !refunding && setRefundOpen(o)}>
