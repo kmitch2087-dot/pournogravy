@@ -32,11 +32,11 @@ const ProductDetail = () => {
 
   const { data: mergedProducts, isLoading: productsLoading } = useMergedProducts();
 
-  // In preview mode, try sessionStorage first; otherwise require published
+  // In preview mode, try localStorage (cross-tab) first; otherwise require published
   const previewProduct = isPreview && id
     ? (() => {
         try {
-          const raw = sessionStorage.getItem(`preview_product_${id}`);
+          const raw = localStorage.getItem(`preview_product_${id}`);
           return raw ? JSON.parse(raw) : null;
         } catch { return null; }
       })()

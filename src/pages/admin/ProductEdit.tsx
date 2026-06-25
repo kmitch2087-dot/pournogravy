@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -303,7 +302,6 @@ const ProductEdit = () => {
   const [form, setForm] = useState<FormState>(defaultForm());
   const [initialized, setInitialized] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [publishAt, setPublishAt] = useState<string | null>(null);
 
   // OG auto-populate: track whether user has manually edited each OG field
@@ -755,8 +753,8 @@ const ProductEdit = () => {
       variants: [{ id: "unisex", label: "Unisex", images }],
     };
 
-    sessionStorage.setItem(`preview_product_${slug}`, JSON.stringify(previewProduct));
-    setPreviewOpen(true);
+    localStorage.setItem(`preview_product_${slug}`, JSON.stringify(previewProduct));
+    window.open(`/product/${slug}?preview=1`, '_blank');
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -1516,30 +1514,6 @@ const ProductEdit = () => {
         </div>
       </div>
 
-      {/* Preview overlay — portal-mounted so Radix scroll-lock doesn't block iframe scrolling */}
-      {previewOpen && createPortal(
-        <div className="fixed inset-0 z-[200] flex flex-col bg-background">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-            <span className="font-display tracking-widest text-sm uppercase">
-              Preview — {form.name || previewSlug}
-            </span>
-            <button
-              onClick={() => setPreviewOpen(false)}
-              className="p-1.5 rounded hover:bg-muted transition-colors"
-              aria-label="Close preview"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <iframe
-            key={previewSlug}
-            src={`/product/${previewSlug}?preview=1`}
-            style={{ flex: 1, minHeight: 0, width: "100%", border: "none", display: "block" }}
-            title="Product preview"
-          />
-        </div>,
-        document.body
-      )}
     </div>
   );
 };
