@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings2, X, Eye, EyeOff, ChevronDown, ChevronRight, Save, Upload, Loader2 } from "lucide-react";
 import { useSiteContent, SiteContentRow } from "@/context/SiteContentContext";
@@ -297,8 +297,56 @@ export function SiteEditor() {
   if (!isAdmin) return null;
 
   const pageName = PATH_TO_PAGE[location.pathname];
-  if (!pageName) return null; // not a CMS-managed page
 
+  // Dynamic route checks
+  const productMatch = location.pathname.match(/^\/product\/(.+)$/);
+  const productSlug  = productMatch?.[1];
+  const blogMatch    = location.pathname.match(/^\/blog\/(.+)$/);
+  const blogSlug     = blogMatch?.[1];
+
+  if (!pageName && !productSlug && !blogSlug) return null;
+
+  // ── Product page → floating "Edit Product" back to admin ─────────────────
+  if (productSlug) {
+    return (
+      <motion.div
+        className="fixed bottom-6 right-6 z-50"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <Link
+          to={`/admin/products/${productSlug}`}
+          className="flex items-center gap-2 px-4 py-2.5 bg-black/90 text-white border border-[#fde047]/40 hover:border-[#fde047] text-xs font-display tracking-widest uppercase shadow-lg backdrop-blur-sm transition-colors"
+          title="Edit this product in admin"
+        >
+          <Settings2 className="h-3.5 w-3.5 text-[#fde047]" />
+          Edit Product
+        </Link>
+      </motion.div>
+    );
+  }
+
+  // ── Blog post → floating "Edit Post" back to admin ────────────────────────
+  if (blogSlug) {
+    return (
+      <motion.div
+        className="fixed bottom-6 right-6 z-50"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <Link
+          to="/admin/blog"
+          className="flex items-center gap-2 px-4 py-2.5 bg-black/90 text-white border border-[#fde047]/40 hover:border-[#fde047] text-xs font-display tracking-widest uppercase shadow-lg backdrop-blur-sm transition-colors"
+          title="Edit this post in admin"
+        >
+          <Settings2 className="h-3.5 w-3.5 text-[#fde047]" />
+          Edit Post
+        </Link>
+      </motion.div>
+    );
+  }
+
+  // ── CMS page → full content editor panel ─────────────────────────────────
   // Get all rows for this page, grouped by section
   const pageRows = rows.filter((r) => r.page === pageName);
   const sections = [...new Set(pageRows.map((r) => r.section))];
