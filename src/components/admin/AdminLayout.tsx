@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  MessageSquare,
   Star,
   Settings,
   LogOut,
@@ -70,12 +69,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: "/admin",                label: "Dashboard",            icon: LayoutDashboard, end: true,  description: "Overview of orders, revenue, and quick stats" },
-  { to: "/admin/inbox",          label: "Inbox",                icon: Mail,            end: false, notifKey: "inbox",          description: "Notifications, messages, and email templates" },
-  { to: "/admin/orders",         label: "Orders",               icon: ShoppingBag,     end: false, notifKey: "orders",         description: "View and manage customer orders" },
+  { to: "/admin/inbox",          label: "Inbox",                icon: Mail,            end: false, notifKey: "inbox",  description: "Messages, custom requests, and subscribers" },
+  { to: "/admin/orders",         label: "Orders",               icon: ShoppingBag,     end: false, notifKey: "orders", description: "View and manage customer orders" },
   { to: "/admin/products",       label: "Products",             icon: Package,         end: false, description: "Manage the product catalog and listings" },
   { to: "/admin/content",        label: "Content",              icon: PenLine,         end: false, description: "Edit homepage, announcements, and site copy" },
-  { to: "/admin/custom-requests",label: "Custom Requests",      icon: MessageSquare,   end: false, notifKey: "customRequests", description: "Custom garment inquiry submissions from customers" },
-  { to: "/admin/reviews",        label: "Reviews",              icon: Star,            end: false, notifKey: "reviews",        description: "Manage customer reviews and ratings" },
+  { to: "/admin/reviews",        label: "Reviews",              icon: Star,            end: false, notifKey: "reviews", description: "Manage customer reviews and ratings" },
   { to: "/admin/settings",       label: "Settings",             icon: Settings,        end: false, description: "Business info, fulfillment, and email settings" },
   { to: "/admin/manual",         label: "Admin User Manual",    icon: BookOpen,        end: false, description: "How-to guide for operating the admin dashboard" },
   { to: "/admin/analytics",      label: "Analytics",            icon: LineChart,       end: false, description: "Site traffic, page views, and visitor data" },
@@ -83,7 +81,6 @@ const navItems: NavItem[] = [
   { to: "/admin/merch-drops",    label: "Merch Drop Calendar",  icon: CalendarDays,    end: false, description: "Plan and schedule upcoming product drops" },
   { to: "/admin/loyalty",        label: "Pour Points",          icon: Coins,           end: false, description: "Customer loyalty rewards and point balances" },
   { to: "/admin/customers",      label: "Customer Lookup",      icon: Users,           end: false, description: "Search and view individual customer records" },
-  { to: "/admin/subscribers",    label: "Email Subscribers",    icon: Mail,            end: false, description: "Newsletter subscriber list and export" },
   { to: "/admin/discount-codes", label: "Discount Codes",       icon: Tag,             end: false, description: "Create and manage promotional discount codes" },
   { to: "/admin/blog",           label: "Blog",                 icon: BookOpen,        end: false, description: "Write and publish blog posts (The Shift Log)" },
   { to: "/admin/finances",       label: "Finances",             icon: PieChart,        end: false, description: "Revenue, invoices, expenses, and tax estimates" },
@@ -91,12 +88,12 @@ const navItems: NavItem[] = [
   { to: "/admin/print-files",    label: "Print Files",          icon: FileImage,       end: false, description: "Manage printable design files for fulfillment" },
 ];
 
-// Map route prefix → notifKey so we can mark section as viewed on navigation
-const ROUTE_NOTIF_MAP: Array<{ prefix: string; key: "inbox" | "orders" | "reviews" | "customRequests" }> = [
-  { prefix: "/admin/inbox",           key: "inbox"          },
-  { prefix: "/admin/orders",          key: "orders"         },
-  { prefix: "/admin/reviews",         key: "reviews"        },
-  { prefix: "/admin/custom-requests", key: "customRequests" },
+// Map route prefix → notifKey(s) so we can mark section as viewed on navigation.
+// /admin/inbox now handles both inbox messages and custom requests (consolidated in F4).
+const ROUTE_NOTIF_MAP: Array<{ prefix: string; keys: Array<"inbox" | "orders" | "reviews" | "customRequests"> }> = [
+  { prefix: "/admin/inbox",   keys: ["inbox", "customRequests"] },
+  { prefix: "/admin/orders",  keys: ["orders"]                  },
+  { prefix: "/admin/reviews", keys: ["reviews"]                 },
 ];
 
 // ─── Red notification badge on an icon ───────────────────────────────────────
@@ -281,9 +278,9 @@ const AdminLayout = () => {
 
   const { counts, refresh } = useAdminNotifications();
 
-  // Build the notifCounts object for nav items (inbox includes customRequests for F4 — F4 will adjust)
+  // Inbox badge shows combined inbox messages + custom requests count
   const notifCounts: Record<string, number> = {
-    inbox:          counts.inbox,
+    inbox:          counts.inbox + counts.customRequests,
     orders:         counts.orders,
     reviews:        counts.reviews,
     customRequests: counts.customRequests,
@@ -293,7 +290,7 @@ const AdminLayout = () => {
   useEffect(() => {
     const match = ROUTE_NOTIF_MAP.find((r) => location.pathname.startsWith(r.prefix));
     if (match) {
-      markSectionViewed(match.key);
+      match.keys.forEach((k) => markSectionViewed(k));
       refresh();
     }
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
