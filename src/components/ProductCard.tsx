@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Product } from "@/data/products";
+import { useSiteContent } from "@/context/SiteContentContext";
 import { motion } from "framer-motion";
 import { Heart, Star } from "lucide-react";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -90,6 +91,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   const ratings = useProductRatings();
   const saved = isSaved(product.id);
   const rating = ratings.get(product.id);
+  const { rows: siteContentRows } = useSiteContent();
 
   // Stable random seed per card instance — only computed once on mount
   const seedRef = useRef<number>(Math.floor(Math.random() * 99999));
@@ -99,10 +101,16 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   const { data: eggsData } = useEasterEggs();
 
   const footerNote = useMemo(() => {
-    const found = (eggsData ?? []).filter(e => e.category === 'footer_note').map(e => e.text);
-    const arr = found.length > 0 ? found : FALLBACK_FOOTER_NOTES;
+    const eggsNotes = (eggsData ?? []).filter(e => e.category === 'footer_note').map(e => e.text);
+    const dbFooterNotes = siteContentRows
+      .filter(r => r.page === 'shop' && r.section === 'cart_variants')
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+      .map(r => r.value ?? r.default_value ?? '')
+      .filter(Boolean);
+    // Priority: DB easter eggs → site_content cart_variants → hardcoded fallback
+    const arr = eggsNotes.length > 0 ? eggsNotes : (dbFooterNotes.length > 0 ? dbFooterNotes : FALLBACK_FOOTER_NOTES);
     return seededPick(arr, seed + 3);
-  }, [eggsData, seed]);
+  }, [eggsData, siteContentRows, seed]);
 
   // Add-to-cart phrase: DB phrases with no-repeat, fall back to CTA_PHRASES
   const addToCartPhrases = useMemo(() => {
