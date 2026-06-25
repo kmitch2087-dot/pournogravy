@@ -41,8 +41,31 @@ import { toast } from "sonner";
 // ---------------------------------------------------------------------------
 const SESSION_LOG = [
   {
-    date: "June 15, 2026",
+    date: "June 24, 2026",
     tag: "TODAY",
+    tagColor: "bg-green-500/20 text-green-300",
+    summary: "Wave 3 content + admin polish sprint. Content editor save feedback (Sonner toasts). Add Superpower button. Add Section dialog (Text/Rich Text/Q&A). Dynamic items have delete buttons; structural sections protected. Shop tab in content editor: drag-to-reorder product thumbnails with save order. Admin Reviews page overhauled: filter tabs (All/Pending/Published/Verified), Publish/Unpublish toggles, status badges, expandable body, verified purchase badge. Backfilled OG metadata on all 26 products (og_title, og_description, og_image). Wave 2 verified-purchase reviews system previously shipped.",
+    completed: [
+      "Content editor: Sonner toast on save success and on error",
+      "Content editor: + Add Superpower button (home > superpowers section)",
+      "Content editor: + Add Section dialog (Text Block / Rich Text / Q&A Pair)",
+      "Content editor: trash icon on dynamic items; structural items protected",
+      "Content editor: Shop tab — product thumbnail drag-to-reorder with save",
+      "Content editor: Shop tab — click product → confirm → navigate to product edit",
+      "Admin Reviews: filter tabs All / Pending / Published / Verified Only",
+      "Admin Reviews: Publish / Unpublish toggle buttons (was Approve-only)",
+      "Admin Reviews: Live / Hidden status badges, verified purchase badge",
+      "Admin Reviews: expandable body text (100 char truncation with expand)",
+      "Admin Reviews: empty state message when no reviews exist",
+      "DB: backfilled og_title on 26 products",
+      "DB: backfilled og_description on 26 products (left 160 chars)",
+      "DB: backfilled og_image on 24 products (from image_url)",
+    ],
+    next: "Place live test order to verify full fulfillment email flow end-to-end; CF email routing rule",
+  },
+  {
+    date: "June 15, 2026",
+    tag: "SHIPPING PIPELINE",
     tagColor: "bg-green-500/20 text-green-300",
     summary: "Shipping pipeline complete. Printer invoice now includes shipping pass-through. One-click Mark as Shipped in Orders admin. Bug fixes: easter egg column, loyalty threshold, PrintFiles slugs, double points toggle.",
     completed: [
@@ -283,6 +306,7 @@ const BACKLOG = {
     { text: "CF Email Routing rule — CF Dashboard → pournogravy.com → Email → Routing Rules → set opie@pournogravy.com → pournogravy-receive-email worker" },
     { text: "Place live test order to verify full fulfillment email flow end-to-end" },
     { text: "Opie: update product costs in Admin → Bookkeeping → Products (before July 1st month close)" },
+    { text: "Verify opie@pournogravy.com as Resend sender (DKIM/SPF done — confirm send works)" },
   ],
   hygiene: [
     { text: "Delete src/utils/supabase/ — dead second Supabase client, never used" },
@@ -291,24 +315,26 @@ const BACKLOG = {
     { text: "Delete deprecated main branch from GitHub" },
     { text: "Delete 4 duplicate Lovable repos from GitHub (hash-suffixed repos)" },
     { text: "npm audit fix — 19 vulnerabilities (none critical)" },
+    { text: "Marquee dedup audit — confirm TICKER_ITEMS renders without double-items at seam" },
   ],
   phase3: [
-    { text: "Cart merge on login (guest → auth cart merge)" },
-    { text: "Email marketing integration (Klaviyo or Mailchimp for captured emails)" },
+    { text: "Email marketing integration (Klaviyo or Mailchimp for captured email_subscribers)" },
     { text: "International shipping config" },
     { text: "Wholesale portal (foundation exists at /proposal)" },
-    { text: "Product search + filter by category" },
     { text: "Analytics — Cloudflare Web Analytics or Plausible" },
     { text: "Printify/Printful API integration (optional — local printer model is fully operational)" },
+    { text: "Meta title / description improvements per-product (SEO)" },
+    { text: "\"I Know the Owner\" discount flow — tabled per client request" },
   ],
 };
 
 const KNOWN_ISSUES = [
-  { severity: "medium", item: "Live test order not placed", fix: "Place a real order to confirm confirmation + printer emails land correctly" },
+  { severity: "high",   item: "Live test order not placed", fix: "Place a real order to confirm confirmation + printer emails land correctly" },
+  { severity: "medium", item: "CF Email Routing rule not set", fix: "CF Dashboard → pournogravy.com → Email → Routing Rules → set opie@pournogravy.com → pournogravy-receive-email worker (30 seconds)" },
   { severity: "medium", item: "src/utils/supabase/ dead code", fix: "Delete folder" },
   { severity: "medium", item: "src/lib/fulfillment.ts dead code", fix: "Delete file" },
-  { severity: "medium", item: "wrangler.jsonc duplicate", fix: "Delete file" },
-  { severity: "low", item: "19 npm vulnerabilities", fix: "npm audit fix" },
+  { severity: "low",    item: "wrangler.jsonc duplicate", fix: "Delete file" },
+  { severity: "low",    item: "19 npm vulnerabilities", fix: "npm audit fix" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -702,10 +728,10 @@ export default function ProjectStatus() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Features Shipped" value="40+" icon={CheckCheck} accent />
-        <StatCard label="Completion" value="~85%" sub="Core features done" icon={TrendingUp} />
+        <StatCard label="Features Shipped" value="55+" icon={CheckCheck} accent />
+        <StatCard label="Completion" value="~92%" sub="Core features done" icon={TrendingUp} />
         <StatCard label="Days Active" value={`${daysSinceLaunch}`} sub="Since April 28, 2026" icon={Calendar} />
-        <StatCard label="Sessions" value="16" sub="Across all tools" icon={Clock} />
+        <StatCard label="Sessions" value="17" sub="Across all tools" icon={Clock} />
       </div>
 
       {/* Phase Tracker */}
@@ -716,12 +742,13 @@ export default function ProjectStatus() {
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Progress by Area</p>
           <ProgressBar label="Infrastructure & Deployment" value={100} />
-          <ProgressBar label="Database & Edge Functions" value={98} />
-          <ProgressBar label="Admin Dashboard" value={97} />
-          <ProgressBar label="Public Storefront" value={97} />
+          <ProgressBar label="Database & Edge Functions" value={99} />
+          <ProgressBar label="Admin Dashboard" value={98} />
+          <ProgressBar label="Public Storefront" value={98} />
           <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
-          <ProgressBar label="Fulfillment Pipeline" value={85} color="bg-yellow-400" />
+          <ProgressBar label="Fulfillment Pipeline" value={90} color="bg-yellow-400" />
           <ProgressBar label="Email & Notifications" value={98} color="bg-blue-400" />
+          <ProgressBar label="Content Management (CMS)" value={95} color="bg-purple-400" />
         </CardContent>
       </Card>
 
