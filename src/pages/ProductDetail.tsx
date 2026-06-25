@@ -152,10 +152,13 @@ const ProductDetail = () => {
     setJustAdded(false);
     setAddedFeedback(false);
     setActiveImage(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [id]);
+
+  useEffect(() => {
     setSelectedVariant(product?.variants?.[0]);
     setSelectedColor(product?.colors?.[0]);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [id, product]);
+  }, [product]);
 
   // Reset the active gallery slot whenever the fit OR color changes
   // so we always land on that combination's first image.
