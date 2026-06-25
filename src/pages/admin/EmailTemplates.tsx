@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -312,6 +311,38 @@ const htmlToText = (html: string): string => {
   div.innerHTML = html;
   return (div.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim();
 };
+
+// ── Variable placeholder display transform (display-only) ─────────────────────
+// Converts {{variable_name}} → [Variable Name] for human-readable preview.
+// The stored value in the DB always keeps {{variable}} syntax for sending.
+
+const VARIABLE_LABELS: Record<string, string> = {
+  customer_name:    "Customer Name",
+  order_id:         "Order ID",
+  order_number:     "Order Number",
+  tracking_number:  "Tracking Number",
+  tracking_carrier: "Tracking Carrier",
+  tracking_url:     "Tracking URL",
+  product_name:     "Product Name",
+  magic_link:       "Tracking Submission Link",
+  customer_email:   "Customer Email",
+  customer_phone:   "Customer Phone",
+  page_url:         "Page URL",
+  content:          "Content",
+  created_at:       "Created At",
+  notes:            "Notes",
+  garment:          "Garment",
+  design_name:      "Design Name",
+};
+
+const toTitleCase = (key: string) =>
+  key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const renderVariablePlaceholders = (text: string): string =>
+  text.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const label = VARIABLE_LABELS[key] ?? toTitleCase(key);
+    return `[${label}]`;
+  });
 
 // ── Preview wrapper — basic email shell ───────────────────────────────────────
 
@@ -626,11 +657,6 @@ const EmailTemplates = () => {
                   <p className="text-[10px] font-mono text-muted-foreground truncate mt-0.5">
                     {tpl.key}
                   </p>
-                  {(tpl.variables ?? []).length > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {(tpl.variables ?? []).length} vars
-                    </p>
-                  )}
                 </div>
                 {/* Hover actions */}
                 <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
@@ -673,9 +699,6 @@ const EmailTemplates = () => {
               <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{selectedTpl.key}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="outline" className="text-[10px] font-marker tracking-widest">
-                {(selectedTpl.variables ?? []).length} VARS
-              </Badge>
               <Button
                 onClick={handleSave}
                 disabled={saving}
@@ -830,7 +853,7 @@ const EmailTemplates = () => {
                   </label>
                 </div>
                 <Textarea
-                  value={plainText}
+                  value={autoPlainText ? renderVariablePlaceholders(plainText) : plainText}
                   onChange={(e) => setPlainText(e.target.value)}
                   disabled={autoPlainText}
                   className="flex-1 min-h-[380px] font-mono text-xs resize-none disabled:opacity-60"
