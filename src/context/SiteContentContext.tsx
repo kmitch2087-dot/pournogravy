@@ -10,7 +10,7 @@ export interface SiteContentRow {
   key: string;
   label: string;
   value: string | null;
-  value_type: "text" | "color" | "image" | "boolean" | "font" | "select";
+  value_type: "text" | "color" | "image" | "boolean" | "font" | "select" | "html";
   options: string[] | null;
   default_value: string | null;
   sort_order: number;

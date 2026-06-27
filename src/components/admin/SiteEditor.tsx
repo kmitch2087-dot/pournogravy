@@ -23,6 +23,8 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/about":   "about",
   "/contact": "contact",
   "/faq":     "faq",
+  "/terms":   "terms",
+  "/privacy": "privacy",
 };
 
 // ─── Image upload ─────────────────────────────────────────────────────────────
