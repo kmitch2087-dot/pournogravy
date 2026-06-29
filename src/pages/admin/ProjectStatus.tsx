@@ -33,6 +33,9 @@ import {
   CheckCheck,
   Package,
   Mail,
+  Info,
+  ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -299,6 +302,196 @@ const SESSION_LOG = [
 
 
 // ---------------------------------------------------------------------------
+// Data — progress areas with features
+// ---------------------------------------------------------------------------
+interface Feature {
+  name: string;
+  description: string;
+  url?: string;
+}
+interface Area {
+  label: string;
+  value: number;
+  color: string;
+  missing: string | null;
+  features: Feature[];
+}
+
+const AREAS: Area[] = [
+  {
+    label: "Infrastructure & Deployment",
+    value: 100,
+    color: "bg-[#fde047]",
+    missing: null,
+    features: [
+      { name: "GitHub CI/CD", description: "Auto-deploys on push to master; live in ~2 min", url: "https://github.com/kmitch2087-dot/pournogravy" },
+      { name: "Cloudflare Pages", description: "Global CDN hosting — pournogravydev project, zero-downtime rollbacks" },
+      { name: "pournogravy.com domain + SSL", description: "Cloudflare DNS, HTTPS active, www redirect" },
+      { name: "SPA routing (404.html)", description: "CF Pages serves 404.html for unmatched paths; React Router handles routing client-side preserving the URL" },
+      { name: ".env.production committed", description: "Vite bakes Supabase URL + anon key into CF Pages build at compile time — no runtime env needed" },
+      { name: "Cloudflare Email Worker", description: "pournogravy-receive-email deployed; routes inbound email to receive-email Supabase edge fn" },
+      { name: "_headers — no HTML caching", description: "Cache-Control: no-cache on HTML files so deploys take effect immediately" },
+    ],
+  },
+  {
+    label: "Database & Edge Functions",
+    value: 99,
+    color: "bg-[#fde047]",
+    missing: "Live test order — confirms stripe-webhook → DB writes → printer + customer emails all chain correctly end-to-end",
+    features: [
+      { name: "25+ Supabase tables with RLS", description: "products, orders, order_items, cart_items, custom_requests, profiles, wishlists, loyalty_accounts, loyalty_transactions, email_subscribers, analytics_events, site_content, blog_posts, merch_drops, printer_queue, inbox_messages, discount_codes, product_reviews, email_templates, settings, fulfillment_vendors, monthly_snapshots, expenses, order_archive, client_edit_requests" },
+      { name: "create-checkout", description: "Creates Stripe PaymentIntent; validates prices server-side against DB; applies discounts; calculates shipping; sets variant-rich description + metadata for Stripe analytics" },
+      { name: "stripe-webhook", description: "Handles payment_intent.succeeded — marks order paid, queues printer_queue row, sends customer + printer emails, awards Pour Points, auto-matches back logo by garment color" },
+      { name: "send-notification", description: "Resend email dispatch with {{variable}} template substitution; logs to notifications table; admin or service-role auth" },
+      { name: "verify-email", description: "Public — syntax validation, disposable domain blocklist, MX lookup via Cloudflare DNS" },
+      { name: "validate-discount", description: "Server-side promo code validation against cart total, expiry, and use count" },
+      { name: "receive-email", description: "Handles inbound email from CF Email Worker; stores in inbox_messages; alerts admin via Resend" },
+      { name: "submit-tracking", description: "Printer-facing HMAC-verified magic link endpoint; saves tracking number to order, triggers shipped email to customer" },
+      { name: "resend-printer-notification", description: "Admin-callable; regenerates HMAC magic link and resends printer fulfillment email for any order", url: "/admin/orders" },
+      { name: "abandoned-cart-reminder", description: "Cron-triggered — finds carts idle >2h with an email, sends reminder via send-notification" },
+      { name: "refund-order", description: "Admin-callable — issues Stripe refund, updates order status to refunded, sends customer email" },
+      { name: "archive-orders", description: "Moves fulfilled orders older than threshold to order_archive table" },
+      { name: "blast-email", description: "Admin-callable — sends bulk email to all email_subscribers via send-notification loop" },
+      { name: "sync-stripe-fees", description: "Daily cron (02:00 UTC) — syncs Stripe processing fees into the expenses table" },
+      { name: "close-month", description: "Monthly cron (00:05 on 1st) — auto-locks books into monthly_snapshots" },
+      { name: "generate-report", description: "HTTP-callable — returns CSV or HTML for 5 report types: P&L, order summary, expense detail, sales by product, Stripe fee summary" },
+      { name: "add-fulfillment-vendor", description: "Inserts to fulfillment_vendors, sends vendor_welcome email via send-notification" },
+      { name: "SECURITY DEFINER functions", description: "is_admin(), increment_loyalty_points(), increment_discount_use() — run with elevated privileges to safely cross RLS boundaries" },
+    ],
+  },
+  {
+    label: "Admin Dashboard",
+    value: 98,
+    color: "bg-[#fde047]",
+    missing: "Dead code removal — src/utils/supabase/ (second Supabase client), src/lib/fulfillment.ts, wrangler.jsonc; none affect functionality but are cleanup items",
+    features: [
+      { name: "Dashboard", description: "Orders, requests, and stats overview with quick-action buttons", url: "/admin" },
+      { name: "Products", description: "Product list with status badges, image thumbnails, and inline edit links", url: "/admin/products" },
+      { name: "Product Edit", description: "Full product editor — name, description, price, images (Supabase Storage upload), drag-to-reorder copy sections", url: "/admin/products" },
+      { name: "Orders", description: "All orders with status management, clean shipping address, one-click Mark as Shipped, Resend Printer Email button", url: "/admin/orders" },
+      { name: "Custom Requests", description: "Garment inquiry queue with Active/Done/Archived tabs, per-row status actions", url: "/admin/requests" },
+      { name: "Reviews", description: "Approval queue with All/Pending/Published/Verified tabs, publish/unpublish toggle, verified purchase badge, expandable body", url: "/admin/reviews" },
+      { name: "Discount Codes", description: "Create, toggle active/inactive, delete promo codes; usage progress bars; status badges (Active / Expired / Exhausted)", url: "/admin/discount-codes" },
+      { name: "Pour Points / Loyalty", description: "Member table with point balances, expandable transaction history, manual adjustment tool", url: "/admin/loyalty" },
+      { name: "Customer Lookup", description: "Search any customer by email — order history, loyalty balance, wishlist count, stats grid", url: "/admin/customers" },
+      { name: "Email Subscribers", description: "Subscriber list, 8-week growth sparkline, CSV export", url: "/admin/subscribers" },
+      { name: "Analytics", description: "Page views, add-to-cart + purchase event funnel, top products by views", url: "/admin/analytics" },
+      { name: "Inbox", description: "Admin inbox for inbound emails routed via CF Email Worker", url: "/admin/inbox" },
+      { name: "Email Templates", description: "Rich editor with Visual/HTML/Preview/Plain Text tabs, formatting toolbar, click-to-insert variable chips, live sandboxed iframe preview, one-click test send", url: "/admin/email-templates" },
+      { name: "Blog", description: "Blog post CRUD — create/edit/delete, publish toggle, slug auto-gen, tag management, image URL support", url: "/admin/blog" },
+      { name: "Invoice Tracker", description: "Financial dashboard: profit margin, shipping collected, printer bill (unpaid list, Mark All Paid, CSV export, paid history)", url: "/admin/invoices" },
+      { name: "Merch Drops", description: "Drop calendar with month-grid, full drop builder, product picker, flyer upload, ad placement toggles, marketing email builder", url: "/admin/merch-drops" },
+      { name: "Content Editor", description: "Live CMS editing for all public pages — fields change instantly without a deploy", url: "/admin/content" },
+      { name: "Bookkeeping", description: "5 sub-pages: Overview (monthly grid + amendments), Expenses ledger, Products COGS editor, Reports (CSV/PDF), Tax Packet (ZIP export)", url: "/admin/bookkeeping" },
+      { name: "Settings", description: "Site config — shipping rates, from email, fulfillment provider, printer email, free shipping threshold", url: "/admin/settings" },
+      { name: "Edit Requests", description: "Split-view notes — Opie submits requests on the left, Kristin replies with inline threads on the right", url: "/admin/edit-requests" },
+      { name: "User Manual", description: "Full operational guide for Opie — how to manage orders, products, loyalty, email, and blog", url: "/admin/manual" },
+    ],
+  },
+  {
+    label: "Public Storefront",
+    value: 98,
+    color: "bg-[#fde047]",
+    missing: "Sitemap.xml auto-generation; per-product SEO descriptions could be more keyword-targeted (og_title/description backfilled but generic)",
+    features: [
+      { name: "Homepage", description: "Hero carousel, featured products, WHAT THE BAR SAYS reviews, marquee ticker, rotating bartender quotes, email capture", url: "/" },
+      { name: "Shop", description: "Full catalog with live URL-synced search (?q=) and sort controls (Featured / Price / A→Z)", url: "/shop" },
+      { name: "Product detail pages", description: "Per-product gallery, size/color selector, star ratings, humor-forward Bad Bartender Advice copy, add to cart, wishlist toggle, related products" },
+      { name: "Collections", description: "Curated product groupings", url: "/collections" },
+      { name: "About", description: "Brand story and mission", url: "/about" },
+      { name: "Contact form", description: "Wired to Supabase custom_requests table; submissions appear in admin Custom Requests panel", url: "/contact" },
+      { name: "FAQ", description: "CMS-editable Q&A pairs, editable from admin Content editor", url: "/faq" },
+      { name: "Blog", description: "Public post listing page", url: "/blog" },
+      { name: "Blog posts", description: "Individual post pages at /blog/:slug — managed from admin dashboard" },
+      { name: "Account page", description: "Order history, Pour Points balance + progress bar, transaction history, wishlist count", url: "/account" },
+      { name: "Wishlist", description: "Heart toggle on every product card; localStorage for guests, DB for auth users; dedicated wishlist page", url: "/wishlist" },
+      { name: "Privacy Policy", description: "Brand-voice privacy policy; CMS-editable title, body, and last updated date", url: "/privacy" },
+      { name: "Terms of Service", description: "Plain-language ToS; CMS-editable; covers shipping, returns, IP", url: "/terms" },
+      { name: "Proposal / Wholesale pitch", description: "Founding Client Offer and partnership pitch page", url: "/proposal" },
+      { name: "Printer tracking form", description: "HMAC-verified page for printer to submit tracking numbers without an account" },
+      { name: "SEO — JSON-LD structured data", description: "Product schema on every product page + Organization schema on homepage — eligible for Google Shopping rich results" },
+      { name: "WebP images", description: "All product + UI images converted to WebP — 61MB → 7.3MB (88% reduction); PNG fallback via onError" },
+    ],
+  },
+  {
+    label: "Payments & Checkout",
+    value: 100,
+    color: "bg-green-400",
+    missing: null,
+    features: [
+      { name: "Stripe embedded Payment Element", description: "Stays on-site — no redirect to Stripe-hosted page; custom branded checkout form", url: "/checkout" },
+      { name: "Server-side price validation", description: "create-checkout validates all prices against DB — client can never manipulate price" },
+      { name: "Discount code validation", description: "Server-side — checks expiry, use count, minimum order; applied before PaymentIntent creation", url: "/checkout" },
+      { name: "Shipping calculation", description: "Standard/express rates from settings; free shipping threshold; per-product shipping override (e.g. test order at $0.01)" },
+      { name: "Cart — guest + auth", description: "Guest cart persists via localStorage; merges with DB cart on login; cross-device sync for auth users" },
+      { name: "Stripe PaymentIntent metadata", description: "description field shows 'F Off Karen — Black / L × 2' in Stripe dashboard; metadata.items has full JSON per item for analytics" },
+      { name: "CheckoutReturn", description: "Post-payment confirmation screen — clears cart, shows order number, displays Pour Points earned", url: "/checkout/return" },
+      { name: "Refund system", description: "Admin-callable refund-order edge function — issues Stripe refund, updates order status, sends customer email" },
+    ],
+  },
+  {
+    label: "Fulfillment Pipeline",
+    value: 90,
+    color: "bg-yellow-400",
+    missing: "Live test order (biggest gap — pipeline is built but not verified end-to-end) + CF email routing rule (30-second manual step in CF Dashboard: pournogravy.com → Email → Routing Rules → opie@pournogravy.com → pournogravy-receive-email)",
+    features: [
+      { name: "Printer email on payment", description: "stripe-webhook sends printer_notification email with order items, shipping address, design links, cost box, CSV attachment, and HMAC tracking magic link" },
+      { name: "Auto-matched back logo", description: "Garment color auto-selects ink: dark shirts (black/navy/charcoal) → white ink logo; light shirts → black ink logo. Logo PNGs live in Supabase Storage print-files/back/" },
+      { name: "Design file links", description: "Printer email includes direct Supabase Storage URLs for front black ink, front white ink, and back logo per item" },
+      { name: "HMAC tracking magic link", description: "Printer gets a signed one-time URL to submit tracking number without needing an account" },
+      { name: "submit-tracking edge function", description: "Validates HMAC token, saves tracking number to order, triggers shipped email to customer" },
+      { name: "Customer shipped email", description: "Branded email to customer when order is marked shipped — includes clickable tracking URL" },
+      { name: "Mark as Shipped", description: "One-click action in Orders admin sends shipped email and updates order status", url: "/admin/orders" },
+      { name: "Resend Printer Notification", description: "Admin button in Orders — regenerates HMAC magic link and resends printer email for any order", url: "/admin/orders" },
+      { name: "Invoice Tracker", description: "Tracks printer bill per order ($12/item default), shipping pass-through, Mark All Paid batch action, CSV export", url: "/admin/invoices" },
+      { name: "printer_queue table", description: "Every paid order gets a queued row in printer_queue with payload (items + shipping + total)" },
+      { name: "Fulfillment Partners panel", description: "Vendor directory — add/manage printers, set active vendor, full intake form (services, turnaround, min qty, file formats)", url: "/admin/settings" },
+      { name: "74 print-ready PNGs", description: "37 black ink + 37 white ink — all 24 products, stored in Supabase Storage print-files/black/ and /white/" },
+    ],
+  },
+  {
+    label: "Email & Notifications",
+    value: 98,
+    color: "bg-blue-400",
+    missing: "CF email routing rule — 30 seconds in CF Dashboard: pournogravy.com → Email → Routing Rules → edit opie@pournogravy.com rule → change destination to pournogravy-receive-email worker",
+    features: [
+      { name: "Order confirmation", description: "Branded dark theme email — POURnogravy logo, Opie's bartender voice, order items + totals, mock product image, branded footer", url: "/admin/email-templates" },
+      { name: "Order shipped", description: "Customer notification when order is marked shipped — includes clickable tracking URL" },
+      { name: "Printer notification", description: "Design file links, cost breakdown box ($12/item × N), shipping pass-through, CSV attachment, HMAC magic link for tracking submission" },
+      { name: "Custom request reply", description: "Admin reply to garment inquiry submissions; wired to Edit Requests threaded note system" },
+      { name: "Abandoned cart reminder", description: "Cron-triggered — fires 2h after cart was last updated if customer provided email but didn't checkout" },
+      { name: "Blast email", description: "Admin sends bulk promotional email to all email_subscribers via send-notification loop" },
+      { name: "Email Templates admin", description: "Rich editor for all templates — Visual/HTML/Preview/Plain Text tabs, formatting toolbar, variable chips, live preview, one-click test send", url: "/admin/email-templates" },
+      { name: "Resend domain verified", description: "pournogravy.com — DKIM + SPF active; opie@pournogravy.com is a verified sender" },
+      { name: "Inbound email — CF Worker", description: "pournogravy-receive-email CF Worker deployed; parses inbound email via postal-mime, posts to receive-email edge fn, stores in inbox_messages, alerts admin" },
+      { name: "Admin Inbox", description: "All inbound emails visible in the admin dashboard inbox", url: "/admin/inbox" },
+      { name: "notifications table", description: "Every email send is logged with status (pending / sent / failed / queued_no_sender) for audit trail and replay" },
+    ],
+  },
+  {
+    label: "Content Management (CMS)",
+    value: 95,
+    color: "bg-purple-400",
+    missing: "Section drag-to-reorder for all CMS pages (currently only Shop tab has it); sitemap.xml auto-generation",
+    features: [
+      { name: "Homepage CMS", description: "Hero headline, CTA text, rotating bartender quotes, marquee ticker items, superpowers list — all live-editable", url: "/admin/content" },
+      { name: "Shop page CMS", description: "Section heading, subtitle, empty state text; product thumbnail drag-to-reorder", url: "/admin/content" },
+      { name: "About page CMS", description: "Content blocks, section headings, brand copy", url: "/admin/content" },
+      { name: "Contact page CMS", description: "Page heading and copy", url: "/admin/content" },
+      { name: "FAQ CMS", description: "Q&A pairs — add, edit, delete, reorder; section heading", url: "/admin/content" },
+      { name: "Terms of Service CMS", description: "Title, rich HTML body, last updated date — fully editable without a deploy", url: "/terms" },
+      { name: "Privacy Policy CMS", description: "Title, rich HTML body, last updated date — fully editable without a deploy", url: "/privacy" },
+      { name: "SiteEditor floating panel", description: "Edit Page button appears on every CMS page for admins; slides in a field editor panel with instant save" },
+      { name: "RichTextInput editor", description: "Formatting toolbar for html-type fields — bold, italic, headings, lists, links" },
+      { name: "getValue() fallback pattern", description: "Every CMS field has a hardcoded fallback — pages render correctly even with an empty DB" },
+      { name: "OG metadata on all products", description: "og_title, og_description, og_image backfilled on all 26 products for social sharing previews" },
+      { name: "Product copy editor", description: "Per-product: description, long description, humor/zinger, bad bartender advice — drag-to-reorder sections in admin", url: "/admin/products" },
+      { name: "Blog CMS", description: "Create, edit, publish, and delete blog posts; slug auto-generation; tag management", url: "/admin/blog" },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Data — backlog
 // ---------------------------------------------------------------------------
 const BACKLOG = {
@@ -412,22 +605,28 @@ function PhaseTracker() {
   );
 }
 
-function ProgressBar({ label, value, color = "bg-[#fde047]" }: { label: string; value: number; color?: string }) {
+function ClickableProgressBar({ area, selected, onClick }: { area: Area; selected: boolean; onClick: () => void }) {
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{label}</span>
-        <span className="font-medium text-foreground">{value}%</span>
+    <button
+      onClick={onClick}
+      className="w-full text-left space-y-1 group cursor-pointer"
+    >
+      <div className="flex justify-between items-center text-xs text-muted-foreground">
+        <span className={`flex items-center gap-1.5 transition-colors ${selected ? "text-[#fde047]" : "group-hover:text-foreground"}`}>
+          {selected ? <ChevronUp className="h-3 w-3 shrink-0" /> : <Info className="h-3 w-3 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />}
+          {area.label}
+        </span>
+        <span className="font-medium text-foreground">{area.value}%</span>
       </div>
       <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
         <motion.div
-          className={`h-full rounded-full ${color}`}
+          className={`h-full rounded-full ${area.color}`}
           initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
+          animate={{ width: `${area.value}%` }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
         />
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -665,6 +864,7 @@ export default function ProjectStatus() {
   const [changes, setChanges] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
   const handleNotify = async () => {
     if (!summary.trim()) return;
@@ -740,17 +940,64 @@ export default function ProjectStatus() {
       {/* Progress Bars */}
       <Card className="border-border bg-card">
         <CardContent className="p-4 space-y-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Progress by Area</p>
-          <ProgressBar label="Infrastructure & Deployment" value={100} />
-          <ProgressBar label="Database & Edge Functions" value={99} />
-          <ProgressBar label="Admin Dashboard" value={98} />
-          <ProgressBar label="Public Storefront" value={98} />
-          <ProgressBar label="Payments & Checkout" value={100} color="bg-green-400" />
-          <ProgressBar label="Fulfillment Pipeline" value={90} color="bg-yellow-400" />
-          <ProgressBar label="Email & Notifications" value={98} color="bg-blue-400" />
-          <ProgressBar label="Content Management (CMS)" value={95} color="bg-purple-400" />
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Progress by Area — click any bar to see features</p>
+          {AREAS.map((area) => (
+            <ClickableProgressBar
+              key={area.label}
+              area={area}
+              selected={selectedArea?.label === area.label}
+              onClick={() => setSelectedArea(selectedArea?.label === area.label ? null : area)}
+            />
+          ))}
         </CardContent>
       </Card>
+
+      {/* Feature detail dialog */}
+      <Dialog open={!!selectedArea} onOpenChange={(open) => { if (!open) setSelectedArea(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-card border-border">
+          {selectedArea && (
+            <>
+              <DialogHeader className="pb-2">
+                <DialogTitle className="flex items-center gap-2 text-foreground">
+                  {selectedArea.label}
+                  <span className="text-sm font-normal text-muted-foreground">{selectedArea.value}% complete</span>
+                </DialogTitle>
+                {selectedArea.missing && (
+                  <div className="flex items-start gap-2 mt-2 p-3 rounded-md bg-yellow-400/10 border border-yellow-400/20 text-xs text-yellow-300">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span><span className="font-medium">To reach 100%:</span> {selectedArea.missing}</span>
+                  </div>
+                )}
+              </DialogHeader>
+              <div className="space-y-1 mt-2">
+                {selectedArea.features.map((f) => (
+                  <div key={f.name} className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-0">
+                    <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-400" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-foreground">{f.name}</span>
+                        {f.url && (
+                          <a
+                            href={f.url}
+                            target={f.url.startsWith("http") ? "_blank" : "_self"}
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] text-[#fde047]/70 hover:text-[#fde047] transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-2.5 w-2.5" />
+                            {f.url.startsWith("http") ? "view on GitHub" : f.url}
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Tabs */}
       <Tabs defaultValue="log" className="space-y-4">
