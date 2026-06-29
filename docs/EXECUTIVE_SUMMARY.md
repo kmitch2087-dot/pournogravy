@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** June 15, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -54,7 +54,7 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 ### Storefront
 - **Hero carousel** — auto-rotating product showcase with featured designs and brand messaging
 - **Shop page** — full product catalog with live search (`?q=`) and sort controls (Featured / Price / A→Z)
-- **Product detail pages** — per-product pages with size selector, color selector (Black / Cream), Men's/Women's fit variants, image galleries, star ratings, and humor-forward "Bad Bartender Advice" copy
+- **Product detail pages** — per-product pages with size selector, color selector (Black / Cream / etc.), image galleries, star ratings, and humor-forward "Bad Bartender Advice" copy
 - **Collections page** — curated product groupings
 - **Featured products** — dynamically controlled from product data; easy to update
 - **Wishlist** — customers can save products with a heart toggle; persists without an account (localStorage) and syncs to their profile on login
@@ -111,7 +111,7 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (June 15, 2026)
+## 4. Current Status (June 29, 2026)
 
 **Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, financial dashboard, email templates, blog, and contact form are all fully operational. All transactional emails are branded and live. The Cloudflare Email Worker is deployed — one 30-second manual step (updating the routing rule in CF Dashboard) completes inbound email. The following items remain before a full marketing push:
 

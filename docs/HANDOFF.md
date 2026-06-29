@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** June 22, 2026 (WebP image conversion, QA a11y/SEO/CLS fixes, font render-blocking fix, priority images, Lighthouse baseline measurement)  
+**Last Updated:** June 29, 2026 (CMS-editable Terms/Privacy, product image SEO rename, back logo Storage upload, Stripe PaymentIntent analytics)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -346,7 +346,7 @@ All functions live in `supabase/functions/`.
 
 | Function | Purpose | Required Secrets |
 |----------|---------|-----------------|
-| `create-checkout` | Creates Stripe PaymentIntent, validates prices server-side | `STRIPE_SECRET_KEY` |
+| `create-checkout` | Creates Stripe PaymentIntent, validates prices server-side. Sets `description` ("F Off Karen — Black / L × 2") and `metadata.items` (JSON) for Stripe analytics. | `STRIPE_SECRET_KEY` |
 | `stripe-webhook` | Handles `payment_intent.succeeded` — marks order paid, queues printer | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` |
 | `send-notification` | Resend email dispatch with `{{variable}}` template substitution | `RESEND_API_KEY` |
 | `send-reply` | Admin reply to edit_requests via email | `RESEND_API_KEY` |
@@ -451,6 +451,12 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### June 29, 2026
+- **Terms/Privacy CMS-editable** — `TermsOfService.tsx` and `PrivacyPolicy.tsx` now use `useSiteContent()`. Full HTML content stored as fallback constants; `site_content` rows seeded for both pages with `value_type='html'`. `PATH_TO_PAGE` in `SiteEditor.tsx` extended with `/terms` → `"terms"` and `/privacy` → `"privacy"`. `"html"` added to `value_type` union in `SiteContentContext.tsx`. Commit `00f22b3`.
+- **Product image SEO rename** — 4 new detail images added from Desktop screenshots. All 24 active product images renamed to `[concept]-bartender-[category]-[n].webp` pattern. Supabase `products` table `image_url` and `images` arrays updated to match. 52 new files committed `4077788`. Originals kept alongside.
+- **Back logo Storage upload** — confirmed `stripe-webhook` has complete `backLogoForColor()` logic: dark garments (black, navy, charcoal, etc.) get white-ink logo; light garments get black-ink logo. Logo source files (`logo_pournogravy_com_WHITE_INK.png` / `_BLACK_INK.png`) uploaded to Supabase Storage `print-files/back/logo_back_white.png` and `print-files/back/logo_back_black.png`. These are the exact URLs the webhook assembles in `designLinks`. Publicly accessible at full CDN URL.
+- **Stripe PaymentIntent analytics** — `create-checkout` (v37) now sets `description` (e.g. `"F Off Karen — Black / L × 2"`) and `metadata.items` (compact JSON with product_id, name, color, size, qty per item) on every PaymentIntent. `buildLineItemName()` helper added. `variant` field excluded (all shirts are unisex). Commit `10593db`.
 
 ### June 22, 2026
 - **QA audit report** — full audit generated: `~/Desktop/Pournogravy_QA_Report_2026-06-22.md`. Covers Lighthouse scores, accessibility, SEO, security (35 tables RLS checked), best practices, functional/routing, email/payments, analytics.
