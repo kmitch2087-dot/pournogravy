@@ -113,7 +113,7 @@
 - [x] **Resend domain verify** — ✅ Verified June 16, 2026
 - [x] **CF Email routing rule** — ✅ Set June 16, 2026 (`opie@pournogravy.com` → `pournogravy-receive-email` worker)
 - [ ] **Place test order** — verify customer confirmation + printer email both land correctly end-to-end
-- [ ] **Opie: update product costs** — Admin → Bookkeeping → Products before July 1st month close
+- [x] **Opie: product costs** — ✅ Confirmed correct June 29, 2026
 
 ### ✅ Dev Work — All Done (June 17, 2026)
 - [x] All bookkeeping migrations applied (`20260617000010`, `000020`, `000021`, `000030`, `000001`, `000002`, `000003`)
@@ -150,7 +150,7 @@ These items require Opie's hands — not developer work. Migrated from the in-ap
 | Priority | Task | Detail |
 |----------|------|--------|
 | ~~CRITICAL~~ | ✅ Resend Domain Verified | Done June 16, 2026. pournogravy.com is verified and ready to send emails. |
-| HIGH | Update Bookkeeping → Products costs | Admin → Bookkeeping → Products — enter actual print cost per item before July 1st. Until then COGS falls back to $12/item default. |
+| ~~HIGH~~ | ✅ Product costs entered | All product costs confirmed correct in Bookkeeping → Products as of June 29, 2026. |
 | MEDIUM | Order Samples | Order at least 1 shirt from each printer before committing. Check: print quality, fabric, wash test, packaging, delivery time. |
 | LOW | Set Up Google Business Profile | Visit google.com/business and claim or create a profile for Pournogravy. Helps search visibility even for online-only brands. |
 
