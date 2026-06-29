@@ -27,6 +27,18 @@ interface CartItem {
   image?: string;
 }
 
+function buildLineItemName(item: {
+  name: string;
+  color?: string;
+  variant?: string;
+  size?: string;
+}): string {
+  const details: string[] = [];
+  if (item.color) details.push(item.color);
+  if (item.size)  details.push(item.size);
+  return details.length > 0 ? `${item.name} — ${details.join(" / ")}` : item.name;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
@@ -188,12 +200,31 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
     // Create a PaymentIntent — the frontend renders its own branded form using this secret
+    const description = safeItems
+      .map((i) => `${buildLineItemName(i)} × ${i.quantity}`)
+      .join(", ");
+
+    const itemsMeta = JSON.stringify(
+      safeItems.map((i) => ({
+        product_id: i.product_id,
+        name: i.name,
+        color: i.color ?? "",
+        size: i.size ?? "",
+        qty: i.quantity,
+      }))
+    ).slice(0, 500);
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: total,
       currency: "usd",
       automatic_payment_methods: { enabled: true },
       receipt_email: email,
-      metadata: { order_id: order.id },
+      description,
+      metadata: {
+        order_id: order.id,
+        item_count: String(safeItems.length),
+        items: itemsMeta,
+      },
     });
 
     await supabase
