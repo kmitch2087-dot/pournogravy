@@ -73,12 +73,33 @@ const Field = ({
   </div>
 );
 
+// Reusable branded checkbox
+function Checkbox({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer group">
+      <div className="relative mt-0.5 shrink-0">
+        <input id={id} type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <div className={`h-4 w-4 border flex items-center justify-center transition-colors ${checked ? "border-[#fde047] bg-[#fde047]" : "border-border bg-transparent group-hover:border-[#fde047]/50"}`}>
+          {checked && <svg className="h-2.5 w-2.5 text-black" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
+      </div>
+      <span className="text-xs text-muted-foreground leading-relaxed">{children}</span>
+    </label>
+  );
+}
+
 const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId: string; initialEmail: string; serverTotal: number; userId?: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
   const [elementReady, setElementReady] = useState(false);
   const [error, setError] = useState("");
+
+  // Account creation (guests only)
+  const [wantsAccount, setWantsAccount] = useState(false);
+  const [password, setPassword] = useState("");
+
+  // Marketing optin
   const [emailOptin, setEmailOptin] = useState(true);
 
   const [form, setForm] = useState({
@@ -107,12 +128,12 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
         if (!data) return;
         setForm((prev) => ({
           ...prev,
-          fullName: data.shipping_name  ?? prev.fullName,
-          address1: data.shipping_line1 ?? prev.address1,
-          address2: data.shipping_line2 ?? prev.address2,
-          city:     data.shipping_city  ?? prev.city,
-          state:    data.shipping_state ?? prev.state,
-          zip:      data.shipping_zip   ?? prev.zip,
+          fullName: data.shipping_name    ?? prev.fullName,
+          address1: data.shipping_line1   ?? prev.address1,
+          address2: data.shipping_line2   ?? prev.address2,
+          city:     data.shipping_city    ?? prev.city,
+          state:    data.shipping_state   ?? prev.state,
+          zip:      data.shipping_zip     ?? prev.zip,
           country:  data.shipping_country ?? prev.country,
         }));
       });
@@ -125,11 +146,37 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       setError("Please fill in all required fields.");
       return;
     }
+    if (wantsAccount && password.length > 0 && password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setSubmitting(true);
     setError("");
 
-    // Persist shipping address for next time (fire-and-forget, don't block payment)
-    if (userId) {
+    let resolvedUserId = userId;
+
+    // Create account if requested (do this before payment so we can save address)
+    if (!userId && wantsAccount && password.length >= 8) {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: form.email,
+        password,
+        options: { data: { full_name: form.fullName } },
+      });
+      if (signUpError) {
+        const msg = signUpError.message.toLowerCase();
+        if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("email")) {
+          setError("An account with this email already exists. Log in first or continue as a guest.");
+        } else {
+          setError(signUpError.message);
+        }
+        setSubmitting(false);
+        return;
+      }
+      resolvedUserId = signUpData.user?.id;
+    }
+
+    // Save shipping address to profile (fire-and-forget)
+    if (resolvedUserId) {
       supabase.from("profiles").update({
         shipping_name:    form.fullName,
         shipping_line1:   form.address1,
@@ -138,7 +185,14 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
         shipping_state:   form.state,
         shipping_zip:     form.zip,
         shipping_country: form.country,
-      }).eq("id", userId).then(() => {});
+      }).eq("id", resolvedUserId).then(() => {});
+    }
+
+    // Save to email subscribers list if opted in (fire-and-forget)
+    if (emailOptin && form.email) {
+      supabase.from("email_subscribers")
+        .upsert({ email: form.email.trim().toLowerCase(), source: "checkout" }, { onConflict: "email" })
+        .then(() => {});
     }
 
     const { error: stripeError } = await stripe.confirmPayment({
@@ -167,29 +221,56 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
     // On success Stripe redirects to return_url automatically
   };
 
+  const isGuest = !userId;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Contact */}
       <section className="space-y-4">
         <h2 className="font-display text-xs tracking-[0.25em] uppercase text-[#fde047]">Contact</h2>
         <Field label="Email" id="email" type="email" value={form.email} onChange={f("email")} required autoComplete="email" />
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={emailOptin}
-              onChange={(e) => setEmailOptin(e.target.checked)}
-            />
-            <div className={`h-4 w-4 border flex items-center justify-center transition-colors ${emailOptin ? "border-[#fde047] bg-[#fde047]" : "border-border bg-transparent"}`}>
-              {emailOptin && <svg className="h-2.5 w-2.5 text-black" fill="currentColor" viewBox="0 0 12 12"><path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-          </div>
-          <span className="text-xs text-muted-foreground leading-relaxed">
-            Notify me about new drops and deals. We won't spam you like your wounded ex, or sell your info.
-          </span>
-        </label>
       </section>
+
+      {/* Account creation — guests only */}
+      {isGuest && (
+        <section className="space-y-4 border border-border/50 rounded p-4 bg-white/[0.02]">
+          <Checkbox id="wants-account" checked={wantsAccount} onChange={setWantsAccount}>
+            <span>
+              <span className="text-foreground font-medium">Save my info & track my order</span>
+              {" — "}create a free account with this email. Never re-enter your address.
+            </span>
+          </Checkbox>
+
+          {wantsAccount && (
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="password" className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground">
+                Password <span className="text-muted-foreground/60 normal-case tracking-normal">(min 8 characters)</span>
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a password"
+                autoComplete="new-password"
+                minLength={8}
+                className="bg-[#0a0a0a] border-[rgba(253,224,71,0.2)] focus:border-[rgba(253,224,71,0.5)] focus-visible:ring-0"
+              />
+            </div>
+          )}
+
+          <Checkbox id="email-optin" checked={emailOptin} onChange={setEmailOptin}>
+            Email me about new drops, bar industry news, and the occasional deal. No spam — just the good stuff. Unsubscribe any time.
+          </Checkbox>
+        </section>
+      )}
+
+      {/* Email optin for logged-in users (no account creation needed) */}
+      {!isGuest && (
+        <Checkbox id="email-optin-auth" checked={emailOptin} onChange={setEmailOptin}>
+          Email me about new drops, bar industry news, and the occasional deal.
+        </Checkbox>
+      )}
 
       {/* Shipping */}
       <section className="space-y-4">
