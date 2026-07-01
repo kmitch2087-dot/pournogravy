@@ -1,4 +1,5 @@
 import SEO from "@/components/SEO";
+import { SponsorAd } from "@/components/SponsorAd";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { RichText } from "@/components/RichText";
 import { DropShopBanner } from "@/components/DropShopBanner";
@@ -183,6 +184,9 @@ const Shop = () => {
             </div>
           </div>
         </div>
+
+        {/* Sponsor banner — renders nothing when no active sponsor */}
+        <SponsorAd placement="shop_banner" />
 
         {/* Grid */}
         {filtered.length > 0 ? (

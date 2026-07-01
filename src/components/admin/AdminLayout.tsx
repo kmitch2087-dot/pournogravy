@@ -36,6 +36,7 @@ import {
   PieChart,
   PenLine,
   GripVertical,
+  Megaphone,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -83,6 +84,7 @@ const navItems: NavItem[] = [
   { to: "/admin/customers",      label: "Customer Lookup",      icon: Users,           end: false, description: "Search and view individual customer records" },
   { to: "/admin/discount-codes", label: "Discount Codes",       icon: Tag,             end: false, description: "Create and manage promotional discount codes" },
   { to: "/admin/blog",           label: "Blog",                 icon: BookOpen,        end: false, description: "Write and publish blog posts (The Shift Log)" },
+  { to: "/admin/sponsors",       label: "Sponsors",             icon: Megaphone,       end: false, description: "Ad placements, sponsor tracking, click and impression counts" },
   { to: "/admin/finances",       label: "Finances",             icon: PieChart,        end: false, description: "Revenue, invoices, expenses, and tax estimates" },
   { to: "/admin/easter-eggs",    label: "Easter Eggs",          icon: Sparkles,        end: false, description: "Hidden features and fun surprises on the site" },
   { to: "/admin/print-files",    label: "Print Files",          icon: FileImage,       end: false, description: "Manage printable design files for fulfillment" },

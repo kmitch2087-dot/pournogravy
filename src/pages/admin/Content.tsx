@@ -30,14 +30,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
-const PAGES = ["home", "shop", "about", "contact", "faq", "global"] as const;
+const PAGES = ["home", "shop", "about", "contact", "faq", "advertise", "global"] as const;
 type PageKey = (typeof PAGES)[number];
 
 const PAGE_LABELS: Record<PageKey, string> = {
-  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ", global: "Global",
+  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ", advertise: "Advertise With Us", global: "Global",
 };
 const PAGE_URLS: Record<PageKey, string> = {
-  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq", global: "/",
+  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq", advertise: "/advertise", global: "/",
 };
 
 // ─── Original seeded superpowers keys — no delete button on these ─────────────
@@ -49,8 +49,9 @@ const STRUCTURAL_SECTIONS: Record<string, Set<string>> = {
   shop:    new Set(["header", "cart", "checkout"]),
   about:   new Set(["hero", "pullquote", "manifesto", "cta", "body"]),
   contact: new Set(["hero", "header", "sidebar"]),
-  faq:     new Set(["hero", "header", "items", "cta"]),
-  global:  new Set(["footer"]),
+  faq:       new Set(["hero", "header", "items", "cta"]),
+  advertise: new Set(["hero", "audience", "placements", "contact"]),
+  global:    new Set(["footer"]),
 };
 
 // ─── Field hints (static) ─────────────────────────────────────────────────────

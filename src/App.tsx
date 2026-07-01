@@ -64,6 +64,8 @@ const Loyalty        = lazy(() => import("./pages/admin/Loyalty"));
 const Customers      = lazy(() => import("./pages/admin/Customers"));
 const Subscribers    = lazy(() => import("./pages/admin/Subscribers"));
 const DiscountCodes  = lazy(() => import("./pages/admin/DiscountCodes"));
+const Advertise      = lazy(() => import("./pages/Advertise"));
+const AdminSponsors  = lazy(() => import("./pages/admin/Sponsors"));
 const Content        = lazy(() => import("./pages/admin/Content"));
 const BlogAdmin      = lazy(() => import("./pages/admin/BlogAdmin"));
 const EmailTemplates  = lazy(() => import("./pages/admin/EmailTemplates"));
@@ -173,6 +175,7 @@ const App = () => (
                       <Route path="email-templates"   element={<Navigate to="/admin/inbox?tab=templates" replace />} />
                       <Route path="easter-eggs"       element={<EasterEggs />} />
                       <Route path="print-files"       element={<PrintFiles />} />
+                      <Route path="sponsors"          element={<AdminSponsors />} />
                       <Route path="finances"          element={<Finances />} />
                       <Route path="financials"        element={<Navigate to="/admin/finances" replace />} />
                       <Route path="invoices"          element={<Navigate to="/admin/finances" replace />} />
@@ -188,6 +191,7 @@ const App = () => (
                     <Route path="/blog/:slug"  element={<BlogPost />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/terms"   element={<TermsOfService />} />
+                    <Route path="/advertise"      element={<Advertise />} />
                     <Route path="/ship/:orderId"  element={<ShipOrder />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

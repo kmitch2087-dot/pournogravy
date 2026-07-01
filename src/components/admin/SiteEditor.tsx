@@ -23,8 +23,9 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/about":   "about",
   "/contact": "contact",
   "/faq":     "faq",
-  "/terms":   "terms",
-  "/privacy": "privacy",
+  "/terms":     "terms",
+  "/privacy":   "privacy",
+  "/advertise": "advertise",
 };
 
 // ─── Image upload ─────────────────────────────────────────────────────────────
