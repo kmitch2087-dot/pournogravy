@@ -431,9 +431,9 @@ const AREAS: Area[] = [
   },
   {
     label: "Fulfillment Pipeline",
-    value: 90,
+    value: 93,
     color: "bg-yellow-400",
-    missing: "Live test order (biggest gap — pipeline is built but not verified end-to-end) + CF email routing rule (30-second manual step in CF Dashboard: pournogravy.com → Email → Routing Rules → opie@pournogravy.com → pournogravy-receive-email)",
+    missing: "Live test order — the entire pipeline is built but hasn't been verified end-to-end yet (printer email → tracking link → customer shipped email). One test order closes this.",
     features: [
       { name: "Printer email on payment", description: "stripe-webhook sends printer_notification email with order items, shipping address, design links, cost box, CSV attachment, and HMAC tracking magic link" },
       { name: "Auto-matched back logo", description: "Garment color auto-selects ink: dark shirts (black/navy/charcoal) → white ink logo; light shirts → black ink logo. Logo PNGs live in Supabase Storage print-files/back/" },
@@ -451,9 +451,9 @@ const AREAS: Area[] = [
   },
   {
     label: "Email & Notifications",
-    value: 98,
+    value: 100,
     color: "bg-blue-400",
-    missing: "CF email routing rule — 30 seconds in CF Dashboard: pournogravy.com → Email → Routing Rules → edit opie@pournogravy.com rule → change destination to pournogravy-receive-email worker",
+    missing: null,
     features: [
       { name: "Order confirmation", description: "Branded dark theme email — POURnogravy logo, Opie's bartender voice, order items + totals, mock product image, branded footer", url: "/admin/email-templates" },
       { name: "Order shipped", description: "Customer notification when order is marked shipped — includes clickable tracking URL" },
@@ -463,7 +463,7 @@ const AREAS: Area[] = [
       { name: "Blast email", description: "Admin sends bulk promotional email to all email_subscribers via send-notification loop" },
       { name: "Email Templates admin", description: "Rich editor for all templates — Visual/HTML/Preview/Plain Text tabs, formatting toolbar, variable chips, live preview, one-click test send", url: "/admin/email-templates" },
       { name: "Resend domain verified", description: "pournogravy.com — DKIM + SPF active; opie@pournogravy.com is a verified sender" },
-      { name: "Inbound email — CF Worker", description: "pournogravy-receive-email CF Worker deployed; parses inbound email via postal-mime, posts to receive-email edge fn, stores in inbox_messages, alerts admin" },
+      { name: "Inbound email — CF Worker + routing rule", description: "pournogravy-receive-email CF Worker deployed; opie@pournogravy.com routing rule active in CF Dashboard — all inbound mail hits the Worker, gets parsed via postal-mime, stored in inbox_messages, and alerts admin" },
       { name: "Admin Inbox", description: "All inbound emails visible in the admin dashboard inbox", url: "/admin/inbox" },
       { name: "notifications table", description: "Every email send is logged with status (pending / sent / failed / queued_no_sender) for audit trail and replay" },
     ],

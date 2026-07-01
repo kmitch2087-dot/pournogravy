@@ -136,7 +136,7 @@ At the start of each new Cowork session on this project:
 6. ✅ email_templates seeded: order_confirmation, printer_notification, custom_request
 7. ✅ Supabase Storage `products` bucket created (public read)
 8. ✅ Supabase Storage `print-files` bucket created; 74 PNGs uploading (black/ + white/)
-9. ⚠️ Move opie@pournogravy.com email off GoDaddy (inbound MX conflicts — non-urgent)
+9. ✅ CF email routing rule set — opie@pournogravy.com routes to pournogravy-receive-email Worker (done July 1, 2026)
 10. ⚠️ Place test order to verify full fulfillment email flow
 
 ## Style Preferences
