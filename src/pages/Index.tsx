@@ -2,7 +2,7 @@ import React from "react";
 import SEO from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight, Star, Share2, Link2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
@@ -32,6 +32,8 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0); // ALWAYS starts at 0 on mount
   const { getValue, rows } = useSiteContent();
@@ -806,7 +808,7 @@ const Index = () => {
       </section>
 
       {/* Email Signup — full-bleed dark band */}
-      <section className="relative bg-black text-white overflow-hidden">
+      <section id="newsletter" className="relative bg-black text-white overflow-hidden">
         <div
           aria-hidden="true"
           className="absolute inset-0 opacity-40"
@@ -890,6 +892,68 @@ const Index = () => {
                 </Button>
               </form>
             )}
+
+            {/* Share button */}
+            <div className="mt-6 flex justify-center">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const shareData = {
+                      title: "POURnogravy — Join the Shift",
+                      text: "Early drops, bartender humor, and discounts that actually feel like ones.",
+                      url: "https://pournogravy.com/#newsletter",
+                    };
+                    if (navigator.share) {
+                      try { await navigator.share(shareData); } catch (_) { /* user cancelled */ }
+                    } else {
+                      setShareOpen((o) => !o);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 text-xs text-white/40 hover:text-[#fde047] transition-colors tracking-widest uppercase font-display"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  Share this
+                </button>
+
+                {shareOpen && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                    <a
+                      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("Early drops, bartender humor, and discounts that actually feel like ones. Sign up 👇")}&url=${encodeURIComponent("https://pournogravy.com/#newsletter")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setShareOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      Post on X
+                    </a>
+                    <a
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://pournogravy.com/#newsletter")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setShareOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      Share on Facebook
+                    </a>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText("https://pournogravy.com/#newsletter");
+                        setCopied(true);
+                        setTimeout(() => { setCopied(false); setShareOpen(false); }, 1500);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5 text-green-400 shrink-0" /> : <Link2 className="h-3.5 w-3.5 shrink-0" />}
+                      {copied ? "Copied!" : "Copy link"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
