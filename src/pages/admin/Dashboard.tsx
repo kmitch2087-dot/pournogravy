@@ -442,7 +442,7 @@ const Dashboard = () => {
           onClick={handleWelcomeOpen}
           className="w-full py-3 border border-[#fde047]/40 bg-[#fde047]/5 text-[#fde047] font-display tracking-widest text-sm hover:bg-[#fde047]/10 transition-colors animate-pulse"
         >
-          RESET DATA
+          RESET DATA &nbsp;&nbsp; VOLUME UP FOR AUDIO INSTRUCTIONS THEN CLICK HERE
         </button>
       )}
 
