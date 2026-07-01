@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, ShoppingBag } from "lucide-react";
+import { Loader2, ArrowLeft, ShoppingBag, Trash2, Plus } from "lucide-react";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -73,6 +73,19 @@ const Field = ({
   </div>
 );
 
+interface ShippingAddress {
+  id: string;
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  is_primary: boolean;
+  last_used_at: string;
+}
+
 // Reusable branded checkbox
 function Checkbox({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
@@ -88,12 +101,134 @@ function Checkbox({ id, checked, onChange, children }: { id: string; checked: bo
   );
 }
 
+// Radio dot
+function RadioDot({ selected }: { selected: boolean }) {
+  return (
+    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? "border-[#fde047]" : "border-border"}`}>
+      {selected && <div className="h-2 w-2 rounded-full bg-[#fde047]" />}
+    </div>
+  );
+}
+
+// Saved address picker
+function AddressPicker({ addresses, selectedId, onSelect, onDelete }: {
+  addresses: ShippingAddress[];
+  selectedId: string | "new";
+  onSelect: (id: string | "new") => void;
+  onDelete: (id: string) => void;
+}) {
+  const maxReached = addresses.length >= 5;
+
+  return (
+    <div className="space-y-2">
+      {addresses.map((addr) => {
+        const selected = selectedId === addr.id;
+        return (
+          <div
+            key={addr.id}
+            onClick={() => onSelect(addr.id)}
+            className={`flex items-start justify-between gap-2 p-3 border cursor-pointer transition-colors ${selected ? "border-[#fde047] bg-[#fde047]/5" : "border-border hover:border-border/60"}`}
+          >
+            <div className="flex items-start gap-2.5 flex-1 min-w-0">
+              <RadioDot selected={selected} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  {addr.is_primary && (
+                    <span className="text-[9px] font-display tracking-widest uppercase text-[#fde047] border border-[#fde047]/40 px-1.5 py-0.5 leading-none">
+                      Primary
+                    </span>
+                  )}
+                  <span className="text-sm font-medium leading-tight">{addr.name}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{addr.city}, {addr.state} {addr.zip} · {addr.country}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDelete(addr.id); }}
+              className="shrink-0 p-1.5 text-muted-foreground hover:text-red-400 transition-colors"
+              title="Delete this address"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+
+      {/* Add new */}
+      <button
+        type="button"
+        onClick={() => { if (!maxReached) onSelect("new"); }}
+        disabled={maxReached}
+        className={`w-full flex items-center gap-2.5 p-3 border transition-colors text-left ${
+          selectedId === "new" && !maxReached
+            ? "border-[#fde047] bg-[#fde047]/5"
+            : maxReached
+            ? "border-border opacity-40 cursor-not-allowed"
+            : "border-dashed border-border hover:border-[#fde047]/40"
+        }`}
+      >
+        <RadioDot selected={selectedId === "new" && !maxReached} />
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          {maxReached ? (
+            "Max 5 addresses reached — delete one to add another"
+          ) : (
+            <><Plus className="h-3.5 w-3.5" /> Add a new address</>
+          )}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// Address form fields (used for new address entry and guest checkout)
+function AddressForm({ form, setForm }: {
+  form: { fullName: string; address1: string; address2: string; city: string; state: string; zip: string; country: string };
+  setForm: React.Dispatch<React.SetStateAction<{ fullName: string; email: string; address1: string; address2: string; city: string; state: string; zip: string; country: string }>>;
+}) {
+  const f = (field: "fullName" | "address1" | "address2" | "city" | "state" | "zip") =>
+    (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [field]: e.target.value }));
+
+  return (
+    <div className="space-y-4">
+      <Field label="Full name" id="fullName" value={form.fullName} onChange={f("fullName")} required autoComplete="name" />
+      <Field label="Address" id="address1" value={form.address1} onChange={f("address1")} required autoComplete="address-line1" />
+      <Field label="Apartment, suite, etc." id="address2" value={form.address2} onChange={f("address2")} autoComplete="address-line2" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="City" id="city" value={form.city} onChange={f("city")} required autoComplete="address-level2" />
+        <Field label="State / Province" id="state" value={form.state} onChange={f("state")} required autoComplete="address-level1" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="ZIP / Postal code" id="zip" value={form.zip} onChange={f("zip")} required autoComplete="postal-code" />
+        <div className="space-y-1.5">
+          <Label htmlFor="country" className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground">Country *</Label>
+          <select
+            id="country"
+            value={form.country}
+            onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
+            className="w-full h-10 rounded-none border border-[rgba(253,224,71,0.2)] bg-[#0a0a0a] px-3 text-sm text-foreground focus:outline-none focus:border-[rgba(253,224,71,0.5)]"
+          >
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId: string; initialEmail: string; serverTotal: number; userId?: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
   const [elementReady, setElementReady] = useState(false);
   const [error, setError] = useState("");
+
+  // Saved addresses (logged-in users)
+  const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | "new">("new");
 
   // Account creation (guests only)
   const [wantsAccount, setWantsAccount] = useState(false);
@@ -113,50 +248,86 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
     country: "US",
   });
 
-  const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
-
-  // Auto-fill saved address for logged-in users
+  // Fetch saved addresses for logged-in users
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("profiles")
-      .select("shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_zip, shipping_country")
-      .eq("id", userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        setForm((prev) => ({
-          ...prev,
-          fullName: data.shipping_name    ?? prev.fullName,
-          address1: data.shipping_line1   ?? prev.address1,
-          address2: data.shipping_line2   ?? prev.address2,
-          city:     data.shipping_city    ?? prev.city,
-          state:    data.shipping_state   ?? prev.state,
-          zip:      data.shipping_zip     ?? prev.zip,
-          country:  data.shipping_country ?? prev.country,
-        }));
+    setAddressesLoading(true);
+    (supabase as any)
+      .from("shipping_addresses")
+      .select("*")
+      .eq("user_id", userId)
+      .order("is_primary", { ascending: false })
+      .order("last_used_at", { ascending: false })
+      .then(({ data }: { data: ShippingAddress[] | null }) => {
+        setAddressesLoading(false);
+        if (data && data.length > 0) {
+          setSavedAddresses(data);
+          const primary = data.find((a) => a.is_primary) ?? data[0];
+          setSelectedAddressId(primary.id);
+        }
       });
   }, [userId]);
+
+  const handleDeleteAddress = (id: string) => {
+    (supabase as any).from("shipping_addresses").delete().eq("id", id).then(() => {
+      setSavedAddresses((prev) => {
+        const remaining = prev.filter((a) => a.id !== id);
+        if (selectedAddressId === id) {
+          const next = remaining.find((a) => a.is_primary) ?? remaining[0];
+          setSelectedAddressId(next ? next.id : "new");
+        }
+        return remaining;
+      });
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    if (!form.fullName || !form.email || !form.address1 || !form.city || !form.state || !form.zip) {
-      setError("Please fill in all required fields.");
+    if (!form.email) {
+      setError("Please enter your email address.");
       return;
     }
+
+    const isGuest = !userId;
+    const usingNewAddress = isGuest || selectedAddressId === "new";
+
+    // Validate new address form fields when needed
+    if (usingNewAddress) {
+      if (!form.fullName || !form.address1 || !form.city || !form.state || !form.zip) {
+        setError("Please fill in all required shipping fields.");
+        return;
+      }
+    }
+
     if (wantsAccount && password.length > 0 && password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
+
     setSubmitting(true);
     setError("");
 
-    let resolvedUserId = userId;
+    // Resolve the address to ship to
+    let shipAddr: { name: string; line1: string; line2?: string; city: string; state: string; zip: string; country: string };
+    if (!isGuest && selectedAddressId !== "new") {
+      const addr = savedAddresses.find((a) => a.id === selectedAddressId);
+      if (!addr) {
+        setError("Please select a shipping address.");
+        setSubmitting(false);
+        return;
+      }
+      shipAddr = { name: addr.name, line1: addr.line1, line2: addr.line2 ?? undefined, city: addr.city, state: addr.state, zip: addr.zip, country: addr.country };
+      // Mark as primary (fire-and-forget)
+      supabase.rpc("set_primary_shipping_address" as any, { p_address_id: selectedAddressId }).then(() => {});
+    } else {
+      shipAddr = { name: form.fullName, line1: form.address1, line2: form.address2 || undefined, city: form.city, state: form.state, zip: form.zip, country: form.country };
+    }
 
-    // Create account if requested (do this before payment so we can save address)
-    if (!userId && wantsAccount && password.length >= 8) {
+    let resolvedUserId: string | undefined = userId;
+
+    // Create account if requested
+    if (isGuest && wantsAccount && password.length >= 8) {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: form.email,
         password,
@@ -164,33 +335,47 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       });
       if (signUpError) {
         const msg = signUpError.message.toLowerCase();
-        if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("email")) {
-          setError("An account with this email already exists. Log in first or continue as a guest.");
-        } else {
-          setError(signUpError.message);
-        }
+        setError(
+          msg.includes("already registered") || msg.includes("already exists") || msg.includes("email")
+            ? "An account with this email already exists. Log in first or continue as a guest."
+            : signUpError.message
+        );
         setSubmitting(false);
         return;
       }
       resolvedUserId = signUpData.user?.id;
     }
 
-    // Save shipping address to profile (fire-and-forget)
-    if (resolvedUserId) {
-      supabase.from("profiles").update({
-        shipping_name:    form.fullName,
-        shipping_line1:   form.address1,
-        shipping_line2:   form.address2 || null,
-        shipping_city:    form.city,
-        shipping_state:   form.state,
-        shipping_zip:     form.zip,
-        shipping_country: form.country,
-      }).eq("id", resolvedUserId).then(() => {});
+    // Save new address to shipping_addresses
+    if (resolvedUserId && usingNewAddress) {
+      if (savedAddresses.length >= 5) {
+        setError("You have 5 saved addresses (the maximum). Delete one before adding another.");
+        setSubmitting(false);
+        return;
+      }
+      const { data: newAddr } = await (supabase as any)
+        .from("shipping_addresses")
+        .insert({
+          user_id: resolvedUserId,
+          name:    shipAddr.name,
+          line1:   shipAddr.line1,
+          line2:   shipAddr.line2 ?? null,
+          city:    shipAddr.city,
+          state:   shipAddr.state,
+          zip:     shipAddr.zip,
+          country: shipAddr.country,
+        })
+        .select("id")
+        .single();
+      if (newAddr?.id) {
+        supabase.rpc("set_primary_shipping_address" as any, { p_address_id: newAddr.id }).then(() => {});
+      }
     }
 
-    // Save to email subscribers list if opted in (fire-and-forget)
+    // Email subscribers optin (fire-and-forget)
     if (emailOptin && form.email) {
-      supabase.from("email_subscribers")
+      (supabase as any)
+        .from("email_subscribers")
         .upsert({ email: form.email.trim().toLowerCase(), source: "checkout" }, { onConflict: "email" })
         .then(() => {});
     }
@@ -200,14 +385,14 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       confirmParams: {
         return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${serverTotal.toFixed(2)}`,
         shipping: {
-          name: form.fullName,
+          name: shipAddr.name,
           address: {
-            line1: form.address1,
-            line2: form.address2 || undefined,
-            city: form.city,
-            state: form.state,
-            postal_code: form.zip,
-            country: form.country,
+            line1:       shipAddr.line1,
+            line2:       shipAddr.line2,
+            city:        shipAddr.city,
+            state:       shipAddr.state,
+            postal_code: shipAddr.zip,
+            country:     shipAddr.country,
           },
         },
         receipt_email: form.email,
@@ -218,17 +403,17 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       setError(stripeError.message ?? "Payment failed. Please try again.");
       setSubmitting(false);
     }
-    // On success Stripe redirects to return_url automatically
   };
 
   const isGuest = !userId;
+  const showAddressForm = isGuest || selectedAddressId === "new";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Contact */}
       <section className="space-y-4">
         <h2 className="font-display text-xs tracking-[0.25em] uppercase text-[#fde047]">Contact</h2>
-        <Field label="Email" id="email" type="email" value={form.email} onChange={f("email")} required autoComplete="email" />
+        <Field label="Email" id="email" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required autoComplete="email" />
       </section>
 
       {/* Account creation — guests only */}
@@ -237,7 +422,7 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
           <Checkbox id="wants-account" checked={wantsAccount} onChange={setWantsAccount}>
             <span>
               <span className="text-foreground font-medium">Save my info & track my order</span>
-              {" — "}create a free account with this email. Never re-enter your address.
+              {" — "}create a free account. Never re-enter your address.
             </span>
           </Checkbox>
 
@@ -253,19 +438,18 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a password"
                 autoComplete="new-password"
-                minLength={8}
                 className="bg-[#0a0a0a] border-[rgba(253,224,71,0.2)] focus:border-[rgba(253,224,71,0.5)] focus-visible:ring-0"
               />
             </div>
           )}
 
           <Checkbox id="email-optin" checked={emailOptin} onChange={setEmailOptin}>
-            Email me about new drops, bar industry news, and the occasional deal. No spam — just the good stuff. Unsubscribe any time.
+            Email me about new drops, bar industry news, and the occasional deal. No spam. Unsubscribe any time.
           </Checkbox>
         </section>
       )}
 
-      {/* Email optin for logged-in users (no account creation needed) */}
+      {/* Email optin for logged-in users */}
       {!isGuest && (
         <Checkbox id="email-optin-auth" checked={emailOptin} onChange={setEmailOptin}>
           Email me about new drops, bar industry news, and the occasional deal.
@@ -275,37 +459,35 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       {/* Shipping */}
       <section className="space-y-4">
         <h2 className="font-display text-xs tracking-[0.25em] uppercase text-[#fde047]">Shipping</h2>
-        <Field label="Full name" id="fullName" value={form.fullName} onChange={f("fullName")} required autoComplete="name" />
-        <Field label="Address" id="address1" value={form.address1} onChange={f("address1")} required autoComplete="address-line1" />
-        <Field label="Apartment, suite, etc." id="address2" value={form.address2} onChange={f("address2")} autoComplete="address-line2" />
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="City" id="city" value={form.city} onChange={f("city")} required autoComplete="address-level2" />
-          <Field label="State / Province" id="state" value={form.state} onChange={f("state")} required autoComplete="address-level1" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="ZIP / Postal code" id="zip" value={form.zip} onChange={f("zip")} required autoComplete="postal-code" />
-          <div className="space-y-1.5">
-            <Label htmlFor="country" className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground">Country *</Label>
-            <select
-              id="country"
-              value={form.country}
-              onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
-              className="w-full h-10 rounded-none border border-[rgba(253,224,71,0.2)] bg-[#0a0a0a] px-3 text-sm text-foreground focus:outline-none focus:border-[rgba(253,224,71,0.5)]"
-            >
-              <option value="US">United States</option>
-              <option value="CA">Canada</option>
-            </select>
+
+        {/* Saved address picker for logged-in users */}
+        {!isGuest && (
+          addressesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-xs py-3">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading saved addresses…
+            </div>
+          ) : (
+            <AddressPicker
+              addresses={savedAddresses}
+              selectedId={selectedAddressId}
+              onSelect={setSelectedAddressId}
+              onDelete={handleDeleteAddress}
+            />
+          )
+        )}
+
+        {/* New address form (always shown for guests; shown when "Add new" selected for auth users) */}
+        {showAddressForm && (
+          <div className={!isGuest ? "pt-2 border-t border-border/30" : ""}>
+            <AddressForm form={form} setForm={setForm} />
           </div>
-        </div>
+        )}
       </section>
 
       {/* Payment */}
       <section className="space-y-4">
         <h2 className="font-display text-xs tracking-[0.25em] uppercase text-[#fde047]">Payment</h2>
-        <PaymentElement
-          options={{ layout: "tabs" }}
-          onReady={() => setElementReady(true)}
-        />
+        <PaymentElement options={{ layout: "tabs" }} onReady={() => setElementReady(true)} />
       </section>
 
       {error && (
