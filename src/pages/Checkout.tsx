@@ -4,6 +4,8 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,10 +73,11 @@ const Field = ({
   </div>
 );
 
-const CheckoutForm = ({ orderId, initialEmail, serverTotal }: { orderId: string; initialEmail: string; serverTotal: number }) => {
+const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId: string; initialEmail: string; serverTotal: number; userId?: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
+  const [elementReady, setElementReady] = useState(false);
   const [error, setError] = useState("");
   const [emailOptin, setEmailOptin] = useState(true);
 
@@ -92,6 +95,29 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal }: { orderId: string;
   const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
+  // Auto-fill saved address for logged-in users
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_zip, shipping_country")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setForm((prev) => ({
+          ...prev,
+          fullName: data.shipping_name  ?? prev.fullName,
+          address1: data.shipping_line1 ?? prev.address1,
+          address2: data.shipping_line2 ?? prev.address2,
+          city:     data.shipping_city  ?? prev.city,
+          state:    data.shipping_state ?? prev.state,
+          zip:      data.shipping_zip   ?? prev.zip,
+          country:  data.shipping_country ?? prev.country,
+        }));
+      });
+  }, [userId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
@@ -101,6 +127,19 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal }: { orderId: string;
     }
     setSubmitting(true);
     setError("");
+
+    // Persist shipping address for next time (fire-and-forget, don't block payment)
+    if (userId) {
+      supabase.from("profiles").update({
+        shipping_name:    form.fullName,
+        shipping_line1:   form.address1,
+        shipping_line2:   form.address2 || null,
+        shipping_city:    form.city,
+        shipping_state:   form.state,
+        shipping_zip:     form.zip,
+        shipping_country: form.country,
+      }).eq("id", userId).then(() => {});
+    }
 
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
@@ -182,19 +221,28 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal }: { orderId: string;
       {/* Payment */}
       <section className="space-y-4">
         <h2 className="font-display text-xs tracking-[0.25em] uppercase text-[#fde047]">Payment</h2>
-        <PaymentElement options={{ layout: "tabs" }} />
+        <PaymentElement
+          options={{ layout: "tabs" }}
+          onReady={() => setElementReady(true)}
+        />
       </section>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="rounded border border-red-500/40 bg-red-500/10 px-4 py-3">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
 
       <Button
         type="submit"
-        disabled={!stripe || !elements || submitting}
-        className="w-full h-14 bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest text-base disabled:opacity-50"
+        disabled={!stripe || !elements || !elementReady || submitting}
+        className="w-full h-14 bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest text-base disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ boxShadow: "0 0 20px rgba(253,224,71,0.3)" }}
       >
         {submitting
           ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />PROCESSING…</>
+          : !elementReady
+          ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />LOADING…</>
           : `PAY $${serverTotal.toFixed(2)}`}
       </Button>
     </form>
@@ -207,6 +255,7 @@ const Checkout = () => {
   };
   const navigate = useNavigate();
   const { items, totalPrice, appliedDiscount, discountedTotal } = useCart();
+  const { user } = useAuth();
 
   const { trackCheckoutStart } = useAnalytics();
 
@@ -245,7 +294,7 @@ const Checkout = () => {
             stripe={stripePromise}
             options={{ clientSecret: state.clientSecret, appearance: stripeAppearance }}
           >
-            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} serverTotal={serverTotal} />
+            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} serverTotal={serverTotal} userId={user?.id} />
           </Elements>
         </div>
 
