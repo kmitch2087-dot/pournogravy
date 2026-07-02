@@ -57,6 +57,26 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // Handle charge.refunded: look up order by payment_intent and mark refunded.
+  // This fires when a refund is processed in Stripe (dashboard or API) and keeps
+  // Supabase in sync even if the refund-order edge function errored mid-flight.
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as { payment_intent?: string | { id: string } };
+    const piId = typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+    if (piId) {
+      await supabase
+        .from("orders")
+        .update({ status: "refunded" })
+        .eq("stripe_payment_intent_id", piId)
+        .neq("status", "refunded"); // idempotent — skip if already marked
+    }
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   // Support both payment_intent.succeeded (custom checkout) and
   // checkout.session.completed (legacy hosted checkout)
   let orderId: string | undefined;

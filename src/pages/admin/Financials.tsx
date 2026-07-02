@@ -131,29 +131,13 @@ function useFinancialsData(selectedYear: number) {
       const { data, error } = await supabase
         .from("orders")
         .select("id, total_cents, shipping_cents, status, created_at")
-        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered", "refunded"])
         .eq("is_test", false)
         .gte("created_at", yearStart)
         .lte("created_at", yearEnd)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as OrderRow[];
-    },
-    staleTime: 60_000,
-  });
-
-  const { data: refundedOrders } = useQuery<{ total_cents: number }[]>({
-    queryKey: ["financials-refunds", selectedYear],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("total_cents")
-        .eq("status", "refunded")
-        .eq("is_test", false)
-        .gte("created_at", yearStart)
-        .lte("created_at", yearEnd);
-      if (error) throw error;
-      return (data ?? []) as { total_cents: number }[];
     },
     staleTime: 60_000,
   });
@@ -176,7 +160,6 @@ function useFinancialsData(selectedYear: number) {
 
   return {
     orders: orders ?? [],
-    refundedOrders: refundedOrders ?? [],
     items: items ?? [],
     isLoading: ordersLoading || (orderIds.length > 0 && itemsLoading),
     refetch,
@@ -252,7 +235,7 @@ function Disclosure({ title, children }: { title: string; children: React.ReactN
 export default function Financials() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const { orders, refundedOrders, items, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
+  const { orders, items, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
   const { data: snapshots, isLoading: snapshotsLoading } = useMonthlySnapshots(selectedYear, currentYear);
 
   const isPastYear = selectedYear !== currentYear;
@@ -281,11 +264,13 @@ export default function Financials() {
     : null;
 
   // ── Aggregate revenue (live path — also used as fallback for past years with no snapshots) ──
-  const grossRevenueLive      = orders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
-  const refundsTotalLive      = refundedOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const paidOrders            = orders.filter((o) => o.status !== "refunded");
+  const refundedOrdersLive    = orders.filter((o) => o.status === "refunded");
+  const grossRevenueLive      = paidOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + (o.total_cents ?? 0), 0);
   const netRevenueLive        = grossRevenueLive - refundsTotalLive;
-  const totalShippingLive     = orders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
-  const totalItemsLive        = orders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
+  const totalShippingLive     = paidOrders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
+  const totalItemsLive        = paidOrders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
   const printCogsLive         = totalItemsLive * PRINT_COST_PER_ITEM_CENTS;
   const productRevenueLive    = netRevenueLive - totalShippingLive;
   const grossProfitLive       = productRevenueLive - printCogsLive;
@@ -539,25 +524,35 @@ export default function Financials() {
               </thead>
               <tbody className="divide-y divide-border">
                 {orders.slice(0, 30).map((order) => {
+                  const isRefunded = order.status === "refunded";
                   const itemCount  = itemCountByOrder.get(order.id) ?? 0;
                   const revCents   = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
                   const cogsCents  = itemCount * PRINT_COST_PER_ITEM_CENTS;
-                  const profCents  = revCents - cogsCents;
+                  const profCents  = isRefunded ? 0 : revCents - cogsCents;
                   return (
-                    <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={order.id} className={`transition-colors ${isRefunded ? "opacity-50" : "hover:bg-muted/30"}`}>
                       <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
                         #{order.id.slice(-8).toUpperCase()}
                       </td>
                       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap">
                         {format(new Date(order.created_at), "MMM d")}
                       </td>
-                      <td className="py-2.5 pr-4 font-mono text-xs tabular-nums">{fmt(revCents)}</td>
-                      <td className="py-2.5 pr-4 font-mono text-xs tabular-nums text-orange-400">({fmt(cogsCents)})</td>
-                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums font-semibold ${profCents >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(profCents)}
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isRefunded ? "line-through text-muted-foreground" : ""}`}>
+                        {fmt(revCents)}
+                      </td>
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isRefunded ? "text-muted-foreground" : "text-orange-400"}`}>
+                        {isRefunded ? "—" : `(${fmt(cogsCents)})`}
+                      </td>
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums font-semibold ${isRefunded ? "text-muted-foreground" : profCents >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {isRefunded ? "—" : fmt(profCents)}
                       </td>
                       <td className="py-2.5">
-                        <Badge variant="outline" className="text-[10px]">{order.status}</Badge>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${isRefunded ? "border-rose-500/40 text-rose-400" : ""}`}
+                        >
+                          {order.status}
+                        </Badge>
                       </td>
                     </tr>
                   );

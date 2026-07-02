@@ -72,17 +72,20 @@ Deno.serve(async (req) => {
 
     const stripeBody = await stripeRes.json().catch(() => ({}));
 
-    if (!stripeRes.ok) {
-      const msg =
-        (stripeBody as { error?: { message?: string } })?.error?.message ??
-        `Stripe HTTP ${stripeRes.status}`;
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 502,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    if (!stripeRes.ok) {
+      const stripeError = (stripeBody as { error?: { code?: string; message?: string } })?.error;
+      // "charge_already_refunded" means the money is already back — still update Supabase.
+      if (stripeError?.code !== "charge_already_refunded") {
+        const msg = stripeError?.message ?? `Stripe HTTP ${stripeRes.status}`;
+        return new Response(JSON.stringify({ error: msg }), {
+          status: 502,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      // Fall through: charge already refunded in Stripe — sync the DB status below.
+    }
 
     // Mark order as refunded
     const { error: updateError } = await supabase
@@ -97,12 +100,12 @@ Deno.serve(async (req) => {
     const [orderRes, itemsRes, settingsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, customer_email, shipping_address")
+        .select("id, email, shipping_address")
         .eq("id", order_id)
         .maybeSingle(),
       supabase
         .from("order_items")
-        .select("product_name, quantity, size, color")
+        .select("product_snapshot, quantity")
         .eq("order_id", order_id),
       supabase
         .from("settings")
@@ -120,9 +123,10 @@ Deno.serve(async (req) => {
       const itemLines = items.length
         ? items
             .map((it) => {
-              const parts = [it.product_name ?? "Item", `×${it.quantity}`];
-              if (it.size) parts.push(it.size);
-              if (it.color) parts.push(it.color);
+              const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
+              const parts = [String(s.name ?? "Item"), `×${it.quantity}`];
+              if (s.size) parts.push(String(s.size));
+              if (s.color) parts.push(String(s.color));
               return parts.join(" — ");
             })
             .join("\n")
@@ -133,10 +137,10 @@ Deno.serve(async (req) => {
         .invoke("send-notification", {
           body: {
             templateKey: "printer_cancellation",
-            to: printerEmail,
+            recipient: printerEmail,
             variables: {
               order_id_short: orderIdShort,
-              customer_email: order.customer_email ?? "unknown",
+              customer_email: order.email ?? "unknown",
               order_items: itemLines,
             },
           },
