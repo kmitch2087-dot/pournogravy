@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { RichTextInput } from "@/components/admin/RichTextInput";
 
 interface BlogPost {
   id: string;
@@ -255,13 +256,13 @@ const PostEditor = ({
         {/* Content */}
         <div>
           <Label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">Content</Label>
-          <textarea
-            value={form.content}
-            onChange={(e) => setF({ content: e.target.value })}
-            rows={14}
-            placeholder="Write your post here.&#10;&#10;Double line break = new paragraph."
-            className="w-full text-sm bg-transparent border border-border px-3 py-2 focus:outline-none focus:border-[#fde047] resize-y rounded-md leading-relaxed"
-          />
+          <div className="[&_.ProseMirror]:min-h-[360px] [&_.ProseMirror]:text-sm [&_.ProseMirror]:leading-relaxed">
+            <RichTextInput
+              value={form.content}
+              onChange={(html) => setF({ content: html })}
+              placeholder="Write your post here…"
+            />
+          </div>
         </div>
 
         {/* Tags */}

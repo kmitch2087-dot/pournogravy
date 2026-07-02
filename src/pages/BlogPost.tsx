@@ -69,10 +69,12 @@ const BlogPost = () => {
     );
   }
 
-  const paragraphs = (post.content ?? "")
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const rawContent = post.content ?? "";
+  // Detect whether content is already HTML (from rich text editor) or plain text (legacy)
+  const isHtml = /<[a-z][\s\S]*>/i.test(rawContent);
+  const plainParagraphs = isHtml
+    ? null
+    : rawContent.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 
   return (
     <div className="min-h-screen pt-16 md:pt-20">
@@ -157,13 +159,31 @@ const BlogPost = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="space-y-5"
         >
-          {paragraphs.map((para, i) => (
-            <p key={i} className="text-base md:text-lg text-foreground/90 leading-relaxed">
-              {para}
-            </p>
-          ))}
+          {isHtml ? (
+            <div
+              className="prose prose-invert max-w-none
+                prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:text-base md:prose-p:text-lg
+                prose-headings:font-display prose-headings:tracking-wider prose-headings:text-foreground
+                prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl
+                prose-strong:text-foreground prose-em:text-foreground/80
+                prose-a:text-[#fde047] prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-[#fde047]/80
+                prose-ul:text-foreground/90 prose-ol:text-foreground/90
+                prose-li:marker:text-[#fde047]
+                prose-blockquote:border-l-[#fde047] prose-blockquote:text-foreground/70 prose-blockquote:italic
+                prose-hr:border-border
+                prose-code:text-[#fde047] prose-code:bg-white/5 prose-code:px-1 prose-code:rounded"
+              dangerouslySetInnerHTML={{ __html: rawContent }}
+            />
+          ) : (
+            <div className="space-y-5">
+              {(plainParagraphs ?? []).map((para, i) => (
+                <p key={i} className="text-base md:text-lg text-foreground/90 leading-relaxed">
+                  {para}
+                </p>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Footer nav */}
