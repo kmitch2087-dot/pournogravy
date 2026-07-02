@@ -326,6 +326,21 @@ Deno.serve(async (req) => {
         trackingSubmitUrl = `${siteUrl}/ship/${order.id}?token=${tok}`;
       }
 
+      const TEST_ORDER_EMAILS = ["kmitch2087@gmail.com", "aopie91@gmail.com"];
+      const isTestOrder = TEST_ORDER_EMAILS.includes(order.email?.toLowerCase());
+      const testNote = isTestOrder
+        ? `<div style="background:#fef3c7;border:2px solid #d97706;padding:16px;border-radius:4px;margin-bottom:20px;">
+  <p style="margin:0;font-weight:bold;font-size:15px;color:#92400e;">⚠️ TEST ORDER — Please confirm receipt</p>
+  <p style="margin:8px 0 0;font-size:14px;color:#111;">This is a test to verify the fulfillment flow. Please do the following:</p>
+  <ol style="margin:10px 0 0;padding-left:20px;font-size:14px;color:#111;line-height:2;">
+    <li><strong>Reply to this email</strong> to confirm you received it and the design file links and CSV look correct.</li>
+    <li>Click the "Submit Tracking Number" button below and enter this fake tracking number:<br/><span style="font-family:monospace;font-size:16px;font-weight:bold;letter-spacing:0.05em;color:#000;">9400111899223397622939</span>&nbsp;&nbsp;(USPS)</li>
+    <li>This confirms the magic link → customer shipping notification loop works end-to-end.</li>
+  </ol>
+  <p style="margin:12px 0 0;font-size:12px;color:#666;">Do NOT print or ship anything — this is a test only.</p>
+</div>`
+        : "";
+
       const printerVars = {
         order_number: shortId,
         customer_name: order.email.split("@")[0],
@@ -337,6 +352,7 @@ Deno.serve(async (req) => {
         printer_cost_summary: printerCostSummary,
         mock_image_url: mockImageUrl,
         shipping_cents: shippingCents,
+        test_note: testNote,
       };
 
       await supabase.functions.invoke("send-notification", {
