@@ -77,6 +77,79 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Handle charge.dispute.created: mark order disputed + alert admins.
+  // Chargebacks must be responded to within 7–10 days or they auto-close as lost,
+  // costing the dispute amount + a $15 fee.
+  if (event.type === "charge.dispute.created") {
+    const dispute = event.data.object as Stripe.Dispute;
+    const piId = typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : (dispute.payment_intent as { id: string } | null)?.id;
+
+    if (piId) {
+      const { data: order } = await supabase
+        .from("orders")
+        .select("id, email, total_cents")
+        .eq("stripe_payment_intent_id", piId)
+        .maybeSingle();
+
+      if (order) {
+        await supabase.from("orders").update({ status: "disputed" }).eq("id", order.id);
+
+        const disputeAmount = `$${(dispute.amount / 100).toFixed(2)}`;
+        const dueBy = dispute.evidence_details?.due_by
+          ? new Date(dispute.evidence_details.due_by * 1000).toLocaleDateString("en-US", {
+              month: "long", day: "numeric", year: "numeric",
+            })
+          : "approximately 7 days from now";
+
+        for (const admin of ["kmitch2087@gmail.com", "aopie91@gmail.com"]) {
+          await supabase.functions.invoke("send-notification", {
+            body: {
+              templateKey: "dispute_alert",
+              recipient: admin,
+              relatedKind: "order",
+              relatedId: order.id,
+              variables: {
+                order_number: order.id.slice(0, 8).toUpperCase(),
+                customer_email: order.email ?? "unknown",
+                dispute_amount: disputeAmount,
+                dispute_reason: dispute.reason ?? "unknown",
+                dispute_id: dispute.id,
+                evidence_due_by: dueBy,
+                stripe_dispute_url: `https://dashboard.stripe.com/disputes/${dispute.id}`,
+              },
+            },
+          });
+        }
+      }
+    }
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Handle charge.dispute.closed: restore order status based on outcome.
+  // "won" → funds returned → back to paid. Anything else → effectively refunded.
+  if (event.type === "charge.dispute.closed") {
+    const dispute = event.data.object as Stripe.Dispute;
+    const piId = typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : (dispute.payment_intent as { id: string } | null)?.id;
+
+    if (piId) {
+      const newStatus = dispute.status === "won" ? "paid" : "refunded";
+      await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("stripe_payment_intent_id", piId)
+        .eq("status", "disputed"); // only transition from disputed state
+    }
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   // Support both payment_intent.succeeded (custom checkout) and
   // checkout.session.completed (legacy hosted checkout)
   let orderId: string | undefined;
@@ -312,7 +385,7 @@ Deno.serve(async (req) => {
       ].join("\n");
 
       const csvContent = [csvHeader, ...csvRows].join("\n");
-      const csvBase64 = btoa(csvContent);
+      const csvBase64 = btoa(unescape(encodeURIComponent(csvContent)));
       const shortId = order.id.slice(0, 8).toUpperCase();
 
             const addr = ship ? `${shipAddr?.line1 ?? ""}, ${shipAddr?.city ?? ""}, ${shipAddr?.state ?? ""} ${shipAddr?.postal_code ?? ""}` : "(no address)";

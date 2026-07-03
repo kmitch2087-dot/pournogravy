@@ -131,7 +131,7 @@ function useFinancialsData(selectedYear: number) {
       const { data, error } = await supabase
         .from("orders")
         .select("id, total_cents, shipping_cents, status, created_at")
-        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered", "refunded"])
+        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered", "refunded", "disputed"])
         .eq("is_test", false)
         .gte("created_at", yearStart)
         .lte("created_at", yearEnd)
@@ -264,8 +264,8 @@ export default function Financials() {
     : null;
 
   // ── Aggregate revenue (live path — also used as fallback for past years with no snapshots) ──
-  const paidOrders            = orders.filter((o) => o.status !== "refunded");
-  const refundedOrdersLive    = orders.filter((o) => o.status === "refunded");
+  const paidOrders            = orders.filter((o) => o.status !== "refunded" && o.status !== "disputed");
+  const refundedOrdersLive    = orders.filter((o) => o.status === "refunded" || o.status === "disputed");
   const grossRevenueLive      = paidOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
   const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + (o.total_cents ?? 0), 0);
   const netRevenueLive        = grossRevenueLive - refundsTotalLive;
@@ -525,31 +525,33 @@ export default function Financials() {
               <tbody className="divide-y divide-border">
                 {orders.slice(0, 30).map((order) => {
                   const isRefunded = order.status === "refunded";
+                  const isDisputed = order.status === "disputed";
+                  const isNeutral  = isRefunded || isDisputed;
                   const itemCount  = itemCountByOrder.get(order.id) ?? 0;
                   const revCents   = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
                   const cogsCents  = itemCount * PRINT_COST_PER_ITEM_CENTS;
-                  const profCents  = isRefunded ? 0 : revCents - cogsCents;
+                  const profCents  = isNeutral ? 0 : revCents - cogsCents;
                   return (
-                    <tr key={order.id} className={`transition-colors ${isRefunded ? "opacity-50" : "hover:bg-muted/30"}`}>
+                    <tr key={order.id} className={`transition-colors ${isNeutral ? "opacity-50" : "hover:bg-muted/30"}`}>
                       <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
                         #{order.id.slice(-8).toUpperCase()}
                       </td>
                       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap">
                         {format(new Date(order.created_at), "MMM d")}
                       </td>
-                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isRefunded ? "line-through text-muted-foreground" : ""}`}>
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isNeutral ? "line-through text-muted-foreground" : ""}`}>
                         {fmt(revCents)}
                       </td>
-                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isRefunded ? "text-muted-foreground" : "text-orange-400"}`}>
-                        {isRefunded ? "—" : `(${fmt(cogsCents)})`}
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums ${isNeutral ? "text-muted-foreground" : "text-orange-400"}`}>
+                        {isNeutral ? "—" : `(${fmt(cogsCents)})`}
                       </td>
-                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums font-semibold ${isRefunded ? "text-muted-foreground" : profCents >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {isRefunded ? "—" : fmt(profCents)}
+                      <td className={`py-2.5 pr-4 font-mono text-xs tabular-nums font-semibold ${isNeutral ? "text-muted-foreground" : profCents >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {isNeutral ? "—" : fmt(profCents)}
                       </td>
                       <td className="py-2.5">
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${isRefunded ? "border-rose-500/40 text-rose-400" : ""}`}
+                          className={`text-[10px] ${isRefunded ? "border-rose-500/40 text-rose-400" : isDisputed ? "border-amber-500/40 text-amber-400" : ""}`}
                         >
                           {order.status}
                         </Badge>
