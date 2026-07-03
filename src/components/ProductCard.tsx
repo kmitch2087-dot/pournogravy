@@ -130,7 +130,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   const cardImages = product.images && product.images.length > 0
     ? product.images
     : product.image ? [product.image] : [];
-  const zoomSrc = ZOOM_IMAGES[product.id] ?? (cardImages.length > 1 ? cardImages[cardImages.length - 1] : undefined);
+  const zoomSrc = ZOOM_IMAGES[product.id] ?? (cardImages.length >= 3 ? cardImages[cardImages.length - 1] : undefined);
   const showZoom = useCardImageFlip(!!zoomSrc);
 
   const isNew = product.wentLiveAt
