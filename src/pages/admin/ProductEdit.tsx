@@ -65,6 +65,9 @@ interface FormState {
   ogImage: string;
   // Product grouping
   product_group_id: string | null;
+  // Card flip
+  flipEnabled: boolean;
+  flipImageUrl: string;
 }
 
 const DEFAULT_SECTION_ORDER = ["reviews", "humor", "description", "longDescription", "badAdvice"];
@@ -98,6 +101,8 @@ const defaultForm = (): FormState => ({
   ogDescription: '',
   ogImage: '',
   product_group_id: null,
+  flipEnabled: false,
+  flipImageUrl: '',
 });
 
 // ─── Paragraph list (keeps existing ParagraphList helper) ───────────────────
@@ -427,6 +432,8 @@ const ProductEdit = () => {
         ogDescription: (product as Record<string, unknown>).og_description as string ?? '',
         ogImage: (product as Record<string, unknown>).og_image as string ?? '',
         product_group_id: (product as Record<string, unknown>).product_group_id as string | null ?? null,
+        flipEnabled: !!((product as Record<string, unknown>).flip_enabled),
+        flipImageUrl: (product as Record<string, unknown>).flip_image_url as string ?? '',
       });
       // Mark OG fields as touched if they already have content
       setOgTouched({
@@ -685,6 +692,8 @@ const ProductEdit = () => {
       og_image:         form.ogImage       || null,
       publish_at:       publishAt,
       product_group_id: form.product_group_id,
+      flip_enabled:     form.flipEnabled,
+      flip_image_url:   form.flipImageUrl  || null,
     };
 
     let error;
@@ -1290,6 +1299,88 @@ const ProductEdit = () => {
                 </p>
               </div>
 
+            </CardContent>
+          </Card>
+
+          {/* ── CARD FLIP ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display tracking-widest text-sm">CARD FLIP</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                When enabled, the product card on the shop page alternates between the main image and the selected flip image every few seconds.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="flip-enabled"
+                  checked={form.flipEnabled}
+                  onCheckedChange={(v) => setF({ flipEnabled: v, flipImageUrl: v ? form.flipImageUrl : '' })}
+                />
+                <Label htmlFor="flip-enabled" className="cursor-pointer text-sm">
+                  Enable card flip animation
+                </Label>
+              </div>
+
+              {form.flipEnabled && (() => {
+                const allImages = [form.mainImageUrl, ...form.additionalImages].filter(Boolean);
+                return (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Select which image the card flips <em>to</em>. The main image is always the starting frame.
+                    </p>
+                    {allImages.length < 2 ? (
+                      <p className="text-xs text-amber-400 border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+                        Upload at least one additional image to enable the flip.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        {allImages.map((url, i) => {
+                          const isMain = i === 0;
+                          const isSelected = form.flipImageUrl === url;
+                          return (
+                            <button
+                              key={url}
+                              type="button"
+                              disabled={isMain}
+                              onClick={() => setF({ flipImageUrl: url })}
+                              title={isMain ? "Main image — always the start frame" : url}
+                              className={`relative border-2 rounded-sm overflow-hidden transition-all ${
+                                isMain
+                                  ? "opacity-30 cursor-not-allowed border-border"
+                                  : isSelected
+                                  ? "border-[#fde047] ring-1 ring-[#fde047]/40"
+                                  : "border-border hover:border-[#fde047]/50 cursor-pointer"
+                              }`}
+                            >
+                              <img
+                                src={url}
+                                alt={`Image ${i + 1}`}
+                                className="h-20 w-20 object-contain bg-muted/20"
+                              />
+                              {isMain && (
+                                <span className="absolute inset-x-0 bottom-0 text-center text-[8px] bg-black/60 text-white py-0.5">
+                                  MAIN
+                                </span>
+                              )}
+                              {isSelected && !isMain && (
+                                <span className="absolute inset-x-0 bottom-0 text-center text-[8px] bg-[#fde047] text-black py-0.5 font-bold">
+                                  FLIP TARGET
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {form.flipImageUrl && (
+                      <p className="text-[10px] text-muted-foreground font-mono truncate">
+                        ↕ {form.flipImageUrl}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

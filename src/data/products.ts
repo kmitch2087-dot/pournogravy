@@ -77,6 +77,10 @@ export interface Product {
   product_group_id?: string;
   /** Admin-controlled sort position in the shop (lower = earlier) */
   display_order?: number;
+  /** Whether this product's card animates between main image and flip_image_url */
+  flip_enabled?: boolean;
+  /** The image URL shown on the card when the flip animation is in the "zoomed" state */
+  flip_image_url?: string;
 }
 
 export const collections = [

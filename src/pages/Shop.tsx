@@ -77,16 +77,47 @@ const Shop = () => {
         (p.description ?? "").toLowerCase().includes(q)
       );
     });
-    if (sortBy === "price-asc") return [...base].sort((a, b) => a.price - b.price);
-    if (sortBy === "price-desc") return [...base].sort((a, b) => b.price - a.price);
-    if (sortBy === "alpha") return [...base].sort((a, b) => a.name.localeCompare(b.name));
-    // Default: sort by display_order ASC, then by name as tiebreaker
-    return [...base].sort((a, b) => {
-      const ao = a.display_order ?? 0;
-      const bo = b.display_order ?? 0;
-      if (ao !== bo) return ao - bo;
-      return a.name.localeCompare(b.name);
-    });
+
+    let sorted: typeof base;
+    if (sortBy === "price-asc") sorted = [...base].sort((a, b) => a.price - b.price);
+    else if (sortBy === "price-desc") sorted = [...base].sort((a, b) => b.price - a.price);
+    else if (sortBy === "alpha") sorted = [...base].sort((a, b) => a.name.localeCompare(b.name));
+    else {
+      sorted = [...base].sort((a, b) => {
+        const ao = a.display_order ?? 0;
+        const bo = b.display_order ?? 0;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    // Space out flip-enabled cards so none are adjacent.
+    // Only applied on the default order (admin-controlled positions).
+    if (sortBy === "default") {
+      const result = [...sorted];
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let i = 0; i < result.length - 1; i++) {
+          if (result[i].flip_enabled && result[i + 1].flip_enabled) {
+            // find the nearest non-flip product after i+1
+            let j = i + 2;
+            while (j < result.length && result[j].flip_enabled) j++;
+            if (j < result.length) {
+              const [item] = result.splice(j, 1);
+              result.splice(i + 1, 0, item);
+              changed = true;
+              break;
+            }
+            // all remaining are flippers — can't space further, stop
+            break;
+          }
+        }
+      }
+      return result;
+    }
+
+    return sorted;
   }, [query, sortBy, visible]);
 
   return (

@@ -65,12 +65,6 @@ const useEasterEggs = () =>
     throwOnError: false,
   });
 
-// ─── Zoom image map — keyed by product.id ──────────────────────────────────
-const ZOOM_IMAGES: Record<string, string> = {
-  'last-call-for-karen-tee':          '/karen_graphic_zoom.webp',
-  'i-would-totally-tap-that-keg-tee': '/keg_graphic_zoom.webp',
-};
-
 // ─── Constants ─────────────────────────────────────────────────────────────
 const NEW_BADGE_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -130,7 +124,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   const cardImages = product.images && product.images.length > 0
     ? product.images
     : product.image ? [product.image] : [];
-  const zoomSrc = ZOOM_IMAGES[product.id] ?? (cardImages.length >= 3 ? cardImages[cardImages.length - 1] : undefined);
+  const zoomSrc = product.flip_enabled ? (product.flip_image_url ?? undefined) : undefined;
   const showZoom = useCardImageFlip(!!zoomSrc);
 
   const isNew = product.wentLiveAt

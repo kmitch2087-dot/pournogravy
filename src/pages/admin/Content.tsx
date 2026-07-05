@@ -362,7 +362,10 @@ interface ShopProduct {
   slug: string;
   name: string;
   image_url: string | null;
+  images: string[];
   display_order: number | null;
+  flip_enabled: boolean;
+  flip_image_url: string | null;
 }
 
 // ─── Sortable product card ────────────────────────────────────────────────────
@@ -370,9 +373,11 @@ interface ShopProduct {
 function SortableProductCard({
   product,
   onClick,
+  previewIndex,
 }: {
   product: ShopProduct;
   onClick: () => void;
+  previewIndex: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: product.id });
@@ -383,36 +388,56 @@ function SortableProductCard({
     opacity: isDragging ? 0.4 : 1,
   };
 
+  const imgSrc = product.image_url ?? (product.images?.[0] ?? null);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="relative group border border-border bg-card hover:border-[#fde047]/40 transition-colors cursor-pointer"
+      className="relative group border border-border bg-[#111] hover:border-[#fde047]/40 transition-colors cursor-pointer overflow-hidden"
     >
-      {/* Drag handle — top-left */}
+      {/* Drag handle */}
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-1 left-1 z-10 p-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing"
+        className="absolute top-1 left-1 z-10 p-1 text-white/30 hover:text-white/80 cursor-grab active:cursor-grabbing bg-black/40 rounded-sm"
         aria-label="Drag to reorder"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-3.5 w-3.5" />
+        <GripVertical className="h-3 w-3" />
       </button>
 
-      <div onClick={onClick} className="p-2 flex flex-col items-center gap-1.5">
-        {product.image_url ? (
+      {/* Position badge */}
+      <span className="absolute top-1 right-1 z-10 text-[8px] font-mono bg-black/60 text-white/50 px-1 rounded-sm leading-tight">
+        #{previewIndex + 1}
+      </span>
+
+      {/* Flip badge */}
+      {product.flip_enabled && (
+        <span className="absolute bottom-7 left-1 z-10 text-[7px] font-display tracking-widest bg-[#fde047] text-black px-1 py-px leading-tight uppercase">
+          flip
+        </span>
+      )}
+
+      <div onClick={onClick} className="aspect-square">
+        {imgSrc ? (
           <img
-            src={product.image_url}
+            src={imgSrc}
             alt={product.name}
-            className="w-16 h-16 object-contain rounded-sm bg-muted/20"
+            className="w-full h-full object-contain"
           />
         ) : (
-          <div className="w-16 h-16 bg-muted rounded-sm flex items-center justify-center">
-            <span className="text-[8px] text-muted-foreground">no img</span>
+          <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+            <span className="text-[8px] text-muted-foreground text-center leading-tight">{product.name}</span>
           </div>
         )}
-        <p className="text-[9px] text-center leading-tight line-clamp-2 text-muted-foreground group-hover:text-foreground transition-colors">
+      </div>
+
+      <div
+        onClick={onClick}
+        className="px-1.5 py-1 bg-black border-t border-border/40"
+      >
+        <p className="text-[8px] text-center leading-tight line-clamp-2 text-muted-foreground group-hover:text-foreground transition-colors">
           {product.name}
         </p>
       </div>
@@ -438,7 +463,7 @@ function ShopTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, image_url, display_order")
+        .select("id, slug, name, image_url, images, display_order, flip_enabled, flip_image_url")
         .eq("is_active", true)
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true });
@@ -446,6 +471,29 @@ function ShopTab() {
       return (data ?? []) as ShopProduct[];
     },
   });
+
+  // Mirror the public shop's flip-spacing so the preview matches what customers see
+  const previewList = (() => {
+    const result = [...reorderedList];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < result.length - 1; i++) {
+        if (result[i].flip_enabled && result[i + 1].flip_enabled) {
+          let j = i + 2;
+          while (j < result.length && result[j].flip_enabled) j++;
+          if (j < result.length) {
+            const [item] = result.splice(j, 1);
+            result.splice(i + 1, 0, item);
+            changed = true;
+            break;
+          }
+          break;
+        }
+      }
+    }
+    return result;
+  })();
 
   // Sync local list when products load
   useEffect(() => {
@@ -483,11 +531,14 @@ function ShopTab() {
   };
 
   return (
-    <div className="px-6 py-4 space-y-4 max-w-3xl">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <div className="px-6 py-4 space-y-4 max-w-4xl">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">
-            Drag thumbnails to arrange your shop layout. Click a product to edit it.
+            Drag to set your preferred order. The preview below mirrors the public shop exactly — including automatic spacing of flip cards.
+          </p>
+          <p className="text-[10px] text-muted-foreground/50">
+            Yellow <span className="text-[#fde047]">flip</span> badges = card animation enabled · Position numbers show where each product lands
           </p>
         </div>
         <Button
@@ -514,11 +565,13 @@ function ShopTab() {
             items={reorderedList.map((p) => p.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-              {reorderedList.map((product) => (
+            {/* 3-column grid — matches public shop md:grid-cols-3 breakpoint */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {previewList.map((product, idx) => (
                 <SortableProductCard
                   key={product.id}
                   product={product}
+                  previewIndex={idx}
                   onClick={() => setConfirmProduct(product)}
                 />
               ))}
