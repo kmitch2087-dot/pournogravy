@@ -40,6 +40,7 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
 const ShipOrder      = lazy(() => import("./pages/ShipOrder"));
+const Fulfillment    = lazy(() => import("./pages/Fulfillment"));
 const Rewards        = lazy(() => import("./pages/Rewards"));
 const PublicMerchDrops = lazy(() => import("./pages/MerchDrops"));
 
@@ -193,6 +194,7 @@ const App = () => (
                     <Route path="/terms"   element={<TermsOfService />} />
                     <Route path="/advertise"      element={<Advertise />} />
                     <Route path="/ship/:orderId"  element={<ShipOrder />} />
+                    <Route path="/fulfillment"    element={<Fulfillment />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

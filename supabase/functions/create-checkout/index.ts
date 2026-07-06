@@ -224,6 +224,7 @@ Deno.serve(async (req) => {
         order_id: order.id,
         item_count: String(safeItems.length),
         items: itemsMeta,
+        shipping_cents: String(shippingCents),
       },
     });
 

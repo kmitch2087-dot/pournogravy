@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
     shippingAddress = pi.shipping ?? null;
     amountTotal = pi.amount_received;
     paymentIntentId = pi.id;
-    // shippingCents not available on payment_intent — stays 0
+    shippingCents = Number(pi.metadata?.shipping_cents ?? 0);
   } else if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     orderId = session.metadata?.order_id;
@@ -210,7 +210,10 @@ Deno.serve(async (req) => {
       if (p.slug && p.image_url) imageBySlug.set(p.slug, p.image_url);
     }
 
-    if (!order) return new Response("ok", { status: 200 });
+    if (!order) {
+      console.error("[stripe-webhook] order re-fetch null", { orderId });
+      return new Response("ok", { status: 200 });
+    }
 
     // Write purchase analytics event (fire-and-forget — don't block fulfillment)
     supabase.from("analytics_events").insert({
@@ -260,7 +263,7 @@ Deno.serve(async (req) => {
       : [order.email];
 
     for (const recipient of confirmationRecipients) {
-      await supabase.functions.invoke("send-notification", {
+      const { error: confirmErr } = await supabase.functions.invoke("send-notification", {
         body: {
           templateKey: "order_confirmation",
           recipient,
@@ -277,10 +280,11 @@ Deno.serve(async (req) => {
           },
         },
       });
+      if (confirmErr) console.error("[stripe-webhook] order_confirmation send failed", { recipient, error: confirmErr });
     }
 
     // 2) Pour Points — 1 point per $1 spent on products only (auth users only; shipping excluded; program enabled)
-    if (order.user_id && (order.total_cents ?? 0) > 0 && (loyaltyRules?.pour_points_enabled ?? true)) {
+    if (order.user_id && (order.total_cents ?? 0) > 0 && (loyaltyRules?.pour_points_enabled ?? false)) {
       const subtotalForPoints = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
       const pointsEarned = Math.floor(subtotalForPoints / 100);
       if (subtotalForPoints > 0 && pointsEarned > 0) {
@@ -294,11 +298,12 @@ Deno.serve(async (req) => {
 
     // 3) Printer notification (fulfillment)
     if (settings?.fulfillment_provider === "local_printer" && settings.printer_email) {
-      await supabase.from("printer_queue").insert([{
+      const { error: queueErr } = await supabase.from("printer_queue").insert([{
         order_id: order.id,
         payload: { items, shipping: order.shipping_address, total: order.total_cents },
         status: "queued",
       }]);
+      if (queueErr) console.error("[stripe-webhook] printer_queue insert failed", { orderId: order.id, error: queueErr });
 
       // Design file URLs are stored in Supabase Storage keyed by product slug
       const STORAGE_BASE = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object/public/print-files";
@@ -390,13 +395,25 @@ Deno.serve(async (req) => {
 
             const addr = ship ? `${shipAddr?.line1 ?? ""}, ${shipAddr?.city ?? ""}, ${shipAddr?.state ?? ""} ${shipAddr?.postal_code ?? ""}` : "(no address)";
 
-      // Generate fulfillment token for printer tracking link
+      // Generate fulfillment tokens — per-order for tracking submit, portal for two-tap advance links
       const fulfillmentSecret = Deno.env.get("FULFILLMENT_SECRET");
       const siteUrl = Deno.env.get("SITE_URL") ?? "https://pournogravy.com";
       let trackingSubmitUrl = "";
+      let actionLinks = "";
       if (fulfillmentSecret) {
         const tok = await generateFulfillmentToken(order.id, fulfillmentSecret);
         trackingSubmitUrl = `${siteUrl}/ship/${order.id}?token=${tok}`;
+
+        const portalTok = await generateFulfillmentToken("fulfillment-portal", fulfillmentSecret);
+        const supabaseProjectUrl = Deno.env.get("SUPABASE_URL") ?? "";
+        const inProductionUrl = `${supabaseProjectUrl}/functions/v1/fulfillment-portal?action=advance&orderId=${order.id}&to=in_production&token=${encodeURIComponent(portalTok)}`;
+        const portalUrl = `${siteUrl}/fulfillment?t=${encodeURIComponent(portalTok)}`;
+        actionLinks = `<div style="margin:0 0 20px;padding:14px 16px;background:#f5f5f5;border-radius:4px;border-left:4px solid #fde047;">
+  <p style="margin:0 0 10px;font-weight:bold;font-size:13px;color:#111;letter-spacing:.05em;">QUICK ACTIONS:</p>
+  <a href="${inProductionUrl}" style="display:inline-block;margin-right:10px;margin-bottom:8px;background:#000;color:#fde047;padding:10px 16px;font-weight:bold;font-size:13px;text-decoration:none;border:2px solid #fde047;">✅ Got it — Mark In Production</a>
+  <a href="${trackingSubmitUrl}" style="display:inline-block;margin-bottom:8px;background:#fde047;color:#000;padding:10px 16px;font-weight:bold;font-size:13px;text-decoration:none;">📦 Add Tracking Number →</a>
+  <p style="margin:8px 0 0;font-size:11px;color:#999;">View all orders: <a href="${portalUrl}" style="color:#888;">${portalUrl}</a></p>
+</div>`;
       }
 
       const TEST_ORDER_EMAILS = ["kmitch2087@gmail.com", "aopie91@gmail.com"];
@@ -426,9 +443,10 @@ Deno.serve(async (req) => {
         mock_image_url: mockImageUrl,
         shipping_cents: shippingCents,
         test_note: testNote,
+        action_links: actionLinks,
       };
 
-      await supabase.functions.invoke("send-notification", {
+      const { error: printerErr } = await supabase.functions.invoke("send-notification", {
         body: {
           templateKey: "printer_notification",
           recipient: settings.printer_email,
@@ -438,6 +456,20 @@ Deno.serve(async (req) => {
           attachments: [{ filename: `order-${shortId}.csv`, content: csvBase64 }],
         },
       });
+      if (printerErr) {
+        console.error("[stripe-webhook] printer_notification send failed", { orderId: order.id, error: printerErr });
+        await supabase.from("notifications").insert({
+          type: "email",
+          template_key: "printer_notification",
+          recipient: settings.printer_email,
+          related_kind: "order",
+          related_id: order.id,
+          status: "failed",
+          subject: "",
+          body_html: "",
+          body_text: "",
+        });
+      }
 
       // CC both Kristin and Opie on every printer notification
       for (const cc of ["kmitch2087@gmail.com", "aopie91@gmail.com"]) {

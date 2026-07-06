@@ -55,7 +55,7 @@ export interface Database {
           id: string;
           user_id: string | null;
           email: string;
-          status: "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
+          status: "pending" | "paid" | "in_production" | "shipped" | "delivered" | "fulfilled" | "cancelled" | "refunded";
           subtotal_cents: number;
           tax_cents: number;
           shipping_cents: number;
