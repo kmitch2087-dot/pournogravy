@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
   }
 
   if (orderId) {
-    // Mark order paid
+    // Mark order paid — outside try-catch; returns {data,error}, never throws
     await supabase
       .from("orders")
       .update({
@@ -188,6 +188,8 @@ Deno.serve(async (req) => {
         shipping_cents: shippingCents,
       })
       .eq("id", orderId);
+
+    try {
 
     // Fetch order + items + settings to build the notifications/printer payload
     const [{ data: order }, { data: items }, { data: settings }, { data: loyaltyRules }] = await Promise.all([
@@ -485,6 +487,17 @@ Deno.serve(async (req) => {
         });
       }
     }
+    } catch (processingErr) {
+      // Log the actual error so we can see it in Supabase edge function logs,
+      // then return 200 to stop Stripe retrying — order is already marked paid.
+      console.error("[stripe-webhook] PROCESSING ERROR", {
+        orderId,
+        eventType: event.type,
+        error: processingErr instanceof Error ? processingErr.message : String(processingErr),
+        stack: processingErr instanceof Error ? processingErr.stack : undefined,
+      });
+    }
+
   } // end if (orderId)
 
   return new Response(JSON.stringify({ received: true }), {
