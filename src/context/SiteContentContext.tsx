@@ -76,6 +76,11 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
 
   const setValue = useCallback(
     async (page: string, section: string, key: string, value: string) => {
+      // Only the value changes on an edit — never clobber the row's existing
+      // value_type/label (doing so turns color/boolean/html fields into plain text).
+      const existing = rows.find(
+        (r) => r.page === page && r.section === section && r.key === key
+      );
       setRows((prev) => {
         const exists = prev.some(
           (r) => r.page === page && r.section === section && r.key === key
@@ -101,15 +106,22 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
         };
         return [...prev, newRow];
       });
-      const { error } = await supabase
-        .from("site_content")
-        .upsert(
-          { page, section, key, label: key, value, value_type: "text", updated_at: new Date().toISOString() },
-          { onConflict: "page,section,key" }
-        );
+      const ts = new Date().toISOString();
+      // Existing row → update value only (keeps value_type/label/options intact).
+      // New key → insert as a text field.
+      const { error } = existing
+        ? await supabase
+            .from("site_content")
+            .update({ value, updated_at: ts })
+            .eq("page", page)
+            .eq("section", section)
+            .eq("key", key)
+        : await supabase
+            .from("site_content")
+            .insert({ page, section, key, label: key, value, value_type: "text", updated_at: ts });
       if (error) throw new Error(error.message);
     },
-    []
+    [rows]
   );
 
   const setPublished = useCallback(

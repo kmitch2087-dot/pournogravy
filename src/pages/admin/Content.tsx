@@ -512,9 +512,15 @@ function ShopTab() {
   const handleSaveOrder = async () => {
     setSaving(true);
     try {
-      const updates = reorderedList.map((p, i) => ({ id: p.id, display_order: i }));
-      const { error } = await supabase.from("products").upsert(updates);
-      if (error) throw error;
+      // Per-row UPDATE (not upsert): upsert would run an INSERT that violates the
+      // NOT NULL constraints on name/slug/price_cents, so it always failed.
+      const results = await Promise.all(
+        reorderedList.map((p, i) =>
+          supabase.from("products").update({ display_order: i }).eq("id", p.id)
+        )
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
       toast.success("Shop order saved!");
       qc.invalidateQueries({ queryKey: ["content-shop-products"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
