@@ -1,6 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { type Product } from "@/data/products";
+import { type Product, type ProductColor } from "@/data/products";
+
+// Normalize a raw DB color object into a well-formed ProductColor.
+// Some products store colors as {id, label, hex}; others (older seed data)
+// store them as {name, hex} with no id/label. The product page keys the
+// swatch selector on `id` and shows `label`, so a missing id makes every
+// swatch look identical ("Color: undefined") and un-selectable. Derive the
+// id/label from whatever's present so the selector works either way.
+const slugify = (s: string) =>
+  s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+const normalizeColors = (raw: unknown): ProductColor[] | undefined => {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const colors = raw
+    .map((c) => {
+      const o = (c ?? {}) as Record<string, unknown>;
+      const label = (o.label ?? o.name ?? o.id) as string | undefined;
+      const id = (o.id ?? (label ? slugify(label) : undefined)) as string | undefined;
+      if (!id || !label || typeof o.hex !== "string") return null;
+      return {
+        id,
+        label,
+        hex: o.hex,
+        ...(Array.isArray(o.images) ? { images: o.images as string[] } : {}),
+        ...(o.imagesByFit && typeof o.imagesByFit === "object"
+          ? { imagesByFit: o.imagesByFit as Record<string, string[]> }
+          : {}),
+      } as ProductColor;
+    })
+    .filter((c): c is ProductColor => c !== null);
+  return colors.length > 0 ? colors : undefined;
+};
 
 interface DbProductRow {
   id: string;
@@ -70,10 +101,7 @@ const dbRowToProduct = (r: DbProductRow): Product => {
       Array.isArray(r.variants) && r.variants.length > 0
         ? (r.variants as Product["variants"])
         : undefined,
-    colors:
-      Array.isArray(r.colors) && r.colors.length > 0
-        ? (r.colors as Product["colors"])
-        : undefined,
+    colors: normalizeColors(r.colors),
     featured: r.featured,
     published: r.published && r.status === "published",
     wentLiveAt: r.went_live_at ?? undefined,
