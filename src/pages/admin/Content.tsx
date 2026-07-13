@@ -285,7 +285,7 @@ function AddSectionDialog({
       if (sectionType === "text") {
         await setValue(page, name, "content", "New content — click to edit");
       } else if (sectionType === "html") {
-        await setValue(page, name, "content", "<p>New rich text — click to edit</p>");
+        await setValue(page, name, "content", "<p>New rich text — click to edit</p>", "html");
       } else if (sectionType === "qa") {
         await setValue(page, name, `${name}_q`, "New question?");
         await setValue(page, name, `${name}_a`, "Answer goes here.");

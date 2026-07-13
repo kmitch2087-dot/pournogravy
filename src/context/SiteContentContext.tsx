@@ -21,7 +21,7 @@ interface SiteContentCtx {
   rows: SiteContentRow[];
   getValue: (page: string, section: string, key: string, fallback?: string) => string;
   getPublished: (page: string, section: string) => boolean;
-  setValue: (page: string, section: string, key: string, value: string) => Promise<void>;
+  setValue: (page: string, section: string, key: string, value: string, valueType?: SiteContentRow["value_type"]) => Promise<void>;
   setPublished: (page: string, section: string, published: boolean) => Promise<void>;
   refetch: () => void;
   loading: boolean;
@@ -75,9 +75,10 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   );
 
   const setValue = useCallback(
-    async (page: string, section: string, key: string, value: string) => {
+    async (page: string, section: string, key: string, value: string, valueType: SiteContentRow["value_type"] = "text") => {
       // Only the value changes on an edit — never clobber the row's existing
       // value_type/label (doing so turns color/boolean/html fields into plain text).
+      // valueType only applies when creating a brand-new key (e.g. a rich-text section).
       const existing = rows.find(
         (r) => r.page === page && r.section === section && r.key === key
       );
@@ -98,7 +99,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
           key,
           label: key,
           value,
-          value_type: "text",
+          value_type: valueType,
           options: null,
           default_value: null,
           sort_order: 999,
@@ -118,7 +119,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
             .eq("key", key)
         : await supabase
             .from("site_content")
-            .insert({ page, section, key, label: key, value, value_type: "text", updated_at: ts });
+            .insert({ page, section, key, label: key, value, value_type: valueType, updated_at: ts });
       if (error) throw new Error(error.message);
     },
     [rows]
