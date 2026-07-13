@@ -338,6 +338,11 @@ Deno.serve(async (req) => {
         "i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only": "real_job_text",
         "strn-drink-tee-text-and-image": "strong_drink_image",
         "your-next-drink-is-only-as-strong-as-your-last-tip-tee": "strong_drink_text",
+        "well-it-ain-t-gonna-lick-itself-tee": "lick_itself",
+        "dear-karen-you-stink-tee": "shocker",
+        "pournogravy-og-tee-the-official-uniform-for-bartender-legends": "logo_full_tag",
+        "saving-my-bar-from-the-socially-stupid-one-karen-at-a-time-tee": "tagline_without_logo",
+        "tea-toes-and-vodka-please-tee": "tea_please",
       };
       const printBaseFor = (slug: string): string => PRINT_BASE[slug] ?? slug;
 
