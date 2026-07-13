@@ -562,7 +562,13 @@ const ProductDetail = () => {
                 return len;
               })();
               const shortLabel = (name: string) => {
-                const stripped = name.slice(commonPrefixLen).trim();
+                // Strip the common prefix, then any leading "(" / trailing ")" left behind
+                // (e.g. "The Finger (Male Silhouette)" → "Male Silhouette").
+                const stripped = name
+                  .slice(commonPrefixLen)
+                  .trim()
+                  .replace(/^[([\-–—\s]+/, "")
+                  .replace(/[)\]\s]+$/, "");
                 if (!stripped) return name.slice(0, 20);
                 return stripped.length > 20 ? stripped.slice(0, 20) + "…" : stripped;
               };
@@ -965,8 +971,7 @@ const ProductDetail = () => {
                 <motion.div
                   key={p.id}
                   initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: i * 0.05 }}
                   className="group relative"
                 >

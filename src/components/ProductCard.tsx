@@ -134,8 +134,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       <div className="relative overflow-hidden bg-card">
