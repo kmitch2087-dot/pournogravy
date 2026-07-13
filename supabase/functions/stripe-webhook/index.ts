@@ -310,6 +310,37 @@ Deno.serve(async (req) => {
       // Design file URLs are stored in Supabase Storage keyed by product slug
       const STORAGE_BASE = "https://emtjkawcmsfgjyimnncf.supabase.co/storage/v1/object/public/print-files";
 
+      // Print files use short design codes, not the product slug. Map slug → code so the
+      // Front print URLs resolve. Anything unmapped falls back to the slug (prior behavior),
+      // so this is strictly additive and cannot regress existing behavior.
+      // Only confident, unambiguous mappings are listed; ambiguous designs are intentionally
+      // omitted (they keep the slug fallback) to avoid ever printing the wrong artwork.
+      const PRINT_BASE: Record<string, string> = {
+        "the-finger-tee": "finger_male",
+        "the-finger-tee-female": "finger_female",
+        "pourn-hand-tee": "pourn_hand_mens",
+        "pourn-hand-tee-female": "pourn_hand_womens",
+        "second-most-fun-job-tee": "legal_job_male",
+        "second-most-fun-job-tee-female": "legal_job_female",
+        "legally-fun-tee-text-only": "legal_job_text",
+        "atheist-tee": "atheist",
+        "atheist-with-text-only": "atheist_text",
+        "cow-tipping": "cow",
+        "f-off-karen": "f_off_karen",
+        "do-you-like-it-in-a-glass-or-do-you-take-it-in-the-can-tee": "glass_can",
+        "i-would-totally-tap-that-keg-tee": "keg_tap",
+        "im-your-favorite-bartenders-favorite-bartender-tee": "fav_bartender",
+        "introverted-bartender-tee": "introvert",
+        "last-call-for-karen-tee": "last_call_karen",
+        "service-bartender-do-not-approach-tee": "service_bar",
+        "tip-your-therapist-tee": "therapist",
+        "i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee": "real_job_image",
+        "i-bought-this-real-shirt-with-my-real-money-from-my-real-job-tee-text-only": "real_job_text",
+        "strn-drink-tee-text-and-image": "strong_drink_image",
+        "your-next-drink-is-only-as-strong-as-your-last-tip-tee": "strong_drink_text",
+      };
+      const printBaseFor = (slug: string): string => PRINT_BASE[slug] ?? slug;
+
       // Determine which ink color (black or white) to use for the back logo
       // based on garment color: dark garments get white ink, light garments get black ink.
       const DARK_GARMENTS = ["black", "charcoal", "navy", "dark", "graphite", "forest", "maroon", "royal", "hunter", "slate"];
@@ -336,10 +367,11 @@ Deno.serve(async (req) => {
           seenSlugs.add(slug);
           const garmentColor = String(s.color ?? "");
           const backUrl = backLogoForColor(garmentColor);
+          const printBase = printBaseFor(slug);
           designLinkLines.push(
             `${slug} (${garmentColor || "color unknown"}) — TWO-SIDED:\n` +
-            `  Front Black Ink: ${STORAGE_BASE}/black/${slug}_black.png\n` +
-            `  Front White Ink: ${STORAGE_BASE}/white/${slug}_white.png\n` +
+            `  Front Black Ink: ${STORAGE_BASE}/black/${printBase}_black.png\n` +
+            `  Front White Ink: ${STORAGE_BASE}/white/${printBase}_white.png\n` +
             `  Back (auto-matched to garment color): ${backUrl}`
           );
         }
@@ -358,7 +390,7 @@ Deno.serve(async (req) => {
         const isDark = DARK_GARMENTS.some((d) => garmentColor.toLowerCase().includes(d));
         const inkSuffix = isDark ? "white" : "black";
         const inkFolder = isDark ? "white" : "black";
-        const frontUrl = slug ? `${STORAGE_BASE}/${inkFolder}/${slug}_${inkSuffix}.png` : "";
+        const frontUrl = slug ? `${STORAGE_BASE}/${inkFolder}/${printBaseFor(slug)}_${inkSuffix}.png` : "";
         const backUrl = backLogoForColor(garmentColor);
         const col = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
         return [
