@@ -694,6 +694,9 @@ const ProductEdit = () => {
       product_group_id: form.product_group_id,
       flip_enabled:     form.flipEnabled,
       flip_image_url:   form.flipImageUrl  || null,
+      // Persist the admin's chosen "Went Live At" on updates too (controls the
+      // 14-day NEW badge). setProductLive only auto-stamps when this is empty.
+      went_live_at:     wentLiveAt,
     };
 
     let error;
@@ -705,7 +708,6 @@ const ProductEdit = () => {
       payload.is_active = false;
       payload.published = false;
       payload.status = "draft";
-      payload.went_live_at = wentLiveAt;
       const { data: inserted, error: insertErr } = await supabase
         .from("products")
         .insert([payload])
