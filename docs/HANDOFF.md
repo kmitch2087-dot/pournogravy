@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** June 29, 2026 (CMS-editable Terms/Privacy, product image SEO rename, back logo Storage upload, Stripe PaymentIntent analytics)  
+**Last Updated:** July 14, 2026 (print-file resolution completed, DB security hardening, private print-files bucket + password-gated printer portal, Lovable removed, new brand assets)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -110,6 +110,7 @@ src/
 │   ├── Blog.tsx               # /blog public listing page
 │   ├── BlogPost.tsx           # /blog/:slug public post page
 │   ├── ShipOrder.tsx          # /ship/:orderId — printer-facing tracking submission form (HMAC-verified token)
+│   ├── Fulfillment.tsx        # /fulfillment?t=<token> — printer-facing order management portal
 │   ├── Proposal.tsx           # Founding Client Offer / partnership pitch
 │   ├── NotFound.tsx           # 404
 │   └── admin/
@@ -158,7 +159,8 @@ src/
 │   └── products.ts            # Static product data (DB takes precedence via useMergedProducts)
 ├── lib/
 │   ├── utils.ts               # shadcn cn() helper
-│   └── productSource.ts       # useMergedProducts() — merges static + DB (DB wins by slug)
+│   ├── productSource.ts       # useMergedProducts() — merges static + DB (DB wins by slug)
+│   └── orderStatus.ts         # Canonical ORDER_STATUSES array, STATUS_LABELS map, canAdvance() guard
 ├── integrations/
 │   └── supabase/
 │       ├── client.ts          # ✅ CANONICAL singleton — import this everywhere
@@ -363,6 +365,7 @@ All functions live in `supabase/functions/`.
 | `archive-orders` | Admin or cron — moves fulfilled orders older than threshold to order_archive table | None |
 | `blast-email` | Admin-callable — sends bulk email to all subscribers via send-notification loop | `RESEND_API_KEY` |
 | `add-fulfillment-vendor` | Admin-callable — inserts to fulfillment_vendors, sends vendor_welcome email via send-notification | `RESEND_API_KEY` |
+| `fulfillment-portal` | **v2** — Printer-facing order portal, `verify_jwt:false`. Auth: portal token = HMAC("fulfillment-portal", FULFILLMENT_SECRET); per-order token = HMAC(orderId, FULFILLMENT_SECRET). Actions: `list` (all printer_queue rows + joined order/item/print-file data), `advance` (updates orders.status + printer_queue.status + appends status_history jsonb), `note` (appends timestamped note). GET advance returns branded HTML confirmation (email tap-to-advance). SITE_URL secret required for portal and ship URLs. | `FULFILLMENT_SECRET`, `SITE_URL` |
 
 ### Required Secrets (all confirmed set in Supabase):
 ```
@@ -451,6 +454,22 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### July 13–14, 2026
+- **Print-file resolution completed** (`645ba63`, stripe-webhook v56+) — `PRINT_BASE` slug→base-code map now covers all 27 published products. Previously-unmapped slugs fell back to `{slug}_{ink}.png` and 404'd; added `well-it-ain-t-gonna-lick-itself-tee→lick_itself`, `dear-karen-you-stink-tee→shocker`, `pournogravy-og-tee-…→logo_full_tag`, `saving-my-bar-…→tagline_without_logo`, `tea-toes-and-vodka-please-tee→tea_please`. Ink convention confirmed: `white/*_white.png` = white ink (dark shirts), `black/*_black.png` = black ink (light shirts); folder/suffix chosen by garment color.
+- **Back-logo bug fixed** — `print-files/back/logo_back_white.png` was white art on an OPAQUE BLACK rectangle → printed a black box on every dark shirt (used by ALL products via `backLogoForColor`). Regenerated as white-ink-on-transparent and re-uploaded. Product `front_/back_print_file_url` display fields repointed for all 27 products.
+- **DB security hardening** (migration `20260713000000_security_hardening.sql`, commit `1720b93`) — (a) `analytics_daily_revenue` was a SECURITY DEFINER view SELECT-able by `anon` → leaked daily revenue at `/rest/v1/analytics_daily_revenue`; switched to `security_invoker = on` + revoked anon (admin dashboard still works via `orders` `is_admin` RLS). (b) `increment_loyalty_points` + `increment_discount_use` were EXECUTE-able by anon/authenticated (privilege escalation — self-award points / inflate discounts); revoked to `service_role` only (callers: stripe-webhook / create-checkout). (c) `set_primary_shipping_address` → authenticated-only. (d) `search_path` pinned on 9 functions. (e) `disputed` (+ other statuses) added to order-status CHECK constraint.
+- **Print-files bucket → PRIVATE + printer portal** (migration `20260713000002_printer_portal.sql`, commit `532263d`). `print-files` bucket `public=false`. New `printer_allowlist` table + `is_printer(uuid)` SECURITY DEFINER fn + storage RLS `"Printer and admin read print-files"` (SELECT to authenticated where `is_printer OR is_admin`) — replaces the earlier public-listing policy (`20260713000001`). New routes `src/pages/printer/{PrinterLogin,PrinterSetPassword,PrinterCatalog}.tsx` + `src/components/printer/PrinterProtectedRoute.tsx` (reuses AuthContext session — NO new getSession — + `is_printer` RPC). Edge fn `printer-invite` (verify_jwt:false; admin-JWT or `PRINTER_INVITE_SECRET` header) generates a Supabase invite/recovery link → `/printer/set-password` and sends it via `send-notification`. **stripe-webhook now emits 1-year signed URLs** (`createSignedUrl`, 31536000s) for front/back print files in the printer email + CSV (work on public or private bucket). Supabase Auth: `pournogravy.com/**` added to redirect allow-list; leaked-password protection is Pro-only (402 on Free). Invite sent to Up2ournecksinfabric@gmail.com.
+- **Lovable removed** (`8f4a8fb`, `7522833`) — dropped `lovable-tagger` (vite dev badge) from `vite.config.ts` + `package.json`; deleted `bun.lock`, `.lovable/`, `docs/LOVABLE_PHASE2_PHASE3.md`; rewrote README; stripped 8 dead Lovable preview URLs from the Supabase auth redirect allow-list.
+- **Brand assets** (`e6f25bf`, `540d6f8`) — cropped the two-bartenders graphic out of the full logo (wordmark removed) → new `public/favicon.ico` (multi-size) + `apple-touch-icon.png` + explicit `<link>` tags; `public/pournogravy-social-avatar.png` (1024, circle-safe) for social profiles; `public/pournogravy-og.png` (1200×630) wired to `og:image`/`twitter:image`.
+- **Save-flow fixes** — admin product reorder null-violation (per-row `update` instead of partial `upsert`), SiteContent `value_type` overwrite on edit, `went_live_at` persistence, "Add Section → Rich Text" saves as `html`.
+
+### July 5–8, 2026
+- **Fulfillment portal** (`919fded`) — `src/pages/Fulfillment.tsx` at `/fulfillment?t=<token>` — printer-facing order management: active/terminal order grid, advance-status buttons, add-note inline input, print file links (black/white), status history. `supabase/functions/fulfillment-portal/index.ts` (v2, verify_jwt:false) — HMAC-auth (portal token = HMAC("fulfillment-portal", FULFILLMENT_SECRET); per-order = HMAC(orderId, FULFILLMENT_SECRET)); actions: list, advance, note. GET advance returns branded HTML confirmation page for email one-tap. `src/lib/orderStatus.ts` — canonical order status constants. Migration `20260705000002_fulfillment_portal.sql` applied: `chk_order_status` CHECK constraint (NOT VALID, allows legacy rows), `status_history jsonb DEFAULT '[]'` on `printer_queue`, `{{action_links}}` variable injected into printer_notification email template.
+- **create-checkout v39** — adds `shipping_cents` to PaymentIntent metadata so stripe-webhook can extract it from the event.
+- **stripe-webhook loyalty fix** — Pour Points default `?? false` (was `?? true`); `action_links` HTML assembled from per-order HMAC links added to printerVars.
+- **Stripe webhook 500 incident** (`5137b83`) — Stripe reported 13 HTTP 500s starting July 3, 2026 at 9:01 PM UTC (deadline July 12 before Stripe disables endpoint). Two orders (`6ae0b971`, `11ae929e`) paid but no emails sent and no printer_queue rows. Root cause unknown. Fix: wrapped entire post-payment block in try-catch; logs `[stripe-webhook] PROCESSING ERROR` with error + stack. Returns HTTP 200 on error. Deployed as v55. **Root cause not yet identified — check Supabase logs on next order.**
+- **Latent bug noted** — `chk_order_status` does NOT include `"disputed"`. `stripe-webhook` tries to set `status="disputed"` on `charge.dispute.created` but the update silently fails. Add "disputed" to constraint when fixing root cause.
 
 ### June 29, 2026
 - **Terms/Privacy CMS-editable** — `TermsOfService.tsx` and `PrivacyPolicy.tsx` now use `useSiteContent()`. Full HTML content stored as fallback constants; `site_content` rows seeded for both pages with `value_type='html'`. `PATH_TO_PAGE` in `SiteEditor.tsx` extended with `/terms` → `"terms"` and `/privacy` → `"privacy"`. `"html"` added to `value_type` union in `SiteContentContext.tsx`. Commit `00f22b3`.

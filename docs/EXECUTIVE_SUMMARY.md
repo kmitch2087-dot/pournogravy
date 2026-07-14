@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** June 29, 2026
+**Last Updated:** July 14, 2026
 
 ---
 
@@ -111,9 +111,11 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (June 29, 2026)
+## 4. Current Status (July 14, 2026)
 
-**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, financial dashboard, email templates, blog, and contact form are all fully operational. All transactional emails are branded and live. The Cloudflare Email Worker is deployed — one 30-second manual step (updating the routing rule in CF Dashboard) completes inbound email. The following items remain before a full marketing push:
+**Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, financial dashboard, email templates, blog, fulfillment portal, and contact form are all fully operational. All transactional emails are branded and live.
+
+**Recent hardening (July 13–14):** Every product now has correct print files wired for both shirt colors, and a back-logo bug that would have printed a black box on every black shirt was fixed. The print-ready artwork (the brand's sellable IP) is now locked behind a **private storage bucket and a password-protected printer portal** — the printer has been invited to set up their login. Several **database security issues were found and fixed** (a report that leaked daily revenue to the public, and a loophole that could let customers award themselves loyalty points). The site was also fully cleaned of the old Lovable builder's branding, and a new brand favicon / social-media profile image was produced. One open technical incident remains (Stripe webhook 500s — diagnostic logging in place) and one launch item (a live end-to-end test order).
 
 | Item | Status | Action Needed |
 |------|--------|--------------|
@@ -130,12 +132,19 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 | Site copy editing | ✅ Live | All public page copy editable from /admin/content — no deploy required |
 | Privacy Policy + Terms of Service | ✅ Live | Linked from footer |
 | Email templates (all 4) | ✅ Live | Branded — dark theme, logo, Opie's voice; test email sent |
-| Invoice Tracker | ✅ Live | Financial dashboard at /admin/invoices |
-| Blog system | ✅ Built | /blog + /blog/:slug + /admin/blog all wired |
-| Order confirmation emails | ⚠️ Built | Verify `opie@pournogravy.com` sender domain in Resend (DKIM/SPF done — just confirm in dashboard) |
-| Fulfillment partner | ❌ Not selected | Choose Printful or Printify — wire API key into stripe-webhook |
-| Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp to existing subscriber list |
-| Inbound email routing | ⚠️ One step left | CF Dashboard → pournogravy.com → Email → Email Routing → edit `opie@pournogravy.com` rule → change destination to `pournogravy-receive-email` (30 seconds) |
+| Invoice Tracker | ✅ Live | Financial dashboard at /admin/finances |
+| Blog system | ✅ Live | /blog + /blog/:slug + /admin/blog all wired |
+| Fulfillment portal | ✅ Live | Printer-facing portal at /fulfillment?t=<token> — advance status, add notes, print file links |
+| **Print files (all products)** | ✅ Live | All 27 published products resolve front + back print files for both shirt colors; back-logo black-box bug fixed |
+| **Printer portal (password-gated)** | ✅ Live | Private print-file catalog at /printer; printer (Up2ournecksinfabric LLC) invited to create their password |
+| **Print-file IP security** | ✅ Done | Sellable artwork bucket is now private; delivered via expiring signed links only |
+| **Database security** | ✅ Hardened | Revenue-leak report + loyalty/discount self-service loopholes closed; Supabase security-advisor error cleared |
+| Fulfillment partner | ✅ Active | Local printer (Up2ournecksinfabric LLC) — order emails + portal live; no third-party API needed |
+| Order confirmation emails | ✅ Live | Resend domain verified; branded emails sending |
+| **Stripe webhook 500s** | 🔴 Incident | Diagnostic logging in place. Check Supabase edge function logs for `[stripe-webhook] PROCESSING ERROR` on next order. Two old orders (6ae0b971, 11ae929e) need emails resent manually. Root cause still unknown. |
+| Live end-to-end test order | ⬜ Pending | Place one real order to confirm customer + printer emails land correctly |
+| Email marketing | ❌ Not connected | Connect Klaviyo or Mailchimp to existing subscriber list (post-launch) |
+| Inbound email routing | ✅ Done | CF Email routing rule set July 1, 2026 |
 
 ---
 

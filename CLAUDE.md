@@ -39,15 +39,18 @@ The HTTP 404 status on SPA routes is expected and correct for this pattern.
 ### Recent significant commits
 | Commit | What it fixed |
 |--------|--------------|
+| `540d6f8` / `e6f25bf` | **Brand assets** — new favicon + apple-touch-icon + social avatar (1024/512) + og image (1200×630), all cropped from the bartenders graphic (wordmark removed). `<link rel=icon>` added to index.html. |
+| `8f4a8fb` / `7522833` | **Lovable removed** — dropped `lovable-tagger` (vite dev badge), deleted `bun.lock` + `.lovable/` + `docs/LOVABLE_PHASE2_PHASE3.md`, rewrote README, stripped Lovable URLs from Supabase auth allow-list. |
+| `532263d` | **Printer portal + private print-files** — migration `20260713000002_printer_portal.sql` (printer_allowlist, `is_printer()`, storage RLS). `print-files` bucket set PRIVATE. `/printer` password-gated catalog (`src/pages/printer/*`). `printer-invite` edge fn (branded set-password email). stripe-webhook emits 1-yr signed URLs for print files. |
+| `1720b93` | **DB security hardening** — migration `20260713000000_security_hardening.sql`: `analytics_daily_revenue`→security_invoker (was leaking revenue to anon); revoked `increment_loyalty_points`/`increment_discount_use` from anon/authenticated (privilege escalation); pinned search_path on 9 fns; `disputed` added to order-status constraint. |
+| `645ba63` | **Print-file mapping complete** — added 5 slugs to stripe-webhook `PRINT_BASE` (lick_itself, shocker, logo_full_tag, tagline_without_logo, tea_please). All 27 products now resolve front prints for both colors. Back-logo black-box bug fixed (white-ink-on-transparent). |
+| `5137b83` | **STRIPE WEBHOOK DIAGNOSTIC** — wrapped entire order-processing block (lines 193–487) in try-catch; logs full error + stack to `[stripe-webhook] PROCESSING ERROR`. Returns 200 even on error to stop Stripe retries. Deployed as v55. |
+| `919fded` | **Fulfillment portal** — `src/pages/Fulfillment.tsx` (printer-facing order portal at `/fulfillment?t=<token>`); `supabase/functions/fulfillment-portal/index.ts` (HMAC-protected, verify_jwt:false, list/advance/note actions); `src/lib/orderStatus.ts` (canonical status constants); `src/lib/database.types.ts` updated (in_production/shipped/delivered added); `App.tsx` `/fulfillment` route added; `create-checkout` v39 adds `shipping_cents` to metadata; `stripe-webhook` loyalty default `?? false` + `action_links` HTML in printerVars; migration `20260705000002_fulfillment_portal.sql` applied |
 | `e3631ce` | Reverted `decoding="sync"` on priority images — sync decoding blocks main thread; caused TBT spike 20ms → 107ms. All images use `decoding="async"` |
 | `c772158` | Google Fonts CSS `@import` removed from `index.css`; consolidated into single `<link>` in `index.html` (eliminates render-blocking cascade delay). Added `priority` prop to ProductCard; first 3 cards get `loading="eager"` + `fetchPriority="high"` |
 | `d44710a` | Logo CLS fix — `width="500"` `height="257"` on Navbar logo img. Shop sort select `aria-label="Sort products"` |
 | `82fb6ff` | WebP image conversion — 80 product images + 5 UI images, 61MB → 7.3MB (88%). DB image URLs updated to .webp. ProductCard has `.webp`→`.png` onError fallback |
 | `358a5cf` | QA accessibility/SEO/CLS fixes — MerchDrops SEO, carousel `inert` + 44×44px dot targets, Karen ticker CLS, heading order (Footer/Orders/CustomRequests `h4`→`p`) |
-| `0d24858` | Migrated product catalog from 1228-line static array to DB-only (`useMergedProducts`); removed array from main bundle (~49kB saved) |
-| `44feb4c` | Added `aria-label` to logo link and product card image links (accessibility) |
-| `754f410` | Fixed black screen on client-side navigation to `/admin` — added inner `<Suspense>` around `<Outlet />` in AdminLayout so the shell stays visible while page chunk loads |
-| DB-only | Fixed 4 product image 404s (`cow-tipping`, `f-off-karen`, `do-you-like-it-in-a-glass`, `your-next-drink`) — DB had `.webp` URLs but only `.png`/`.jpg` files existed |
 
 ## ✅ ENV VARS — RESOLVED
 `.env.production` is committed to the repo (not gitignored). It contains `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. This guarantees Vite bakes these into the CF Pages build. Do not move these to CF Pages "Secrets" — Secrets are runtime-only and not available at Vite build time.
@@ -121,11 +124,12 @@ At the start of each new Cowork session on this project:
 ## Supabase Edge Functions
 | Function | Purpose | Required Secrets |
 |----------|---------|-----------------|
-| `create-checkout` | Stripe Checkout session creator | STRIPE_SECRET_KEY ✅ |
-| `stripe-webhook` | Handles payment.completed, marks order paid, sends printer + customer emails, awards Pour Points | STRIPE_SECRET_KEY ✅, STRIPE_WEBHOOK_SIGNING_SECRET ✅, FULFILLMENT_SECRET ✅ |
+| `create-checkout` | Stripe Checkout session creator; v39 adds `shipping_cents` to metadata | STRIPE_SECRET_KEY ✅ |
+| `stripe-webhook` | Handles payment.completed, marks order paid, sends printer + customer emails, awards Pour Points. **v55** wraps post-payment processing in try-catch + logs `[stripe-webhook] PROCESSING ERROR`. | STRIPE_SECRET_KEY ✅, STRIPE_WEBHOOK_SIGNING_SECRET ✅, FULFILLMENT_SECRET ✅ |
 | `send-notification` | Resend email dispatch with template system | RESEND_API_KEY ✅ |
 | `verify-email` | Email validation (syntax, disposable, MX lookup) | None |
 | `submit-tracking` | Printer submits tracking number via magic link (HMAC verified) | FULFILLMENT_SECRET ✅ |
+| `fulfillment-portal` | **v2** Printer-facing portal — HMAC-protected (verify_jwt:false). Portal token = HMAC("fulfillment-portal", FULFILLMENT_SECRET). Actions: list (all orders), advance (status + status_history), note. GET advance returns branded HTML confirmation (email tap-to-advance). | FULFILLMENT_SECRET ✅ |
 
 ## Things Still Needing Configuration (Before Marketing)
 1. ✅ Stripe secrets set: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`
@@ -138,6 +142,26 @@ At the start of each new Cowork session on this project:
 8. ✅ Supabase Storage `print-files` bucket created; 74 PNGs uploading (black/ + white/)
 9. ✅ CF email routing rule set — opie@pournogravy.com routes to pournogravy-receive-email Worker (done July 1, 2026)
 10. ⚠️ Place test order to verify full fulfillment email flow
+
+## 🚨 OPEN INCIDENT — Stripe Webhook 500 Errors (July 3, 2026)
+Stripe reported 13 HTTP 500s from the webhook endpoint starting July 3, 2026 at 9:01 PM UTC. Two orders (`6ae0b971`, `11ae929e`) were marked "paid" in the DB but got NO printer_queue rows and NO emails sent. The webhook was throwing somewhere between the "paid" DB update and the `send-notification` calls — but the original code had no try-catch so there were zero logs.
+
+**Fix applied (commit `5137b83`, stripe-webhook v55):** Wrapped the entire post-payment processing block in a try-catch that logs the full error + stack. Now returns HTTP 200 even on error (stops Stripe retries). The root cause is still unknown.
+
+**What still needs to happen:**
+1. **Check Supabase logs** → Edge Functions → stripe-webhook → Logs → search for `[stripe-webhook] PROCESSING ERROR`
+2. **Read the error message** — identify the exact throw location
+3. **Fix the root cause** — then redeploy
+4. **Manually resend emails** for orders `6ae0b971` and `11ae929e` (both have no notification rows)
+
+**Latent bug — ✅ FIXED July 13, 2026:** `chk_order_status` now includes `"disputed"` (migration `20260713000000_security_hardening.sql`).
+
+## ⚠️ PRINT-FILES BUCKET IS PRIVATE (July 14, 2026)
+`print-files` bucket is now **private** (`public=false`). Public object URLs return HTTP 400. Access paths:
+- **Fulfillment:** stripe-webhook builds **1-year signed URLs** (`createSignedUrl`, 31536000s) for the printer email + CSV.
+- **Printer portal:** authenticated printer (on `printer_allowlist`, `is_printer()`=true) reads via storage RLS + signed URLs at `/printer`.
+- **Admin:** `is_admin` has storage RLS read; PrintFiles.tsx already uses signed URLs.
+- Do NOT switch back to `getPublicUrl` for print-files — it will 404. Ink convention: `white/*_white.png`=white ink (dark shirts), `black/*_black.png`=black ink (light shirts). All 27 products mapped in stripe-webhook `PRINT_BASE`.
 
 ## Style Preferences
 - Always look for the most credit-efficient approach
