@@ -38,3 +38,4 @@ public/products/*_white.png
 supabase/.temp/
 *.bak
 *.bak2
+.lovable/
