@@ -19,6 +19,7 @@ import CartDrawer from "@/components/CartDrawer";
 import Index from "./pages/Index";
 import { DropAnnouncementBar } from "./components/DropAnnouncementBar";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
+import PrinterProtectedRoute from "./components/printer/PrinterProtectedRoute";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
 // ─── LAZY: public pages ───────────────────────────────────────────────────────
@@ -41,6 +42,9 @@ const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
 const ShipOrder      = lazy(() => import("./pages/ShipOrder"));
 const Fulfillment    = lazy(() => import("./pages/Fulfillment"));
+const PrinterLogin       = lazy(() => import("./pages/printer/PrinterLogin"));
+const PrinterSetPassword = lazy(() => import("./pages/printer/PrinterSetPassword"));
+const PrinterCatalog     = lazy(() => import("./pages/printer/PrinterCatalog"));
 const Rewards        = lazy(() => import("./pages/Rewards"));
 const PublicMerchDrops = lazy(() => import("./pages/MerchDrops"));
 
@@ -195,6 +199,9 @@ const App = () => (
                     <Route path="/advertise"      element={<Advertise />} />
                     <Route path="/ship/:orderId"  element={<ShipOrder />} />
                     <Route path="/fulfillment"    element={<Fulfillment />} />
+                    <Route path="/printer/login"        element={<PrinterLogin />} />
+                    <Route path="/printer/set-password" element={<PrinterSetPassword />} />
+                    <Route path="/printer" element={<PrinterProtectedRoute><PrinterCatalog /></PrinterProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

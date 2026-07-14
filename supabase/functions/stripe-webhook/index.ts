@@ -349,9 +349,21 @@ Deno.serve(async (req) => {
       // Determine which ink color (black or white) to use for the back logo
       // based on garment color: dark garments get white ink, light garments get black ink.
       const DARK_GARMENTS = ["black", "charcoal", "navy", "dark", "graphite", "forest", "maroon", "royal", "hunter", "slate"];
-      const backLogoForColor = (garmentColor: string): string => {
-        const isDark = DARK_GARMENTS.some((d) => garmentColor.toLowerCase().includes(d));
-        return `${STORAGE_BASE}/back/logo_back_${isDark ? "white" : "black"}.png`;
+      const isDarkGarment = (c: string) => DARK_GARMENTS.some((d) => c.toLowerCase().includes(d));
+      const backLogoPath = (garmentColor: string): string =>
+        `back/logo_back_${isDarkGarment(garmentColor) ? "white" : "black"}.png`;
+
+      // print-files is a private bucket — deliver long-lived (1 year) signed URLs so the
+      // printer can open the artwork straight from the order email. Falls back to the
+      // public path if signing fails (keeps working if the bucket is still public).
+      const SIGN_TTL = 31_536_000; // 1 year
+      const signPath = async (p: string): Promise<string> => {
+        try {
+          const { data } = await supabase.storage.from("print-files").createSignedUrl(p, SIGN_TTL);
+          return data?.signedUrl ?? `${STORAGE_BASE}/${p}`;
+        } catch {
+          return `${STORAGE_BASE}/${p}`;
+        }
       };
 
       // Build design links list (one per unique slug) for printer email
@@ -371,12 +383,16 @@ Deno.serve(async (req) => {
         if (slug && !seenSlugs.has(slug)) {
           seenSlugs.add(slug);
           const garmentColor = String(s.color ?? "");
-          const backUrl = backLogoForColor(garmentColor);
           const printBase = printBaseFor(slug);
+          const [frontBlack, frontWhite, backUrl] = await Promise.all([
+            signPath(`black/${printBase}_black.png`),
+            signPath(`white/${printBase}_white.png`),
+            signPath(backLogoPath(garmentColor)),
+          ]);
           designLinkLines.push(
             `${slug} (${garmentColor || "color unknown"}) — TWO-SIDED:\n` +
-            `  Front Black Ink: ${STORAGE_BASE}/black/${printBase}_black.png\n` +
-            `  Front White Ink: ${STORAGE_BASE}/white/${printBase}_white.png\n` +
+            `  Front Black Ink: ${frontBlack}\n` +
+            `  Front White Ink: ${frontWhite}\n` +
             `  Back (auto-matched to garment color): ${backUrl}`
           );
         }
@@ -388,15 +404,15 @@ Deno.serve(async (req) => {
       const shipName = (ship?.name as string) ?? "";
       const shipAddr = ship?.address as Record<string, unknown> | null;
       const csvHeader = "Order ID,Date,Product Name,Slug,Size,Color,Qty,Ship Name,Address 1,City,State,Zip,Country,Front Print File URL,Back Print File URL,Shipping Collected";
-      const csvRows = (items ?? []).map((it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
+      const csvRows = await Promise.all((items ?? []).map(async (it: { product_id?: string; quantity: number; product_snapshot?: Record<string, unknown> }) => {
         const s = (it.product_snapshot ?? {}) as Record<string, unknown>;
         const slug = String(s.slug ?? "");
         const garmentColor = String(s.color ?? "");
-        const isDark = DARK_GARMENTS.some((d) => garmentColor.toLowerCase().includes(d));
+        const isDark = isDarkGarment(garmentColor);
         const inkSuffix = isDark ? "white" : "black";
         const inkFolder = isDark ? "white" : "black";
-        const frontUrl = slug ? `${STORAGE_BASE}/${inkFolder}/${printBaseFor(slug)}_${inkSuffix}.png` : "";
-        const backUrl = backLogoForColor(garmentColor);
+        const frontUrl = slug ? await signPath(`${inkFolder}/${printBaseFor(slug)}_${inkSuffix}.png`) : "";
+        const backUrl = await signPath(backLogoPath(garmentColor));
         const col = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
         return [
           col(order.id.slice(0, 8).toUpperCase()),
@@ -416,7 +432,7 @@ Deno.serve(async (req) => {
           col(backUrl),
           col(shippingCents > 0 ? `$${(shippingCents / 100).toFixed(2)}` : "TBD"),
         ].join(",");
-      });
+      }));
 
       const totalItemCount = (items ?? []).reduce((sum, it) => sum + (it.quantity ?? 1), 0);
       const printerCostCents = totalItemCount * 1200;
