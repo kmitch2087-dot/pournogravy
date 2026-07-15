@@ -44,9 +44,33 @@ import { toast } from "sonner";
 // ---------------------------------------------------------------------------
 const SESSION_LOG = [
   {
-    date: "June 24, 2026",
+    date: "July 13–14, 2026",
     tag: "TODAY",
     tagColor: "bg-green-500/20 text-green-300",
+    summary: "Product/print-file overhaul, database security hardening, password-gated printer portal, Lovable removal, and new brand assets. All 27 products now resolve print files for both shirt colors, and a back-logo bug that printed a black box on every black shirt was fixed. The print-ready artwork (the brand's sellable IP) is now locked behind a private storage bucket + a password-protected /printer portal — the printer has been invited to set up their login. Two real security holes were closed (a public report leaking daily revenue, and a loophole letting customers award themselves loyalty points). All Lovable builder branding was removed, and a new brand favicon / social profile image / link-share image was produced.",
+    completed: [
+      "Print files: all 27 products mapped in stripe-webhook (5 previously built dead 404 links)",
+      "Fixed back-logo bug that printed a black box on every black shirt",
+      "Merged the two-piece 'Well It Ain't Gonna Lick Itself' margarita graphic",
+      "Female-silhouette variant products + generated missing female shirt mockups",
+      "Card photo-flip images added (favorite-bartender, my-real-job, glass-can)",
+      "Security: analytics revenue report no longer readable by the public",
+      "Security: customers can no longer self-award Pour Points or inflate discounts",
+      "Security: pinned search_path on 9 DB functions; fixed 'disputed' order status",
+      "print-files bucket set PRIVATE; order emails now use 1-year signed links",
+      "Password-gated /printer catalog portal (login / set-password / catalog)",
+      "printer-invite edge function + branded email; printer (Up2ournecksinfabric) invited",
+      "Supabase auth: added pournogravy.com to the redirect allow-list",
+      "Removed all Lovable branding (dependency, config, README, .lovable, auth URLs)",
+      "New favicon + apple-touch-icon + social avatar (1024/512) + link-share image (1200×630)",
+      "Save-flow fixes: product reorder, content field types, go-live timestamp, rich-text",
+    ],
+    next: "Place ONE live test order end-to-end; monitor stripe-webhook logs on the next real order",
+  },
+  {
+    date: "June 24, 2026",
+    tag: "CONTENT + POLISH",
+    tagColor: "bg-purple-500/20 text-purple-300",
     summary: "Wave 3 content + admin polish sprint. Content editor save feedback (Sonner toasts). Add Superpower button. Add Section dialog (Text/Rich Text/Q&A). Dynamic items have delete buttons; structural sections protected. Shop tab in content editor: drag-to-reorder product thumbnails with save order. Admin Reviews page overhauled: filter tabs (All/Pending/Published/Verified), Publish/Unpublish toggles, status badges, expandable body, verified purchase badge. Backfilled OG metadata on all 26 products (og_title, og_description, og_image). Wave 2 verified-purchase reviews system previously shipped.",
     completed: [
       "Content editor: Sonner toast on save success and on error",
