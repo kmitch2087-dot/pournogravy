@@ -24,10 +24,20 @@
     <!-- Supabase preconnect -->
     <link rel="preconnect" href="https://emtjkawcmsfgjyimnncf.supabase.co" />
 
-    <!-- All Google Fonts in one request — eliminates second render-blocking stylesheet -->
+    <!-- Preload the always-eager hero background so it's fetched in parallel with the JS
+         bundle rather than being discovered only after React renders (improves LCP/FCP). -->
+    <link rel="preload" as="image" href="/hero-bg-transparent.webp" fetchpriority="high" />
+
+    <!-- Google Fonts — loaded non-render-blocking via the print-media swap trick so the
+         stylesheet never delays first paint (was ~1.6s of render-blocking on mobile).
+         display=swap renders fallback text immediately, then swaps when fonts arrive. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+    </noscript>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />

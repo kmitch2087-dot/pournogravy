@@ -343,6 +343,7 @@ const Index = () => {
                     alt={product.name}
                     className="w-full h-full object-contain"
                     loading={slideIdx === 0 ? "eager" : "lazy"}
+                    fetchPriority={slideIdx === 0 ? "high" : "auto"}
                     decoding="async"
                   />
                 )}
@@ -384,6 +385,7 @@ const Index = () => {
                           alt={product.name}
                           className="w-full h-full object-contain"
                           loading={slideIdx === 0 ? "eager" : "lazy"}
+                          fetchPriority={slideIdx === 0 ? "high" : "auto"}
                           decoding="async"
                         />
                       )}
