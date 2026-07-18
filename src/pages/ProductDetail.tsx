@@ -9,7 +9,7 @@ import { useMergedProducts } from "@/lib/productSource";
 import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
@@ -35,17 +35,32 @@ const ProductDetail = () => {
 
   const { data: mergedProducts, isLoading: productsLoading } = useMergedProducts();
 
-  // In preview mode, try localStorage (cross-tab) first; otherwise require published
-  const previewProduct = isPreview && id
-    ? (() => {
-        try {
-          const raw = localStorage.getItem(`preview_product_${id}`);
-          return raw ? JSON.parse(raw) : null;
-        } catch { return null; }
-      })()
-    : null;
+  // In preview mode, try localStorage (cross-tab) first; otherwise require published.
+  // MUST be memoized: JSON.parse returns a fresh object each call, and `product`
+  // feeds a `[product]`-keyed effect below. Re-parsing every render gives product a
+  // new identity each render → that effect re-fires → setState → re-render → infinite
+  // loop (the "glitching" seen only in preview; the public path uses a stable
+  // React Query reference).
+  const previewProduct = useMemo(() => {
+    if (!isPreview || !id) return null;
+    try {
+      const raw = localStorage.getItem(`preview_product_${id}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, [isPreview, id]);
 
   const product = previewProduct ?? mergedProducts?.find((p) => p.id === id && (isPreview || p.published === true));
+
+  // "You might also hate" picks. Memoized (and declared above the early returns so
+  // it stays an unconditional hook) so the random pick is stable across renders —
+  // otherwise the grid reshuffles + re-animates on every re-render.
+  const related = useMemo(
+    () => (mergedProducts ?? [])
+      .filter((p) => p.id !== product?.id && p.published !== false)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3),
+    [mergedProducts, product?.id],
+  );
 
   const publishedProducts = (mergedProducts ?? []).filter((p) => p.published === true);
   const currentIndex = publishedProducts.findIndex((p) => p.id === id);
@@ -128,7 +143,9 @@ const ProductDetail = () => {
       if (error) throw error;
       return (data ?? []) as GroupMember[];
     },
-    enabled: !!product?.product_group_id && !isPreview,
+    // Runs in preview too (the preview payload now carries product_group_id) so the
+    // admin sees the style switcher exactly as the public page shows it.
+    enabled: !!product?.product_group_id,
   });
 
   const submitReview = useMutation({
@@ -210,11 +227,6 @@ const ProductDetail = () => {
       </div>
     );
   }
-
-  const related = (mergedProducts ?? [])
-    .filter((p) => p.id !== product.id && p.published !== false)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
 
   // Photo lookup chain — most specific match wins:
   //   1. color.imagesByFit[fitId]   — fit + color combo (e.g. Men's Cream)

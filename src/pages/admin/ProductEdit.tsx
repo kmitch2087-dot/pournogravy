@@ -767,6 +767,9 @@ const ProductEdit = () => {
       badge: form.badge || undefined,
       published: true,
       featured: form.featured,
+      // Carry grouping so the preview shows the style switcher like the public page
+      product_group_id: form.product_group_id || undefined,
+      styleLabel: form.styleLabel || undefined,
       images,
       image: images[0],
       sizes: form.sizes,
