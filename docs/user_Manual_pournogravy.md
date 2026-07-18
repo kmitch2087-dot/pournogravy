@@ -104,6 +104,16 @@ Contact Kristin. Provide:
 - Images (high-res PNG or JPG)
 - Whether it should be featured on the homepage
 
+### Heading Note (the line under the title) — new
+When you edit a product, the **COPY** section has a **"Heading Note"** box at the very top with an on/off toggle. It's **off by default**. When you turn it on and type something, that text shows on the product page **right under the product title** (above the reviews and the yellow tagline).
+
+- Use it for things like **"Multiple designs available below."** on a shirt that has male/female or other style versions.
+- Leave it **off** on products that don't need it — nothing shows when it's off or empty.
+- It's a rich-text box: hit **Enter** to start a new paragraph and the break shows on the live page.
+
+### Style Label (naming the style buttons) — new
+When two or more products are linked as a **Style Group** (e.g. a Male and a Female version), the product page shows little buttons so shoppers can switch between them. In the **STYLE GROUP** box on the edit page, fill in the **"Style Label"** field (e.g. `Men's`, `Women's`, `V-Neck`) so each button is clearly named. Leave it blank and the site will guess a label from the product name.
+
 ---
 
 ## 5. Editing Site Copy (Headlines, FAQs, CTAs)

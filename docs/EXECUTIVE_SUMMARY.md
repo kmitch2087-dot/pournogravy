@@ -111,11 +111,13 @@ This is not a Shopify template or a Wix site. This is a bespoke, production-grad
 
 ---
 
-## 4. Current Status (July 14, 2026)
+## 4. Current Status (July 18, 2026)
 
 **Site is live at pournogravy.com. Real Stripe payments are processing.** The storefront, cart, admin dashboard, loyalty program, analytics, CMS content editing, financial dashboard, email templates, blog, fulfillment portal, and contact form are all fully operational. All transactional emails are branded and live.
 
 **Recent hardening (July 13–14):** Every product now has correct print files wired for both shirt colors, and a back-logo bug that would have printed a black box on every black shirt was fixed. The print-ready artwork (the brand's sellable IP) is now locked behind a **private storage bucket and a password-protected printer portal** — the printer has been invited to set up their login. Several **database security issues were found and fixed** (a report that leaked daily revenue to the public, and a loophole that could let customers award themselves loyalty points). The site was also fully cleaned of the old Lovable builder's branding, and a new brand favicon / social-media profile image was produced. One open technical incident remains (Stripe webhook 500s — diagnostic logging in place) and one launch item (a live end-to-end test order).
+
+**Product-page polish (July 18):** Added an optional **"Heading Note"** — a line Opie can turn on under any product's title (e.g. *"Multiple designs available below"* on shirts with male/female versions). Fixed a formatting bug so pressing **Enter** in the product-copy editors now shows real paragraph breaks on the live page. Style-switch buttons on multi-version shirts can now be **named** (Men's / Women's / etc.), and switching between versions on a phone no longer bounces you back to the top of the page.
 
 | Item | Status | Action Needed |
 |------|--------|--------------|

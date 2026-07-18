@@ -297,6 +297,11 @@ The Contact page form inserts into `custom_requests` with `garment = 'contact-fo
 ```sql
 id, slug (unique), name, description, price_cents, currency, image_url,
 inventory_count, is_active, status ('draft'|'published'|'archived'), created_at, updated_at
+-- copy/render columns (partial): humor, subheading, heading_note, long_description (text[]),
+--   bad_advice (jsonb), section_order (text[]), section_visibility (jsonb), style_label,
+--   product_group_id, featured, badge, went_live_at, flip_enabled, flip_image_url, og_*
+-- heading_note   — HTML shown directly under the product title; opt-in via section_visibility.headingNote (default off)
+-- style_label    — short label for this product's button in the on-page style switcher (falls back to a derived label)
 ```
 
 **`orders`**
@@ -454,6 +459,13 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### July 18, 2026
+- **Heading Note** (migration `20260718000000_product_heading_note_style_label.sql`, commit `a3f0bed`) — new `products.heading_note text` column. Optional rich-text (HTML) block rendered on the product page directly under the `<h1>` title, above the rating + yellow subheading. Opt-in: only renders when `section_visibility.headingNote === true` (default off — unlike the other copy sections which are opt-out `!== false`). Admin: a dedicated non-draggable "Heading Note" block pinned at the top of the COPY card (`ProductEdit.tsx`) with its own on/off toggle + the shared Tiptap `RichTextEditor`. Design doc: `docs/superpowers/specs/2026-07-18-product-heading-note-and-style-switcher-design.md`.
+- **Rich-text paragraph fix** — `ProductDetail.tsx` rendered `description` / `long_description` / `bad_advice` (and now heading note) via bare `dangerouslySetInnerHTML` divs; Tailwind's preflight zeroes `<p>` margins there, so multi-paragraph copy collapsed. Wrapped those renders in the existing `.rich-text` class (`index.css` → `.rich-text p { margin-bottom: 0.5em }`). Enter/paragraph breaks now render everywhere rich text is shown. No editor/Tiptap change (StarterKit already emits `<p>` on Enter).
+- **Style Label** (same migration) — new `products.style_label text` column + "Style Label" input in the STYLE GROUP admin card. The on-page style switcher (`ProductDetail.tsx`) uses `style_label`, falling back to the previous longest-common-prefix-strip derivation when blank. The `groupMembers` query now also `select`s `style_label`.
+- **Mobile style-compare** — on mobile only, grouped products (`groupMembers.length > 0`) collapse the copy sections behind a "Show product details" toggle (`md:hidden` toggle + `hidden md:block` copy wrapper) so the image sits near the style buttons; desktop unchanged (gallery already `md:sticky`). Style-switch buttons `navigate(..., { state: { styleSwitch: true } })`; the global `ScrollToTop` (`App.tsx`) and `ProductDetail`'s reset effect both skip the jump-to-top when that state is present, preserving scroll position on a within-group switch.
+- **Bug fix** — `groupMembers` query key was `["product-group", product_group_id]`; since sibling products share a group id, switching between them served a stale (self-excluded) members list, so switcher labels went wrong. Added the current slug (`id`) to the query key.
 
 ### July 13–14, 2026
 - **Print-file resolution completed** (`645ba63`, stripe-webhook v56+) — `PRINT_BASE` slug→base-code map now covers all 27 published products. Previously-unmapped slugs fell back to `{slug}_{ink}.png` and 404'd; added `well-it-ain-t-gonna-lick-itself-tee→lick_itself`, `dear-karen-you-stink-tee→shocker`, `pournogravy-og-tee-…→logo_full_tag`, `saving-my-bar-…→tagline_without_logo`, `tea-toes-and-vodka-please-tee→tea_please`. Ink convention confirmed: `white/*_white.png` = white ink (dark shirts), `black/*_black.png` = black ink (light shirts); folder/suffix chosen by garment color.
