@@ -2,7 +2,7 @@ import SEO from "@/components/SEO";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { ShareButton } from "@/components/ShareButton";
-import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { RichText } from "@/components/RichText";
 import { type ProductVariant, type ProductColor } from "@/data/products";
 import { useMergedProducts } from "@/lib/productSource";
@@ -23,11 +23,13 @@ interface GroupMember {
   id: string;
   name: string;
   slug: string;
+  style_label: string | null;
 }
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get("preview") === "1";
 
@@ -66,6 +68,9 @@ const ProductDetail = () => {
   // "Want this on a hoodie/speedo/whatever?" request modal.
   const [customOpen, setCustomOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  // Mobile: collapse the descriptive copy for grouped products so the image sits
+  // near the style buttons + checkout (see collapse block below).
+  const [copyOpen, setCopyOpen] = useState(false);
   const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -109,12 +114,14 @@ const ProductDetail = () => {
 
   // Product group members — other products in the same style group
   const { data: groupMembers } = useQuery<GroupMember[]>({
-    queryKey: ["product-group", product?.product_group_id],
+    // Include the current slug (id) in the key — members are filtered to exclude the
+    // current product, so two products in the same group must not share a cache entry.
+    queryKey: ["product-group", product?.product_group_id, id],
     queryFn: async () => {
       if (!product?.product_group_id) return [];
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, slug")
+        .select("id, name, slug, style_label")
         .eq("product_group_id", product.product_group_id)
         .eq("is_active", true)
         .neq("slug", id ?? "");
@@ -147,14 +154,17 @@ const ProductDetail = () => {
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : null;
 
-  // Reset state when switching between products
+  // Reset state when switching between products. On a within-group style switch
+  // (navigate carries state.styleSwitch), keep the scroll position so the user
+  // stays at the style buttons instead of being yanked to the top.
   useEffect(() => {
     setSelectedSize("");
     setJustAdded(false);
     setAddedFeedback(false);
     setActiveImage(0);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [id]);
+    const isStyleSwitch = (location.state as { styleSwitch?: boolean } | null)?.styleSwitch === true;
+    if (!isStyleSwitch) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSelectedVariant(product?.variants?.[0]);
@@ -465,6 +475,13 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
 
+              {/* Heading Note — opt-in block directly under the title */}
+              {product.section_visibility?.headingNote === true && product.headingNote && (
+                product.headingNote.startsWith('<')
+                  ? <div className="rich-text text-muted-foreground text-sm md:text-base leading-relaxed mt-3" dangerouslySetInnerHTML={{ __html: product.headingNote }} />
+                  : <p className="text-muted-foreground text-sm md:text-base leading-relaxed mt-3">{product.headingNote}</p>
+              )}
+
               {avgRating !== null && (
                 <div className="flex items-center gap-1.5 mt-2">
                   <StarRow rating={avgRating} />
@@ -493,11 +510,26 @@ const ProductDetail = () => {
 
             </div>
 
+            {/* Mobile: for grouped products, collapse the copy so the image sits near the
+                style buttons + checkout. Desktop always shows the full copy. */}
+            {groupMembers && groupMembers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setCopyOpen((o) => !o)}
+                aria-expanded={copyOpen}
+                className="md:hidden flex items-center gap-1.5 text-xs font-display tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {copyOpen ? "Hide details" : "Show product details"}
+                <span className={`transition-transform ${copyOpen ? "rotate-180" : ""}`}>⌄</span>
+              </button>
+            )}
+
+            <div className={groupMembers && groupMembers.length > 0 && !copyOpen ? "hidden md:block space-y-6" : "space-y-6"}>
             {(product.sectionOrder ?? ["humor", "description", "longDescription", "badAdvice"]).map((sectionId) => {
               if (sectionId === "description" && product.section_visibility?.description !== false && product.description) return (
                 <div key="description" className="text-muted-foreground text-sm md:text-base leading-relaxed">
                   {product.description.startsWith('<')
-                    ? <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                    ? <div className="rich-text" dangerouslySetInnerHTML={{ __html: product.description }} />
                     : <p>{product.description}</p>}
                 </div>
               );
@@ -506,7 +538,7 @@ const ProductDetail = () => {
                   {product.longDescription.map((para, i) => (
                     <div key={i} className="text-muted-foreground text-sm md:text-base leading-relaxed">
                       {para.startsWith('<')
-                        ? <div dangerouslySetInnerHTML={{ __html: para }} />
+                        ? <div className="rich-text" dangerouslySetInnerHTML={{ __html: para }} />
                         : <RichText html={para} />}
                     </div>
                   ))}
@@ -527,7 +559,7 @@ const ProductDetail = () => {
                   <div className="space-y-3">
                     {product.badAdvice.paragraphs.map((para, i) => (
                       para.startsWith('<')
-                        ? <div key={i} className="text-lg text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: para }} />
+                        ? <div key={i} className="rich-text text-lg text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: para }} />
                         : <p key={i} className="text-lg text-foreground/80 leading-relaxed">{para}</p>
                     ))}
                   </div>
@@ -535,6 +567,7 @@ const ProductDetail = () => {
               );
               return null;
             })}
+            </div>
 
             {/* Custom garment request — "pain in the ass" CTA */}
             <div className="pt-2 text-xs text-muted-foreground leading-relaxed">
@@ -587,16 +620,16 @@ const ProductDetail = () => {
                       style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
                       disabled
                     >
-                      {shortLabel(product.name)}
+                      {product.styleLabel || shortLabel(product.name)}
                     </button>
                     {/* Other group members */}
                     {groupMembers.map((m) => (
                       <button
                         key={m.id}
-                        onClick={() => navigate(`/product/${m.slug}`)}
+                        onClick={() => navigate(`/product/${m.slug}`, { state: { styleSwitch: true } })}
                         className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
                       >
-                        {shortLabel(m.name)}
+                        {m.style_label || shortLabel(m.name)}
                       </button>
                     ))}
                   </div>

@@ -50,6 +50,8 @@ interface DbProductRow {
   badge: string | null;
   humor: string | null;
   subheading: string | null;
+  heading_note: string | null;
+  style_label: string | null;
   bad_advice: unknown;
   long_description: string[] | null;
   fit_type: string;
@@ -96,6 +98,8 @@ const dbRowToProduct = (r: DbProductRow): Product => {
     badge: r.badge ?? undefined,
     humor: r.humor ?? "",
     subheading: r.subheading ?? undefined,
+    headingNote: r.heading_note ?? undefined,
+    styleLabel: r.style_label ?? undefined,
     badAdvice,
     variants:
       Array.isArray(r.variants) && r.variants.length > 0

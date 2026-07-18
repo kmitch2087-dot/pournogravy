@@ -24,6 +24,8 @@ export interface Database {
           image_url: string | null;
           inventory_count: number;
           is_active: boolean;
+          heading_note: string | null;
+          style_label: string | null;
           created_at: string;
           updated_at: string;
         };

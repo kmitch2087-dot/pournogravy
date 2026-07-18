@@ -36,6 +36,7 @@ interface FormState {
   category: string;
   description: string;
   humor: string;
+  headingNote: string;      // rich-text HTML shown directly under the product title (opt-in)
   longDescription: string;  // textarea — newline-separated paragraphs
   badAdviceTitle: string;
   badAdviceParagraphs: string; // textarea — newline-separated paragraphs
@@ -65,6 +66,7 @@ interface FormState {
   ogImage: string;
   // Product grouping
   product_group_id: string | null;
+  styleLabel: string;        // short label for the on-page style switcher button
   // Card flip
   flipEnabled: boolean;
   flipImageUrl: string;
@@ -79,6 +81,7 @@ const defaultForm = (): FormState => ({
   category: "apparel",
   description: "",
   humor: "",
+  headingNote: "",
   longDescription: "",
   badAdviceTitle: "",
   badAdviceParagraphs: "",
@@ -101,6 +104,7 @@ const defaultForm = (): FormState => ({
   ogDescription: '',
   ogImage: '',
   product_group_id: null,
+  styleLabel: '',
   flipEnabled: false,
   flipImageUrl: '',
 });
@@ -399,6 +403,7 @@ const ProductEdit = () => {
         category: (product as Record<string, unknown>).category as string ?? "apparel",
         description: product.description ?? "",
         humor: product.humor ?? "",
+        headingNote: (product as Record<string, unknown>).heading_note as string ?? "",
         longDescription: ((product.long_description as string[] | null) ?? []).join("\n"),
         badAdviceTitle: ba?.title ?? "",
         badAdviceParagraphs: (ba?.paragraphs ?? []).join("\n"),
@@ -432,6 +437,7 @@ const ProductEdit = () => {
         ogDescription: (product as Record<string, unknown>).og_description as string ?? '',
         ogImage: (product as Record<string, unknown>).og_image as string ?? '',
         product_group_id: (product as Record<string, unknown>).product_group_id as string | null ?? null,
+        styleLabel: (product as Record<string, unknown>).style_label as string ?? "",
         flipEnabled: !!((product as Record<string, unknown>).flip_enabled),
         flipImageUrl: (product as Record<string, unknown>).flip_image_url as string ?? '',
       });
@@ -454,6 +460,7 @@ const ProductEdit = () => {
           category: "apparel",
           description: sp.description ?? "",
           humor: sp.humor ?? "",
+          headingNote: '',
           longDescription: (sp.longDescription ?? []).join("\n"),
           badAdviceTitle: sp.badAdvice?.title ?? "",
           badAdviceParagraphs: (sp.badAdvice?.paragraphs ?? []).join("\n"),
@@ -475,6 +482,7 @@ const ProductEdit = () => {
           ogTitle: '',
           ogDescription: '',
           ogImage: '',
+          styleLabel: '',
         });
         setInitialized(true);
       }
@@ -665,6 +673,7 @@ const ProductEdit = () => {
       category: form.category,
       description: form.description || null,
       humor: form.humor || null,
+      heading_note: form.headingNote || null,
       long_description: longDesc.length > 0 ? longDesc : null,
       bad_advice: badAdvice,
       section_order: form.sectionOrder,
@@ -692,6 +701,7 @@ const ProductEdit = () => {
       og_image:         form.ogImage       || null,
       publish_at:       publishAt,
       product_group_id: form.product_group_id,
+      style_label:      form.styleLabel || null,
       flip_enabled:     form.flipEnabled,
       flip_image_url:   form.flipImageUrl  || null,
       // Persist the admin's chosen "Went Live At" on updates too (controls the
@@ -748,6 +758,8 @@ const ProductEdit = () => {
       price: Number(form.price_dollars) || 0,
       description: form.description,
       humor: form.humor,
+      headingNote: form.headingNote,
+      section_visibility: form.sectionVisibility,
       longDescription: longDesc,
       badAdvice: (form.badAdviceTitle || badParagraphsHtml)
         ? { title: form.badAdviceTitle, paragraphs: badParagraphsHtml ? [badParagraphsHtml] : [] }
@@ -928,6 +940,48 @@ const ProductEdit = () => {
               <p className="text-xs text-muted-foreground">Drag sections to reorder. Keep it in Opie's voice — raw and honest.</p>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Heading Note — pinned under the title, non-draggable, default OFF */}
+              {(() => {
+                const on = form.sectionVisibility?.headingNote === true;
+                return (
+                  <div className={cn(
+                    "border border-border rounded-md p-4 space-y-3 bg-background/50 transition-opacity",
+                    !on && "opacity-50"
+                  )}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Heading Note</span>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 normal-case tracking-normal">
+                          Optional line shown directly under the product title — e.g. "Multiple designs available below."
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">{on ? 'Published' : 'Hidden'}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSectionVisibility('headingNote', !on)}
+                          className={cn(
+                            'relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                            on ? 'bg-[#cddc39]' : 'bg-muted'
+                          )}
+                        >
+                          <span className={cn(
+                            'pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow-lg transform transition duration-200 ease-in-out',
+                            on ? 'translate-x-4' : 'translate-x-0'
+                          )} />
+                        </button>
+                      </div>
+                    </div>
+                    <RichTextEditor
+                      value={form.headingNote}
+                      onChange={(html) => setF({ headingNote: html })}
+                      placeholder='e.g. "Multiple designs available below."'
+                      minHeight="70px"
+                    />
+                  </div>
+                );
+              })()}
+
               {form.sectionOrder.map((sectionId) => {
                 if (sectionId === "humor") return (
                   <DraggableSection key="humor" id="humor" label="Product Subheading"
@@ -1103,7 +1157,22 @@ const ProductEdit = () => {
                 Link this product to others in the same style family. A style switcher will appear on each product's page.
               </p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
+              {/* Style label — names this product's button in the on-page style switcher */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-widest">Style Label</Label>
+                <Input
+                  value={form.styleLabel}
+                  onChange={(e) => setF({ styleLabel: e.target.value })}
+                  placeholder="e.g. Men's, Women's, V-Neck"
+                  maxLength={24}
+                  className="text-sm h-8"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Names this product's button in the on-page style switcher. Leave blank to auto-derive from the name.
+                </p>
+              </div>
+
               {form.product_group_id ? (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground font-mono truncate flex-1">Group: {form.product_group_id}</span>

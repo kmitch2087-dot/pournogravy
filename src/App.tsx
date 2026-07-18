@@ -91,14 +91,17 @@ const PageLoader = () => (
 );
 
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   useEffect(() => {
+    // Within-group style switches carry state.styleSwitch — keep the scroll
+    // position so the user stays at the style buttons instead of jumping up.
+    if ((state as { styleSwitch?: boolean } | null)?.styleSwitch === true) return;
     // Guard: don't jump the outer page when a modal/dialog is open
     const hasOpenDialog = document.querySelector('[role="dialog"]') !== null;
     if (!hasOpenDialog) {
       window.scrollTo(0, 0);
     }
-  }, [pathname]);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 };
 

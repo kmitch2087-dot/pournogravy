@@ -37,6 +37,10 @@ export interface Product {
   badge?: string;
   /** Optional yellow italic subheading rendered below the product name on the detail page */
   subheading?: string;
+  /** Optional rich-text (HTML) note rendered directly under the product title. Opt-in via section_visibility.headingNote. */
+  headingNote?: string;
+  /** Short label naming this product's button in the on-page style switcher (e.g. "Men's"). Falls back to a derived label when blank. */
+  styleLabel?: string;
   /** Short, punchy zinger — shown in the "Bad Bartender Advice" callout */
   humor: string;
   /** Optional multi-paragraph "Bad Bartender Advice" story shown below the description */
