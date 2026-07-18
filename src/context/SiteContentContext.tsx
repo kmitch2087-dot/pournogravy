@@ -44,15 +44,37 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("site_content")
       .select("*")
       .order("sort_order", { ascending: true });
-    if (data) setRows(data as SiteContentRow[]);
+    // On a failed refetch, keep whatever rows we already have rather than blanking
+    // the editors. Only replace rows when the fetch actually returned data.
+    if (error) {
+      console.error("[SiteContent] fetch failed:", error.message);
+    } else if (data) {
+      setRows(data as SiteContentRow[]);
+    }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  // Fetch once on mount, then refetch whenever the tab regains focus / becomes
+  // visible. This keeps the two editors in sync across tabs: the provider is
+  // per-tab and previously fetched only once, so edits made in the admin
+  // dashboard tab never reached an already-open public tab's "Edit Page" panel
+  // (and vice-versa). Re-reading on focus makes whichever tab you switch to show
+  // the current content.
+  useEffect(() => {
+    fetchAll();
+    const onFocus = () => { fetchAll(); };
+    const onVisible = () => { if (document.visibilityState === "visible") fetchAll(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [fetchAll]);
 
   const getValue = useCallback(
     (page: string, section: string, key: string, fallback = ""): string => {
