@@ -9,7 +9,7 @@ import { useMergedProducts } from "@/lib/productSource";
 import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
@@ -83,9 +83,12 @@ const ProductDetail = () => {
   // "Want this on a hoodie/speedo/whatever?" request modal.
   const [customOpen, setCustomOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
-  // Mobile: collapse the descriptive copy for grouped products so the image sits
-  // near the style buttons + checkout (see collapse block below).
-  const [copyOpen, setCopyOpen] = useState(false);
+  // Mobile: for grouped products, the descriptive copy collapses (page shrinks) once
+  // the user scrolls down to the checkout area, and re-expands when they scroll back
+  // up. Driven by an IntersectionObserver on the sentinel below. Desktop always shows
+  // the full copy.
+  const [copyCollapsed, setCopyCollapsed] = useState(false);
+  const checkoutSentinelRef = useRef<HTMLDivElement>(null);
   const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -187,6 +190,27 @@ const ProductDetail = () => {
     setSelectedVariant(product?.variants?.[0]);
     setSelectedColor(product?.colors?.[0]);
   }, [product]);
+
+  // Scroll-linked copy collapse (mobile, grouped products only). Watch a sentinel at
+  // the checkout block: once it reaches the viewport (user scrolled to the bottom),
+  // collapse the copy so the page shrinks; when it drops back below the fold (scrolled
+  // up), expand again. The collapse shifts the sentinel by the copy's height, which
+  // provides natural hysteresis and prevents flicker. Desktop is never collapsed.
+  useEffect(() => {
+    const isGrouped = (groupMembers?.length ?? 0) > 0;
+    const el = checkoutSentinelRef.current;
+    if (!isGrouped || !el) { setCopyCollapsed(false); return; }
+    const isMobile = () => window.matchMedia("(max-width: 767px)").matches;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!isMobile()) { setCopyCollapsed(false); return; }
+        setCopyCollapsed(entries[0].boundingClientRect.top < window.innerHeight);
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [groupMembers, product?.id]);
 
   // Reset the active gallery slot whenever the fit OR color changes
   // so we always land on that combination's first image.
@@ -522,21 +546,14 @@ const ProductDetail = () => {
 
             </div>
 
-            {/* Mobile: for grouped products, collapse the copy so the image sits near the
-                style buttons + checkout. Desktop always shows the full copy. */}
-            {groupMembers && groupMembers.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setCopyOpen((o) => !o)}
-                aria-expanded={copyOpen}
-                className="md:hidden flex items-center gap-1.5 text-xs font-display tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {copyOpen ? "Hide details" : "Show product details"}
-                <span className={`transition-transform ${copyOpen ? "rotate-180" : ""}`}>⌄</span>
-              </button>
-            )}
-
-            <div className={groupMembers && groupMembers.length > 0 && !copyOpen ? "hidden md:block space-y-6" : "space-y-6"}>
+            {/* Mobile (grouped products): the copy collapses as you scroll to the
+                checkout and re-expands scrolling back up — see the checkout sentinel +
+                observer above. The CSS grid 0fr↔1fr trick animates the shrink smoothly
+                without hard-coding a height; md: forces it open on desktop. */}
+            <div
+              className={`grid transition-[grid-template-rows] duration-300 ease-in-out md:grid-rows-[1fr] ${copyCollapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]"}`}
+            >
+            <div className="overflow-hidden min-h-0 space-y-6">
             {(product.sectionOrder ?? ["humor", "description", "longDescription", "badAdvice"]).map((sectionId) => {
               if (sectionId === "description" && product.section_visibility?.description !== false && product.description) return (
                 <div key="description" className="text-muted-foreground text-sm md:text-base leading-relaxed">
@@ -579,6 +596,7 @@ const ProductDetail = () => {
               );
               return null;
             })}
+            </div>
             </div>
 
             {/* Custom garment request — "pain in the ass" CTA */}
@@ -663,6 +681,10 @@ const ProductDetail = () => {
                 </div>
               );
             })()}
+
+            {/* Sentinel: when this reaches the viewport (user scrolled to the checkout),
+                the mobile copy collapses; it re-expands when this drops back below the fold. */}
+            <div ref={checkoutSentinelRef} aria-hidden className="h-px w-full" />
 
             <div className="border-t border-border/40 pt-6 space-y-6">
               <p className="text-2xl md:text-3xl font-display tracking-wider">
