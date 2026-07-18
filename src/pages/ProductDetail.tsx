@@ -595,7 +595,9 @@ const ProductDetail = () => {
               .
             </div>
 
-            {/* Style switcher — shown when product belongs to a group */}
+            {/* Style switcher — shown when product belongs to a group. Buttons keep a
+                stable (name-sorted) order so selecting one only highlights it — it never
+                reorders/jumps to the front when you switch. */}
             {groupMembers && groupMembers.length > 0 && (() => {
               // Derive short labels by stripping the longest common prefix
               const allNames = [product.name, ...groupMembers.map((m) => m.name)];
@@ -611,39 +613,52 @@ const ProductDetail = () => {
                 return len;
               })();
               const shortLabel = (name: string) => {
-                // Strip the common prefix, then any leading "(" / trailing ")" left behind
-                // (e.g. "The Finger (Male Silhouette)" → "Male Silhouette").
+                // Strip the common prefix + surrounding punctuation, then a trailing
+                // "Silhouette" so it collapses to one word (e.g. "The Finger (Male
+                // Silhouette)" → "Male"). Admin-set style_label overrides this.
                 const stripped = name
                   .slice(commonPrefixLen)
                   .trim()
                   .replace(/^[([\-–—\s]+/, "")
-                  .replace(/[)\]\s]+$/, "");
+                  .replace(/[)\]\s]+$/, "")
+                  .replace(/\s*silhouette\s*$/i, "");
                 if (!stripped) return name.slice(0, 20);
                 return stripped.length > 20 ? stripped.slice(0, 20) + "…" : stripped;
               };
 
+              // One stable, name-sorted list of all members (current + siblings). Sorting
+              // by name keeps the order identical on every product's page in the group, so
+              // positions don't shift when you switch styles.
+              const members = [
+                { slug: product.id, name: product.name, style_label: product.styleLabel ?? null, current: true },
+                ...groupMembers.map((m) => ({ slug: m.slug, name: m.name, style_label: m.style_label, current: false })),
+              ].sort((a, b) => a.name.localeCompare(b.name));
+
               return (
                 <div>
                   <p className="font-marker text-[11px] tracking-[0.25em] text-[#ff1744] uppercase mb-2">Style</p>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Current product pill (active) */}
-                    <button
-                      className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-[#fde047] bg-[#fde047] text-black transition-all"
-                      style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
-                      disabled
-                    >
-                      {product.styleLabel || shortLabel(product.name)}
-                    </button>
-                    {/* Other group members */}
-                    {groupMembers.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => navigate(`/product/${m.slug}`, { state: { styleSwitch: true } })}
-                        className="px-4 py-1.5 text-xs font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
-                      >
-                        {m.style_label || shortLabel(m.name)}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-2.5">
+                    {members.map((m) => {
+                      const label = m.style_label || shortLabel(m.name);
+                      return m.current ? (
+                        <button
+                          key={m.slug}
+                          className="px-6 py-3 text-sm font-display tracking-wider border-2 border-[#fde047] bg-[#fde047] text-black transition-colors"
+                          style={{ boxShadow: "0 0 12px rgba(253,224,71,0.3)" }}
+                          disabled
+                        >
+                          {label}
+                        </button>
+                      ) : (
+                        <button
+                          key={m.slug}
+                          onClick={() => navigate(`/product/${m.slug}`, { state: { styleSwitch: true } })}
+                          className="px-6 py-3 text-sm font-display tracking-wider border-2 border-border text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
