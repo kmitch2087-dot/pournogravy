@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useRef } from "react";
 import { useCardImageFlip } from "@/hooks/useCardImageFlip";
 import { ShareButton } from "@/components/ShareButton";
+import { responsiveImageProps, PRODUCT_CARD_SIZES } from "@/lib/responsiveImage";
 
 // Module-level no-repeat state — persists across renders, resets on page reload
 let _lastCartPhrase = '';
@@ -147,6 +148,7 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
                 {cardImages[0] && (
                   <img
                     src={cardImages[0]}
+                    {...responsiveImageProps(cardImages[0], PRODUCT_CARD_SIZES)}
                     alt={product.name}
                     className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: showZoom ? 0 : 1, transition: 'opacity 0.8s ease-in-out' }}
@@ -155,6 +157,8 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
                     decoding="async"
                     onError={(e) => {
                       const el = e.target as HTMLImageElement;
+                      // Drop the responsive srcSet so the .png fallback in src actually wins.
+                      if (el.srcset) el.srcset = '';
                       if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.png');
                     }}
                   />

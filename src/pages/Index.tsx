@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { RichText } from "@/components/RichText";
+import { responsiveImageProps, HERO_IMAGE_SIZES } from "@/lib/responsiveImage";
 
 // Marquee phrase comes from site_content; hardcoded value is the fallback.
 // TICKER_ITEMS is rebuilt inside the component where getValue is available.
@@ -340,6 +341,7 @@ const Index = () => {
                 {product.image && (
                   <img
                     src={product.image}
+                    {...responsiveImageProps(product.image, HERO_IMAGE_SIZES)}
                     alt={product.name}
                     className="w-full h-full object-contain"
                     loading={slideIdx === 0 ? "eager" : "lazy"}
@@ -382,6 +384,7 @@ const Index = () => {
                       {product.image && (
                         <img
                           src={product.image}
+                          {...responsiveImageProps(product.image, HERO_IMAGE_SIZES)}
                           alt={product.name}
                           className="w-full h-full object-contain"
                           loading={slideIdx === 0 ? "eager" : "lazy"}

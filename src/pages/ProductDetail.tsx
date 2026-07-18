@@ -17,6 +17,7 @@ import CustomGarmentRequestModal from "@/components/CustomGarmentRequestModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { responsiveImageProps, PRODUCT_DETAIL_SIZES } from "@/lib/responsiveImage";
 
 interface GroupMember {
   id: string;
@@ -384,9 +385,11 @@ const ProductDetail = () => {
               {gallery[activeImage] ? (
                 <img
                   src={gallery[activeImage]}
+                  {...responsiveImageProps(gallery[activeImage], PRODUCT_DETAIL_SIZES)}
                   alt={`${product.name} — view ${activeImage + 1}`}
                   className="w-full h-full object-cover"
                   loading="eager"
+                  fetchPriority="high"
                   decoding="async"
                 />
               ) : (
@@ -438,6 +441,7 @@ const ProductDetail = () => {
                   >
                     <img
                       src={img}
+                      {...responsiveImageProps(img, "80px")}
                       alt={`${product.name} — view ${i + 1}`}
                       className="w-full h-full object-contain"
                       loading="lazy"
