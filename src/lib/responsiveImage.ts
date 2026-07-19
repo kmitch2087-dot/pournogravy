@@ -21,8 +21,12 @@ export const HERO_IMAGE_SIZES = "(min-width: 768px) 440px, 100vw";
 /** Product detail hero image: full-width on mobile, ~half on large screens. */
 export const PRODUCT_DETAIL_SIZES = "(min-width: 1024px) 600px, 100vw";
 
-// Match the ".../products/<base>.webp" filename in relative OR absolute URLs.
-const PRODUCT_WEBP = /\/products\/([^/?#]+)\.webp(?:[?#]|$)/;
+// Match the ".../products/<base>.webp" filename (+ optional ?query) in relative OR
+// absolute URLs. The query (e.g. a "?v=3" cache-buster) is captured so it can be
+// carried onto the variant URLs too — otherwise bumping the version on the base src
+// would leave the actually-downloaded -320w/-640w/-960w variants served from a stale
+// 1-year cache.
+const PRODUCT_WEBP = /\/products\/([^/?#]+)\.webp(\?[^#]*)?/;
 
 export function responsiveImageProps(
   src: string | undefined,
@@ -32,10 +36,11 @@ export function responsiveImageProps(
   const match = src.match(PRODUCT_WEBP);
   if (!match) return {};
   const base = match[1];
+  const query = match[2] ?? ""; // preserve "?v=" cache-buster so variants bust too
   const widths = manifest[base];
   if (!widths || widths.length === 0) return {};
   // Relative srcSet paths resolve against the current origin, so this works on
   // both production and the CF Pages preview domain.
-  const srcSet = widths.map((w) => `/products/${base}-${w}w.webp ${w}w`).join(", ");
+  const srcSet = widths.map((w) => `/products/${base}-${w}w.webp${query} ${w}w`).join(", ");
   return { srcSet, sizes };
 }
