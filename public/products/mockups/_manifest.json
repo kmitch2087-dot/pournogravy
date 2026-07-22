@@ -1,0 +1,362 @@
+[
+{
+"src": "Cow Tipping/Cow Tipping Black Tshirt.png",
+"out": "cow-tipping-black.webp",
+"color": "black",
+"design_folder": "Cow Tipping"
+},
+{
+"src": "Cow Tipping/Cow Tipping White Tshirt.png",
+"out": "cow-tipping-white.webp",
+"color": "white",
+"design_folder": "Cow Tipping"
+},
+{
+"src": "Glass or Can/Glass or Can White Tshirt.png",
+"out": "glass-or-can-white.webp",
+"color": "white",
+"design_folder": "Glass or Can"
+},
+{
+"src": "Glass or Can/Glass or Can Black Tshirt.png",
+"out": "glass-or-can-black.webp",
+"color": "black",
+"design_folder": "Glass or Can"
+},
+{
+"src": "Shocker/Shocker Black Tshirt.png",
+"out": "shocker-black.webp",
+"color": "black",
+"design_folder": "Shocker"
+},
+{
+"src": "Shocker/Shocker White Tshirt.png",
+"out": "shocker-white.webp",
+"color": "white",
+"design_folder": "Shocker"
+},
+{
+"src": "Pourn Hand/Pourn Hand Mens White Tshirt.png",
+"out": "pourn-hand-mens-white.webp",
+"color": "white",
+"design_folder": "Pourn Hand"
+},
+{
+"src": "Pourn Hand/Pourn Hand Mens Black Tshirt.png",
+"out": "pourn-hand-mens-black.webp",
+"color": "black",
+"design_folder": "Pourn Hand"
+},
+{
+"src": "Pourn Hand/Pourn Hand Womens Black Tshirt.png",
+"out": "pourn-hand-womens-black.webp",
+"color": "black",
+"design_folder": "Pourn Hand"
+},
+{
+"src": "Pourn Hand/Pourn Hand Womens White Tshirt.png",
+"out": "pourn-hand-womens-white.webp",
+"color": "white",
+"design_folder": "Pourn Hand"
+},
+{
+"src": "Introvert/Introvert Womens/Introvert Womens White Tshirt.png",
+"out": "introvert-womens-white.webp",
+"color": "white",
+"design_folder": "Introvert"
+},
+{
+"src": "Introvert/Introvert Womens/Introvert Womens Black Tshirt.png",
+"out": "introvert-womens-black.webp",
+"color": "black",
+"design_folder": "Introvert"
+},
+{
+"src": "Introvert/Introvert Mens/Introvert Mens White Tshirt.png",
+"out": "introvert-mens-white.webp",
+"color": "white",
+"design_folder": "Introvert"
+},
+{
+"src": "Introvert/Introvert Mens/Introvert Mens Black Tshirt.png",
+"out": "introvert-mens-black.webp",
+"color": "black",
+"design_folder": "Introvert"
+},
+{
+"src": "Last Call Karen/Last Call Karen White Tshirt.png",
+"out": "last-call-karen-white.webp",
+"color": "white",
+"design_folder": "Last Call Karen"
+},
+{
+"src": "Last Call Karen/Last Call Karen Black Tshirt.png",
+"out": "last-call-karen-black.webp",
+"color": "black",
+"design_folder": "Last Call Karen"
+},
+{
+"src": "Stong Drink Image/Strong Drink Black Tshirt.png",
+"out": "strong-drink-black.webp",
+"color": "black",
+"design_folder": "Stong Drink Image"
+},
+{
+"src": "Stong Drink Image/Strong Drink White Tshirt.png",
+"out": "strong-drink-white.webp",
+"color": "white",
+"design_folder": "Stong Drink Image"
+},
+{
+"src": "Real Job Text Only/Real Job Text Only Black Tshirt.png",
+"out": "real-job-text-only-black.webp",
+"color": "black",
+"design_folder": "Real Job Text Only"
+},
+{
+"src": "Real Job Text Only/Real Job Text Only White Tshirt.png",
+"out": "real-job-text-only-white.webp",
+"color": "white",
+"design_folder": "Real Job Text Only"
+},
+{
+"src": "Tagline Tshirt/Tagline Black Tshirt.png",
+"out": "tagline-black.webp",
+"color": "black",
+"design_folder": "Tagline Tshirt"
+},
+{
+"src": "Tagline Tshirt/Tagline White Tshirt.png",
+"out": "tagline-white.webp",
+"color": "white",
+"design_folder": "Tagline Tshirt"
+},
+{
+"src": "Atheist Text Only/Atheist Text Only Black Tshirt.png",
+"out": "atheist-text-only-black.webp",
+"color": "black",
+"design_folder": "Atheist Text Only"
+},
+{
+"src": "Atheist Text Only/Atheist Text Only White Tshirt.png",
+"out": "atheist-text-only-white.webp",
+"color": "white",
+"design_folder": "Atheist Text Only"
+},
+{
+"src": "Legally Fun Image/Legally Fun Womens/Legally Fun Womens Black Tshirt.png",
+"out": "legally-fun-womens-black.webp",
+"color": "black",
+"design_folder": "Legally Fun Image"
+},
+{
+"src": "Legally Fun Image/Legally Fun Womens/Legally Fun Womens White Tshirt.png",
+"out": "legally-fun-womens-white.webp",
+"color": "white",
+"design_folder": "Legally Fun Image"
+},
+{
+"src": "Legally Fun Image/Legally Fun Mens/Legally Fun Mens Black Tshirt.png",
+"out": "legally-fun-mens-black.webp",
+"color": "black",
+"design_folder": "Legally Fun Image"
+},
+{
+"src": "Legally Fun Image/Legally Fun Mens/Legally Fun Mens White Tshirt.png",
+"out": "legally-fun-mens-white.webp",
+"color": "white",
+"design_folder": "Legally Fun Image"
+},
+{
+"src": "Atheist Image/Atheist Mens Image/Atheist Mens White Tshirt.png",
+"out": "atheist-mens-white.webp",
+"color": "white",
+"design_folder": "Atheist Image"
+},
+{
+"src": "Atheist Image/Atheist Mens Image/Atheist Mens Black Tshirt.png",
+"out": "atheist-mens-black.webp",
+"color": "black",
+"design_folder": "Atheist Image"
+},
+{
+"src": "Atheist Image/Atheist Womens Image/Atheist Womens Black Tshirt.png",
+"out": "atheist-womens-black.webp",
+"color": "black",
+"design_folder": "Atheist Image"
+},
+{
+"src": "Atheist Image/Atheist Womens Image/Atheist Womens White Tshirt.png",
+"out": "atheist-womens-white.webp",
+"color": "white",
+"design_folder": "Atheist Image"
+},
+{
+"src": "Legally Fun Text Only/Legally Fun Text White Tshirt.png",
+"out": "legally-fun-text-white.webp",
+"color": "white",
+"design_folder": "Legally Fun Text Only"
+},
+{
+"src": "Legally Fun Text Only/Legally Fun Black Tshirt.png",
+"out": "legally-fun-black.webp",
+"color": "black",
+"design_folder": "Legally Fun Text Only"
+},
+{
+"src": "Margarita/Margarita White Tshirt.png",
+"out": "margarita-white.webp",
+"color": "white",
+"design_folder": "Margarita"
+},
+{
+"src": "Margarita/Margarita Black Tshirt.png",
+"out": "margarita-black.webp",
+"color": "black",
+"design_folder": "Margarita"
+},
+{
+"src": "Fave Bartender/Favorite Bartender Black Tshirt.png",
+"out": "favorite-bartender-black.webp",
+"color": "black",
+"design_folder": "Fave Bartender"
+},
+{
+"src": "Fave Bartender/Favorite Bartender White Tshirt.png",
+"out": "favorite-bartender-white.webp",
+"color": "white",
+"design_folder": "Fave Bartender"
+},
+{
+"src": "Strong Drink Text Only/Strong Drink Text Black Tshirt.png",
+"out": "strong-drink-text-black.webp",
+"color": "black",
+"design_folder": "Strong Drink Text Only"
+},
+{
+"src": "Strong Drink Text Only/Strong Drink Text White Tshirt.png",
+"out": "strong-drink-text-white.webp",
+"color": "white",
+"design_folder": "Strong Drink Text Only"
+},
+{
+"src": "Real Job Image/Real Job Image Black Tshirt.png",
+"out": "real-job-image-black.webp",
+"color": "black",
+"design_folder": "Real Job Image"
+},
+{
+"src": "Real Job Image/Real Job Image White Tshirt.png",
+"out": "real-job-image-white.webp",
+"color": "white",
+"design_folder": "Real Job Image"
+},
+{
+"src": "Service Bar/Service Bar White Tshirt.png",
+"out": "service-bar-white.webp",
+"color": "white",
+"design_folder": "Service Bar"
+},
+{
+"src": "Service Bar/Service Bar Black Tshirt.png",
+"out": "service-bar-black.webp",
+"color": "black",
+"design_folder": "Service Bar"
+},
+{
+"src": "Tea Toes Vodka/Tea Toes Vodka  Black Tshirt.png",
+"out": "tea-toes-vodka-black.webp",
+"color": "black",
+"design_folder": "Tea Toes Vodka"
+},
+{
+"src": "Tea Toes Vodka/Tea Toes Vodka White Tshirt.png",
+"out": "tea-toes-vodka-white.webp",
+"color": "white",
+"design_folder": "Tea Toes Vodka"
+},
+{
+"src": "Logo Tshirt/Logo White Tshirt.png",
+"out": "logo-white.webp",
+"color": "white",
+"design_folder": "Logo Tshirt"
+},
+{
+"src": "Logo Tshirt/Logo Black Tshirt.png",
+"out": "logo-black.webp",
+"color": "black",
+"design_folder": "Logo Tshirt"
+},
+{
+"src": "Therapist/Therapist Black Tshirt.png",
+"out": "therapist-black.webp",
+"color": "black",
+"design_folder": "Therapist"
+},
+{
+"src": "Therapist/Therapist White Tshirt.png",
+"out": "therapist-white.webp",
+"color": "white",
+"design_folder": "Therapist"
+},
+{
+"src": "Keg/Tap Keg White Tshirt.png",
+"out": "tap-keg-white.webp",
+"color": "white",
+"design_folder": "Keg"
+},
+{
+"src": "Keg/Tap Keg Black Tshirt.png",
+"out": "tap-keg-black.webp",
+"color": "black",
+"design_folder": "Keg"
+},
+{
+"src": "Finger/MensWomens/Finger M-W Black Tshirt.png",
+"out": "finger-m-w-black.webp",
+"color": "black",
+"design_folder": "Finger"
+},
+{
+"src": "Finger/MensWomens/Finger M-W White Tshirt.png",
+"out": "finger-m-w-white.webp",
+"color": "white",
+"design_folder": "Finger"
+},
+{
+"src": "Finger/Mens/Finger Mens White Tshirt.png",
+"out": "finger-mens-white.webp",
+"color": "white",
+"design_folder": "Finger"
+},
+{
+"src": "Finger/Mens/Finger Mens Black Tshirt.png",
+"out": "finger-mens-black.webp",
+"color": "black",
+"design_folder": "Finger"
+},
+{
+"src": "Finger/Womens/Finger Womans Black Tshirt.png",
+"out": "finger-womans-black.webp",
+"color": "black",
+"design_folder": "Finger"
+},
+{
+"src": "Finger/Womens/Finger Womans White Tshirt.png",
+"out": "finger-womans-white.webp",
+"color": "white",
+"design_folder": "Finger"
+},
+{
+"src": "F Off Karen/F Off Karen Black Tshirt.png",
+"out": "f-off-karen-black.webp",
+"color": "black",
+"design_folder": "F Off Karen"
+},
+{
+"src": "F Off Karen/F Off Karen White Tshirt.png",
+"out": "f-off-karen-white.webp",
+"color": "white",
+"design_folder": "F Off Karen"
+}
+]

@@ -39,3 +39,6 @@ supabase/.temp/
 *.bak
 *.bak2
 .lovable/
+
+# Local OneDrive mockup library (uploaded to Supabase media bucket, not tracked)
+Tshirt Mockups/
