@@ -384,10 +384,10 @@ export function SiteEditor() {
             {/* Drawer */}
             <motion.aside
               className="fixed right-0 top-0 bottom-0 z-50 w-80 bg-background border-l border-border overflow-y-auto flex flex-col"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-4 border-b border-border sticky top-0 bg-background z-10">
