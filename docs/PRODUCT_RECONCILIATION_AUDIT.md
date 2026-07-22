@@ -69,24 +69,25 @@ Legend: ✓ present · ⚠ issue · ✗ missing
 
 ---
 
-## Products with MISSING assets (no mockup folder, no print file)
+## RESOLVED — "missing"/"orphan" were designer folder-name mismatches
 
-| Product | Issue |
-|---|---|
-| **Dear Karen, You Stink** (dear-karen-you-stink-tee) | ✗ no mockup folder, ✗ no print file — currently sellable with no real assets |
-| **Saving My Bar From the Socially Stupid…** | ✗ no mockup folder, ✗ no print file |
+Verified visually 2026-07-22. These were never missing; the designer's folder/print names differ from product names:
 
----
-
-## Orphan assets (exist, but no active product)
-
-| Asset | Where | Question |
+| Designer name | = Product | Status |
 |---|---|---|
-| **Margarita** (3 designs) | folder `Margarita` + print `margarita_pg13`, `margarita_r_graphic`, `margarita_r_text` | Should these become products? |
-| **Tagline (without logo)** | folder `Tagline Tshirt` + print `tagline_without_logo` | New product? |
-| **Bartender Text** | print `bartender_text` | Maps to a product or retire? |
-| **Tea Please** | print `tea_please` | Separate from "Tea Toes Vodka"? |
-| Logo variants | print `logo_full_tag`, `logo_pournogravy_com`, `logo_pour_m/f/mf`, `logo_back` | Extra logo/back-print variants — confirm usage |
+| **Margarita** (folder + `margarita_*`, `lick_itself`) | **Well, It Ain't Gonna Lick Itself** | ✅ wired to margarita mockup. NOT a separate product. Opie does not want a text-only version. |
+| **Shocker** (folder + `shocker`) | **Dear Karen, You Stink** | ✅ real product, wired to shocker mockup |
+| **Tagline** (folder + `tagline_without_logo`) | **Saving My Bar…** | ✅ real product, wired to tagline mockup |
+
+## Still open
+
+| Item | Question / gap |
+|---|---|
+| **Bartender Text** | print `bartender_text` exists, no mockup, no obvious product — what is it? (leftover component?) |
+| **Tea Please** | Kristin: it's a **variant of Tea Toes**, needs its **own assets** (NOT in library yet) and should be **style-grouped** with Tea Toes. Also the current single "Tea Toes Vodka" product is wired to the `tea_please` print but the `Tea Toes Vodka` mockup — confirm which print belongs to which before splitting (fulfillment-critical). |
+| **Atheist Female / Introvert Female print PNGs** | `atheist_female` + `introvert_female` do NOT exist in print-files — Opie deliverable. Webhook mappings left commented until they exist. |
+| **Webhook redeploy** | `the-finger-tee-unisex → finger_mf` added to stripe-webhook source; needs redeploy to take effect. |
+| Logo variants | `logo_full_tag`, `logo_pournogravy_com`, `logo_pour_m/f/mf`, `logo_back` — confirm usage |
 
 ---
 

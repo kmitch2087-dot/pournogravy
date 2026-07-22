@@ -318,6 +318,12 @@ Deno.serve(async (req) => {
       const PRINT_BASE: Record<string, string> = {
         "the-finger-tee": "finger_male",
         "the-finger-tee-female": "finger_female",
+        "the-finger-tee-unisex": "finger_mf",
+        // Atheist/Introvert female graphics need their own print PNGs (atheist_female,
+        // introvert_female) uploaded before mapping — omitted until then to avoid
+        // printing the male artwork on a female order.
+        // "atheist-tee-female": "atheist_female",
+        // "introverted-bartender-tee-female": "introvert_female",
         "pourn-hand-tee": "pourn_hand_mens",
         "pourn-hand-tee-female": "pourn_hand_womens",
         "second-most-fun-job-tee": "legal_job_male",
