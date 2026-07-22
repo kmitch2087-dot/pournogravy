@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface DesignSlug {
   slug: string;
@@ -43,10 +44,12 @@ const PrintFileCard = ({
   slug,
   name,
   creds,
+  isAdmin,
 }: {
   slug: string;
   name: string;
-  creds: Credentials;
+  creds: Credentials | null;
+  isAdmin: boolean;
 }) => {
   const [blackUrl, setBlackUrl] = useState<string | null>(null);
   const [whiteUrl, setWhiteUrl] = useState<string | null>(null);
@@ -58,18 +61,32 @@ const PrintFileCard = ({
   useEffect(() => {
     let cancelled = false;
 
+    // Admins read the private bucket directly through their own session
+    // (storage RLS grants is_admin read) — no printer viewer password needed.
+    // Printers still go through the password-gated edge function.
+    const getUrl = async (path: string): Promise<string> => {
+      if (isAdmin) {
+        const { data, error } = await supabase.storage
+          .from("print-files")
+          .createSignedUrl(path, 3600);
+        if (error || !data?.signedUrl) throw error ?? new Error("no signed url");
+        return data.signedUrl;
+      }
+      return fetchSignedUrl(creds as Credentials, path);
+    };
+
     // Fetch black variant
-    fetchSignedUrl(creds, `black/${slug}_black.png`)
+    getUrl(`black/${slug}_black.png`)
       .then((url) => { if (!cancelled) { setBlackUrl(url); setLoadingBlack(false); } })
       .catch(() => { if (!cancelled) { setErrorBlack(true); setLoadingBlack(false); } });
 
     // Fetch white variant
-    fetchSignedUrl(creds, `white/${slug}_white.png`)
+    getUrl(`white/${slug}_white.png`)
       .then((url) => { if (!cancelled) { setWhiteUrl(url); setLoadingWhite(false); } })
       .catch(() => { if (!cancelled) { setErrorWhite(true); setLoadingWhite(false); } });
 
     return () => { cancelled = true; };
-  }, [slug, creds]);
+  }, [slug, creds, isAdmin]);
 
   const ImageSlot = ({
     url,
@@ -379,6 +396,16 @@ const PrintFiles = () => {
   const [authError, setAuthError] = useState("");
   const [designSlugs, setDesignSlugs] = useState<DesignSlug[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const { user, isAdmin } = useAuth();
+
+  // Admins skip the printer viewer-password gate — they read the private
+  // bucket through their own authenticated session (storage RLS grants admins
+  // read). This auto-satisfies the `creds`-gated listing effect below.
+  useEffect(() => {
+    if (isAdmin && !creds) {
+      setCreds({ email: user?.email ?? "admin", password: "" });
+    }
+  }, [isAdmin, user, creds]);
 
   useEffect(() => {
     if (!creds) return;
@@ -538,7 +565,8 @@ const PrintFiles = () => {
               key={design.slug}
               slug={design.slug}
               name={design.name}
-              creds={creds!}
+              creds={creds}
+              isAdmin={isAdmin}
             />
           ))
         )}
