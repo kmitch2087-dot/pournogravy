@@ -142,6 +142,8 @@ const ProductDetail = () => {
         .select("id, name, slug, style_label")
         .eq("product_group_id", product.product_group_id)
         .eq("is_active", true)
+        .eq("published", true)
+        .eq("status", "published")
         .neq("slug", id ?? "");
       if (error) throw error;
       return (data ?? []) as GroupMember[];

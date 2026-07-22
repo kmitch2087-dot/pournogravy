@@ -354,8 +354,10 @@ const ProductEdit = () => {
     queryKey: ["admin-product", id],
     queryFn: async () => {
       if (isNew) return null;
-      const { data, error } = await supabase
-        .from("products").select("*").eq("id", id!).single();
+      // Accept either a UUID (admin list nav) or a slug (public "Edit Product" button).
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id!);
+      const base = supabase.from("products").select("*");
+      const { data, error } = await (isUuid ? base.eq("id", id!) : base.eq("slug", id!)).single();
       if (error) throw error;
       return data;
     },
@@ -639,7 +641,7 @@ const ProductEdit = () => {
     // Check slug uniqueness before writing — catches both user edits and data inconsistencies
     {
       const q = supabase.from("products").select("id").eq("slug", slug);
-      if (!isNew) q.neq("id", id!);
+      if (!isNew && product?.id) q.neq("id", product.id);
       const { data: conflict } = await q.maybeSingle();
       if (conflict) {
         toast.error(`URL slug "${slug}" is already used by another product — change the slug before saving.`);
@@ -710,9 +712,10 @@ const ProductEdit = () => {
     };
 
     let error;
-    let savedId: string | null = id ?? null;
+    // Use the resolved product UUID (the URL param may be a slug from the public "Edit Product" button).
+    let savedId: string | null = product?.id ?? null;
     if (!isNew) {
-      ({ error } = await supabase.from("products").update(payload).eq("id", id!));
+      ({ error } = await supabase.from("products").update(payload).eq("id", product!.id));
     } else {
       // For new products, seed publish fields so setProductLive can read went_live_at correctly
       payload.is_active = false;
