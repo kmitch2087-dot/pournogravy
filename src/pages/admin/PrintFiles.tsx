@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileImage, Lock, Eye, Image, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, FileImage, Lock, Eye, Image, RefreshCw, AlertTriangle, Folder, Download, Trash2, ExternalLink, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -386,6 +386,100 @@ const AuditTable = () => {
   );
 };
 
+// ─── Media browser (Mockups / Misc tabs) — admin only, reads the private 'media' bucket ──
+function MediaBrowser({ root }: { root: string }) {
+  const [path, setPath] = useState("");
+  const prefix = path ? `${root}/${path}` : root;
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["media-browse", prefix],
+    queryFn: async () => {
+      const { data, error } = await supabase.storage
+        .from("media")
+        .list(prefix, { limit: 500, sortBy: { column: "name", order: "asc" } });
+      if (error) throw error;
+      const entries = (data ?? []).filter((e) => !e.name.startsWith("_") && !e.name.startsWith("."));
+      const folders = entries.filter((e) => e.id === null).map((e) => e.name);
+      const files = entries.filter((e) => e.id !== null);
+      const urls: Record<string, string> = {};
+      if (files.length) {
+        const paths = files.map((f) => `${prefix}/${f.name}`);
+        const { data: signed } = await supabase.storage.from("media").createSignedUrls(paths, 3600);
+        (signed ?? []).forEach((s) => {
+          if (s.signedUrl && s.path) urls[s.path.split("/").pop()!] = s.signedUrl;
+        });
+      }
+      return { folders, files, urls };
+    },
+  });
+
+  const del = async (name: string) => {
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return;
+    const { error } = await supabase.storage.from("media").remove([`${prefix}/${name}`]);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deleted");
+    qc.invalidateQueries({ queryKey: ["media-browse", prefix] });
+  };
+
+  const crumbs = path ? path.split("/") : [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-1 text-xs font-marker text-muted-foreground flex-wrap">
+        <button onClick={() => setPath("")} className="hover:text-[#fde047] uppercase tracking-wider">{root}</button>
+        {crumbs.map((c, i) => (
+          <span key={i} className="flex items-center gap-1">
+            <ChevronRight className="h-3 w-3" />
+            <button onClick={() => setPath(crumbs.slice(0, i + 1).join("/"))} className="hover:text-[#fde047]">{c}</button>
+          </span>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {data?.folders.map((f) => (
+            <button
+              key={f}
+              onClick={() => setPath(path ? `${path}/${f}` : f)}
+              className="border border-border bg-card p-4 flex flex-col items-center gap-2 hover:border-[#fde047] transition min-h-[120px] justify-center"
+            >
+              <Folder className="h-8 w-8 text-[#fde047]" />
+              <span className="text-xs font-marker text-center break-words leading-tight">{f}</span>
+            </button>
+          ))}
+          {data?.files.map((file) => {
+            const url = data.urls[file.name];
+            const isImg = /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+            return (
+              <div key={file.name} className="border border-border bg-card flex flex-col">
+                <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                  {isImg && url
+                    ? <img src={url} alt={file.name} className="w-full h-full object-contain" loading="lazy" />
+                    : <FileImage className="h-10 w-10 text-muted-foreground" />}
+                </div>
+                <div className="p-2 space-y-2">
+                  <p className="text-[10px] font-mono truncate" title={file.name}>{file.name}</p>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    {url && <a href={url} target="_blank" rel="noreferrer" className="text-[#fde047]/80 hover:text-[#fde047] inline-flex items-center gap-0.5"><ExternalLink className="h-3 w-3" />Open</a>}
+                    {url && <a href={url} download={file.name} className="text-[#fde047]/80 hover:text-[#fde047] inline-flex items-center gap-0.5"><Download className="h-3 w-3" />Save</a>}
+                    <button onClick={() => del(file.name)} className="ml-auto text-red-400/80 hover:text-red-400 inline-flex items-center gap-0.5"><Trash2 className="h-3 w-3" />Delete</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {data && data.folders.length === 0 && data.files.length === 0 && (
+            <p className="col-span-full text-center py-12 font-marker text-muted-foreground italic text-sm">Empty folder.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const PrintFiles = () => {
@@ -397,6 +491,7 @@ const PrintFiles = () => {
   const [designSlugs, setDesignSlugs] = useState<DesignSlug[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const { user, isAdmin } = useAuth();
+  const [tab, setTab] = useState<"print" | "mockups" | "misc">("print");
 
   // Admins skip the printer viewer-password gate — they read the private
   // bucket through their own authenticated session (storage RLS grants admins
@@ -549,34 +644,58 @@ const PrintFiles = () => {
         </Button>
       </div>
 
-      {/* Print file grid — derived from actual storage contents */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loadingFiles ? (
-          <div className="col-span-full flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : designSlugs.length === 0 ? (
-          <div className="col-span-full py-12 text-center">
-            <p className="font-marker text-muted-foreground italic text-sm">No print files found in storage.</p>
-          </div>
-        ) : (
-          designSlugs.map((design) => (
-            <PrintFileCard
-              key={design.slug}
-              slug={design.slug}
-              name={design.name}
-              creds={creds}
-              isAdmin={isAdmin}
-            />
-          ))
-        )}
-      </div>
+      {/* Tabs — Mockups/Misc are admin-only (media bucket RLS); printers only see Print Files */}
+      {isAdmin && (
+        <div className="flex gap-1 border-b border-border">
+          {([["print", "Print Files"], ["mockups", "Mockups"], ["misc", "Misc"]] as const).map(([id, lbl]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition ${
+                tab === id ? "border-[#fde047] text-[#fde047]" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Audit */}
-      <AuditTable />
+      {tab === "print" && (
+        <>
+          {/* Print file grid — derived from actual storage contents */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loadingFiles ? (
+              <div className="col-span-full flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : designSlugs.length === 0 ? (
+              <div className="col-span-full py-12 text-center">
+                <p className="font-marker text-muted-foreground italic text-sm">No print files found in storage.</p>
+              </div>
+            ) : (
+              designSlugs.map((design) => (
+                <PrintFileCard
+                  key={design.slug}
+                  slug={design.slug}
+                  name={design.name}
+                  creds={creds}
+                  isAdmin={isAdmin}
+                />
+              ))
+            )}
+          </div>
 
-      {/* Access log */}
-      <AccessLog />
+          {/* Audit */}
+          <AuditTable />
+
+          {/* Access log */}
+          <AccessLog />
+        </>
+      )}
+
+      {tab === "mockups" && isAdmin && <MediaBrowser root="mockups" />}
+      {tab === "misc" && isAdmin && <MediaBrowser root="misc" />}
     </div>
   );
 };
