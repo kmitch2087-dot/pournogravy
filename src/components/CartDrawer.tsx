@@ -188,7 +188,7 @@ const CartDrawer = () => {
                 <ShoppingBag className="h-7 w-7" style={{ color: "#9a6030" }} />
               </div>
               <p className="font-marker text-sm tracking-wider uppercase" style={{ color: "#7a5020" }}>
-                {getValue('shop', 'cart', 'empty_state', "Empty. Like your customer's tip jar.")}
+                {getValue('shop', 'cart', 'empty_state', "Empty! must be a hole in it!")}
               </p>
               <Link to="/shop" onClick={closeCart}>
                 <Button
