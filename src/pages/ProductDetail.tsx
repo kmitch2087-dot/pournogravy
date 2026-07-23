@@ -10,7 +10,7 @@ import { useCart } from "@/context/CartContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Truck, RotateCcw, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Truck, RotateCcw, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/ProductCard";
 import CustomGarmentRequestModal from "@/components/CustomGarmentRequestModal";
@@ -428,7 +428,7 @@ const ProductDetail = () => {
               initial={{ opacity: 0.4 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="relative aspect-square bg-muted border-2 border-foreground/10 rough-border overflow-hidden noise-overlay"
+              className="relative aspect-[5/4] bg-muted border-2 border-foreground/10 rough-border overflow-hidden noise-overlay"
             >
               {gallery[activeImage] ? (
                 <img
@@ -468,35 +468,47 @@ const ProductDetail = () => {
               </div>
             </motion.div>
 
-            {/* Thumbnail strip */}
-            {gallery.length > 1 && (
+            {/* Color-variant thumbnails — driven by the SAME selectedColor state as the
+                color swatch below, so clicking a thumbnail changes the color (and the
+                swatch highlights it) and vice-versa. */}
+            {product.colors && product.colors.length > 1 && (
               <div className="flex gap-2">
-                {gallery.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    aria-label={`View image ${i + 1}`}
-                    className={`relative h-20 w-20 border-2 overflow-hidden transition-all bg-muted ${
-                      i === activeImage
-                        ? "border-[#fde047] opacity-100"
-                        : "border-transparent opacity-50 hover:opacity-80 hover:border-white/50"
-                    }`}
-                    style={
-                      i === activeImage
-                        ? { boxShadow: "0 0 12px rgba(253,224,71,0.4)" }
-                        : undefined
-                    }
-                  >
-                    <img
-                      src={img}
-                      {...responsiveImageProps(img, "80px")}
-                      alt={`${product.name} — view ${i + 1}`}
-                      className="w-full h-full object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </button>
-                ))}
+                {product.colors.map((c) => {
+                  const fitId = selectedVariant?.id;
+                  const cImg =
+                    (fitId && c.imagesByFit?.[fitId]?.[0]) ||
+                    c.images?.[0] ||
+                    product.images?.[0];
+                  const active = selectedColor?.id === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedColor(c)}
+                      aria-label={`${c.label} version`}
+                      aria-pressed={active}
+                      title={c.label}
+                      className={`relative h-20 w-20 border-2 overflow-hidden transition-all bg-muted ${
+                        active
+                          ? "border-[#fde047] opacity-100"
+                          : "border-transparent opacity-50 hover:opacity-80 hover:border-white/50"
+                      }`}
+                      style={active ? { boxShadow: "0 0 12px rgba(253,224,71,0.4)" } : undefined}
+                    >
+                      {cImg ? (
+                        <img
+                          src={cImg}
+                          {...responsiveImageProps(cImg, "80px")}
+                          alt={`${product.name} — ${c.label}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className="block w-full h-full" style={{ backgroundColor: c.hex }} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -582,10 +594,11 @@ const ProductDetail = () => {
                   style={{ boxShadow: "0 0 24px rgba(253,224,71,0.15), inset 0 0 30px rgba(253,224,71,0.06)" }}
                 >
                   <p
-                    className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4"
+                    className="font-marker text-sm tracking-[0.3em] text-[#fde047] uppercase mb-4 flex items-center gap-2"
                     style={{ textShadow: "0 0 8px rgba(253,224,71,0.5)" }}
                   >
-                    ☠ {product.badAdvice.title || "Bad Bartender Advice"}
+                    <img src="/karen_ticker.webp" alt="" aria-hidden="true" className="h-5 w-5 object-contain shrink-0" />
+                    {product.badAdvice.title || "Bad Bartender Advice"}
                   </p>
                   <div className="space-y-3">
                     {product.badAdvice.paragraphs.map((para, i) => (
@@ -994,13 +1007,16 @@ const ProductDetail = () => {
                       key={n}
                       type="button"
                       onClick={() => setReviewRating(n)}
-                      aria-label={`Rate ${n} star${n !== 1 ? "s" : ""}`}
+                      aria-label={`Rate ${n} Karen skull${n !== 1 ? "s" : ""}`}
                       className="p-3 transition-transform hover:scale-110 -m-1"
                     >
-                      <Star
-                        className="h-6 w-6"
-                        fill={n <= reviewRating ? "#fde047" : "none"}
-                        stroke={n <= reviewRating ? "#fde047" : "currentColor"}
+                      <img
+                        src="/karen_ticker.webp"
+                        alt=""
+                        aria-hidden="true"
+                        className={`h-6 w-6 object-contain transition-opacity ${
+                          n <= reviewRating ? "opacity-100" : "opacity-25 grayscale"
+                        }`}
                       />
                     </button>
                   ))}
@@ -1088,11 +1104,14 @@ const ProductDetail = () => {
 const StarRow = ({ rating }: { rating: number }) => (
   <div className="flex gap-0.5">
     {[1, 2, 3, 4, 5].map((n) => (
-      <Star
+      <img
         key={n}
-        className="h-3.5 w-3.5"
-        fill={n <= Math.round(rating) ? "#fde047" : "none"}
-        stroke={n <= Math.round(rating) ? "#fde047" : "currentColor"}
+        src="/karen_ticker.webp"
+        alt=""
+        aria-hidden="true"
+        className={`h-4 w-4 object-contain transition-opacity ${
+          n <= Math.round(rating) ? "opacity-100" : "opacity-20 grayscale"
+        }`}
       />
     ))}
   </div>

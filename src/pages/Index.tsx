@@ -499,29 +499,34 @@ const Index = () => {
         }}
       >
         <div
-          className="flex whitespace-nowrap"
-          style={{ animation: "marquee-scroll 14s linear infinite", willChange: 'transform' }}
+          className="flex w-max whitespace-nowrap"
+          style={{ animation: "marquee-scroll 28s linear infinite", willChange: 'transform' }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
-          {TICKER_ITEMS.map((q, i) => (
-            <React.Fragment key={i}>
-              <span
-                className="inline-flex items-center font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
-                style={{ textShadow: '0 0 8px rgba(253,224,71,0.8), 0 0 20px rgba(253,224,71,0.4)' }}
-              >
-                {q}
-              </span>
-              <img
-                src="/karen_ticker.webp"
-                alt=""
-                aria-hidden="true"
-                width="40"
-                height="40"
-                className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-10"
-                style={{ imageRendering: 'crisp-edges' }}
-              />
-            </React.Fragment>
+          {/* Two identical copies so translateX(-50%) tiles perfectly = seamless loop */}
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
+              {TICKER_ITEMS.map((q, i) => (
+                <span key={i} className="inline-flex items-center shrink-0">
+                  <span
+                    className="font-marker text-sm md:text-base tracking-widest uppercase text-[#fde047]"
+                    style={{ textShadow: '0 0 8px rgba(253,224,71,0.8), 0 0 20px rgba(253,224,71,0.4)' }}
+                  >
+                    {q}
+                  </span>
+                  <img
+                    src="/karen_ticker.webp"
+                    alt=""
+                    aria-hidden="true"
+                    width="40"
+                    height="40"
+                    className="inline-block w-8 h-8 md:w-10 md:h-10 object-contain opacity-90 align-middle mx-10"
+                    style={{ imageRendering: 'crisp-edges' }}
+                  />
+                </span>
+              ))}
+            </div>
           ))}
         </div>
       </section>
