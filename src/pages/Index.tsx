@@ -500,7 +500,7 @@ const Index = () => {
       >
         <div
           className="flex w-max whitespace-nowrap"
-          style={{ animation: "marquee-scroll 28s linear infinite", willChange: 'transform' }}
+          style={{ animation: "marquee-scroll 50s linear infinite", willChange: 'transform' }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = "paused")}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = "running")}
         >
