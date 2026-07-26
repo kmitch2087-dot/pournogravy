@@ -364,6 +364,7 @@ interface ShopProduct {
   image_url: string | null;
   images: string[];
   display_order: number | null;
+  shop_order: number | null;
   flip_enabled: boolean;
   flip_image_url: string | null;
 }
@@ -463,10 +464,11 @@ function ShopTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, image_url, images, display_order, flip_enabled, flip_image_url")
+        .select("id, slug, name, image_url, images, display_order, shop_order, flip_enabled, flip_image_url")
+        // Match the live shop exactly: shop_order NULLS LAST, id.
         .eq("is_active", true)
-        .order("display_order", { ascending: true })
-        .order("created_at", { ascending: true });
+        .order("shop_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true });
       if (error) throw error;
       return (data ?? []) as ShopProduct[];
     },
@@ -514,9 +516,11 @@ function ShopTab() {
     try {
       // Per-row UPDATE (not upsert): upsert would run an INSERT that violates the
       // NOT NULL constraints on name/slug/price_cents, so it always failed.
+      // Writes shop_order (the shop position) — NOT display_order (variant order).
+      // Gaps of 10 leave room to hand-insert between items later.
       const results = await Promise.all(
         reorderedList.map((p, i) =>
-          supabase.from("products").update({ display_order: i }).eq("id", p.id)
+          supabase.from("products").update({ shop_order: (i + 1) * 10 }).eq("id", p.id)
         )
       );
       const failed = results.find((r) => r.error);

@@ -79,8 +79,10 @@ export interface Product {
   og_description?: string;
   /** Product group UUID — products in the same group show a style switcher on each other's pages */
   product_group_id?: string;
-  /** Admin-controlled sort position in the shop (lower = earlier) */
+  /** Within-group variant order (0 = primary). NOT the shop position — see shop_order. */
   display_order?: number;
+  /** Admin-controlled shop position — unique per row, lower = earlier. Sole driver of shop order (id is the tie-break). */
+  shop_order?: number;
   /** Whether this product's card animates between main image and flip_image_url */
   flip_enabled?: boolean;
   /** The image URL shown on the card when the flip animation is in the "zoomed" state */

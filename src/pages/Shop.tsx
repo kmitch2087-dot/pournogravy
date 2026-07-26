@@ -83,11 +83,14 @@ const Shop = () => {
     else if (sortBy === "price-desc") sorted = [...base].sort((a, b) => b.price - a.price);
     else if (sortBy === "alpha") sorted = [...base].sort((a, b) => a.name.localeCompare(b.name));
     else {
+      // Default = admin-controlled shop order. shop_order NULLS LAST, id — identical
+      // to every DB read path so admin and live never disagree. (id here is the slug,
+      // the unique stable client key.)
       sorted = [...base].sort((a, b) => {
-        const ao = a.display_order ?? 0;
-        const bo = b.display_order ?? 0;
-        if (ao !== bo) return ao - bo;
-        return a.name.localeCompare(b.name);
+        const as = a.shop_order ?? Number.MAX_SAFE_INTEGER;
+        const bs = b.shop_order ?? Number.MAX_SAFE_INTEGER;
+        if (as !== bs) return as - bs;
+        return a.id.localeCompare(b.id);
       });
     }
 

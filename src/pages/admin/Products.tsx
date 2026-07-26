@@ -32,7 +32,7 @@ type CategoryTab = "all" | "apparel" | "accessories";
 interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
-  featured: boolean; category: string | null; display_order: number | null;
+  featured: boolean; category: string | null; display_order: number | null; shop_order: number | null;
 }
 
 type MergedProduct = {
@@ -48,6 +48,7 @@ type MergedProduct = {
   inDrop: boolean;
   category: string;
   display_order: number;
+  shop_order: number | null;
 };
 
 // ─── Sortable row ─────────────────────────────────────────────────────────────
@@ -93,9 +94,10 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order")
-        .order("display_order", { ascending: true })
-        .order("created_at", { ascending: false });
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order, shop_order")
+        // Same ordering as the live shop: shop_order NULLS LAST, id.
+        .order("shop_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true });
       if (error) throw error;
       return (data ?? []) as DbProduct[];
     },
@@ -135,6 +137,7 @@ const Products = () => {
         inDrop: dropIdSet.has(p.id),
         category: p.category ?? "apparel",
         display_order: p.display_order ?? 0,
+        shop_order: p.shop_order ?? null,
       });
     }
 
@@ -154,6 +157,7 @@ const Products = () => {
           inDrop: false,
           category: "apparel",
           display_order: 0,
+          shop_order: null,
         });
       }
     }
@@ -250,9 +254,16 @@ const Products = () => {
     if (dbOnly.length === 0) return;
     setReordering(true);
     try {
-      const updates = dbOnly.map((p, i) => ({ id: p.id!, display_order: i }));
-      const { error } = await supabase.from("products").upsert(updates);
-      if (error) throw error;
+      // Per-row UPDATE (not upsert): upsert would run an INSERT that violates the
+      // NOT NULL constraints on name/slug/price_cents. Writes shop_order (the shop
+      // position) — NOT display_order (variant order). Gaps of 10 leave insert room.
+      const results = await Promise.all(
+        dbOnly.map((p, i) =>
+          supabase.from("products").update({ shop_order: (i + 1) * 10 }).eq("id", p.id!)
+        )
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
       toast.success("Order saved!");
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       setReorderMode(false);

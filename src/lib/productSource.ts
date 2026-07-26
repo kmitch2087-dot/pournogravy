@@ -69,6 +69,7 @@ interface DbProductRow {
   og_description: string | null;
   product_group_id: string | null;
   display_order: number | null;
+  shop_order: number | null;
   flip_enabled: boolean;
   flip_image_url: string | null;
 }
@@ -118,6 +119,7 @@ const dbRowToProduct = (r: DbProductRow): Product => {
     og_description: r.og_description ?? undefined,
     product_group_id: r.product_group_id ?? undefined,
     display_order: r.display_order ?? undefined,
+    shop_order: r.shop_order ?? undefined,
     flip_enabled: r.flip_enabled ?? false,
     flip_image_url: r.flip_image_url ?? undefined,
   };
@@ -130,9 +132,11 @@ export const useMergedProducts = () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        // Shop order is driven solely by shop_order (unique per row); id is the
+        // mandatory deterministic tie-break. display_order is variant order only.
         .eq("is_active", true)
-        .order("display_order", { ascending: true })
-        .order("created_at", { ascending: true });
+        .order("shop_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((r) => dbRowToProduct(r as DbProductRow));
     },
