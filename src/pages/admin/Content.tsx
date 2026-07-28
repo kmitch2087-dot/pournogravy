@@ -30,14 +30,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
-const PAGES = ["home", "shop", "about", "contact", "faq", "advertise", "global"] as const;
+const PAGES = ["home", "shop", "about", "contact", "faq", "thanks", "advertise", "global"] as const;
 type PageKey = (typeof PAGES)[number];
 
 const PAGE_LABELS: Record<PageKey, string> = {
-  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ", advertise: "Advertise With Us", global: "Global",
+  home: "Home", shop: "Shop", about: "About", contact: "Contact", faq: "FAQ", thanks: "Thank You", advertise: "Advertise With Us", global: "Global",
 };
 const PAGE_URLS: Record<PageKey, string> = {
-  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq", advertise: "/advertise", global: "/",
+  home: "/", shop: "/shop", about: "/about", contact: "/contact", faq: "/faq", thanks: "/thank-you", advertise: "/advertise", global: "/",
 };
 
 // ─── Original seeded superpowers keys — no delete button on these ─────────────
@@ -50,6 +50,7 @@ const STRUCTURAL_SECTIONS: Record<string, Set<string>> = {
   about:   new Set(["hero", "pullquote", "manifesto", "cta", "body"]),
   contact: new Set(["hero", "header", "sidebar"]),
   faq:       new Set(["hero", "header", "items", "cta"]),
+  thanks:    new Set(["hero", "intro", "crew"]),
   advertise: new Set(["hero", "audience", "placements", "contact"]),
   global:    new Set(["footer"]),
 };
@@ -140,6 +141,11 @@ const FIELD_HINTS: Record<string, string> = {
   "shop|checkout|email_prompt":      "Prompt shown when asking for guest email at checkout",
   "shop|checkout|gratuity":          "The italic 'gratuity' line on the cart receipt",
   "global|footer|tagline":           "The tagline at the bottom of every page footer",
+  "thanks|hero|eyebrow":             "Small eyebrow label above the Thank You headline",
+  "thanks|hero|headline":            "The large headline at the top of the Thank You page",
+  "thanks|intro|body":               "Your opening thank-you message (rich text — supports links)",
+  "thanks|crew|heading":             "Heading above the shout-out list",
+  "thanks|crew|body":                "Your shout-outs — highlight a name and use the link button to link it (rich text)",
 };
 
 // ─── Types that save on change (no blur needed) ───────────────────────────────
