@@ -651,13 +651,19 @@ const Content = () => {
     ? pageRows.filter((r) => r.section === activeSection)
     : [];
 
-  // One-line preview for a section: first non-visible text value, stripped of HTML
+  // One-line preview for a section: first non-visible value, stripped of HTML.
+  // Prefer a plain-text field (unchanged behavior); fall back to a rich-text
+  // (html) field so sections whose only content is rich text — like the Thank
+  // You page's intro/crew copy — still show a preview instead of looking empty.
   const getSectionPreview = (section: string): string => {
-    const textRow = pageRows.find(
-      (r) => r.section === section && r.key !== "visible" && r.value_type === "text"
+    const rowsForSection = pageRows.filter(
+      (r) => r.section === section && r.key !== "visible"
     );
-    if (!textRow) return "";
-    const raw = textRow.value ?? textRow.default_value ?? "";
+    const previewRow =
+      rowsForSection.find((r) => r.value_type === "text") ??
+      rowsForSection.find((r) => r.value_type === "html");
+    if (!previewRow) return "";
+    const raw = previewRow.value ?? previewRow.default_value ?? "";
     const stripped = stripHtml(raw);
     return stripped.length > 44 ? stripped.slice(0, 44) + "…" : stripped;
   };
