@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   TextStyle, Color, FontFamily, FontSize, BackgroundColor,
@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Highlighter, Type, Palette, List, ListOrdered, ChevronDown,
+  Link2, Unlink, Check,
 } from "lucide-react";
 
 const FONTS = [
@@ -155,6 +156,97 @@ function ColorPicker({
   );
 }
 
+// ── Link popover ───────────────────────────────────────────────────────────────
+function LinkButton({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const openPopover = () => {
+    setUrl(editor.getAttributes("link").href ?? "");
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const apply = () => {
+    const href = url.trim();
+    if (!href) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    } else {
+      // Bare domains → assume https so links always resolve.
+      const withProtocol = /^(https?:|mailto:|tel:)/i.test(href) ? href : `https://${href}`;
+      editor.chain().focus().extendMarkRange("link").setLink({ href: withProtocol }).run();
+    }
+    setOpen(false);
+  };
+
+  const remove = () => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Link"
+        onMouseDown={(e) => { e.preventDefault(); open ? setOpen(false) : openPopover(); }}
+        className={`p-1.5 rounded transition-colors ${
+          editor.isActive("link")
+            ? "bg-[#fde047] text-black"
+            : "text-white/70 hover:text-white hover:bg-white/10"
+        }`}
+      >
+        <Link2 className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-0.5 z-50 bg-[#1a1a1a] border border-white/20 shadow-xl p-2 w-56">
+          <div className="flex items-center gap-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); apply(); }
+                if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+              }}
+              placeholder="https://…"
+              className="flex-1 min-w-0 bg-black/40 border border-white/20 px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fde047]"
+            />
+            <button
+              type="button"
+              title="Apply link"
+              onMouseDown={(e) => { e.preventDefault(); apply(); }}
+              className="p-1 text-[#fde047] hover:text-white"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {editor.isActive("link") && (
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); remove(); }}
+              className="mt-1.5 flex items-center gap-1 text-[10px] text-white/50 hover:text-white px-0.5"
+            >
+              <Unlink className="h-3 w-3" /> Remove link
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export function RichTextInput({
   value,
@@ -169,7 +261,15 @@ export function RichTextInput({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // StarterKit v3 bundles the Link extension — configure it here rather
+        // than adding a second one (which would collide on the "link" name).
+        link: {
+          openOnClick: false,
+          autolink: true,
+          HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
+        },
+      }),
       TextStyle,
       Color,
       BackgroundColor,
@@ -284,6 +384,11 @@ export function RichTextInput({
             onCustom={(c) => editor.chain().focus().toggleHighlight({ color: c }).run()}
             onClear={() => editor.chain().focus().unsetHighlight().run()}
           />
+
+          <div className="w-px h-4 bg-white/15 mx-0.5" />
+
+          {/* Link */}
+          <LinkButton editor={editor} />
 
           <div className="w-px h-4 bg-white/15 mx-0.5" />
 

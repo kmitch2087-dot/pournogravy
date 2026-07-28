@@ -28,6 +28,7 @@ const Wishlist      = lazy(() => import("./pages/Wishlist"));
 const Collections   = lazy(() => import("./pages/Collections"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const About         = lazy(() => import("./pages/About"));
+const Thanks        = lazy(() => import("./pages/Thanks"));
 const FAQ           = lazy(() => import("./pages/FAQ"));
 const Contact       = lazy(() => import("./pages/Contact"));
 const Proposal      = lazy(() => import("./pages/Proposal"));
@@ -143,6 +144,7 @@ const App = () => (
                     <Route path="/collections"     element={<Collections />} />
                     <Route path="/product/:id"     element={<ProductDetail />} />
                     <Route path="/about"           element={<About />} />
+                    <Route path="/thank-you"       element={<Thanks />} />
                     <Route path="/faq"             element={<FAQ />} />
                     <Route path="/contact"         element={<Contact />} />
                     <Route path="/proposal"        element={<Proposal />} />

@@ -12,6 +12,7 @@ const navLinks = [
   { to: "/reviews", label: "Reviews" },
   { to: "/blog", label: "Blog" },
   { to: "/about", label: "About" },
+  { to: "/thank-you", label: "Thank Yous" },
   { to: "/faq", label: "FAQ" },
   { to: "/contact", label: "Contact" },
 ];

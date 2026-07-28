@@ -21,6 +21,7 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/":        "home",
   "/shop":    "shop",
   "/about":   "about",
+  "/thank-you": "thanks",
   "/contact": "contact",
   "/faq":     "faq",
   "/terms":     "terms",
