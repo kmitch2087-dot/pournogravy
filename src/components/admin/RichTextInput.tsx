@@ -1,4 +1,5 @@
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
   TextStyle, Color, FontFamily, FontSize, BackgroundColor,
@@ -9,8 +10,21 @@ import { useState, useRef, useEffect } from "react";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Highlighter, Type, Palette, List, ListOrdered, ChevronDown,
-  Link2, Unlink, Check,
+  Link2, Unlink, Check, Sparkles,
 } from "lucide-react";
+
+// Custom mark: the brand's red "marker" flourish (Permanent Marker font, red,
+// glow). Renders <span class="marker-flourish">; styled globally in index.css
+// so it looks identical in the editor and on the public page.
+const Flourish = Mark.create({
+  name: "flourish",
+  parseHTML() {
+    return [{ tag: "span.marker-flourish" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { class: "marker-flourish" }), 0];
+  },
+});
 
 const FONTS = [
   { label: "Default", value: "" },
@@ -277,6 +291,7 @@ export function RichTextInput({
       FontSize,
       Underline,
       Highlight.configure({ multicolor: true }),
+      Flourish,
     ],
     content: value || "<p></p>",
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -384,6 +399,15 @@ export function RichTextInput({
             onCustom={(c) => editor.chain().focus().toggleHighlight({ color: c }).run()}
             onClear={() => editor.chain().focus().unsetHighlight().run()}
           />
+
+          {/* Red glow marker flourish */}
+          <Btn
+            active={editor.isActive("flourish")}
+            onClick={() => editor.chain().focus().toggleMark("flourish").run()}
+            title="Red glow marker style"
+          >
+            <Sparkles className="h-3 w-3" />
+          </Btn>
 
           <div className="w-px h-4 bg-white/15 mx-0.5" />
 

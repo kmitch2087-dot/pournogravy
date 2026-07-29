@@ -8,15 +8,6 @@ import { RichText } from "@/components/RichText";
 
 const About = () => {
   const { getValue } = useSiteContent();
-
-  // Hero headline is CMS-editable, but keep the signature red marker flourish on
-  // the final word (e.g. "2AM"). Split off the last space-delimited word; the
-  // rest keeps its author line breaks via whitespace-pre-line.
-  const heroHeadline = getValue("about", "hero", "headline", "BORN BEHIND\nA BAR AT 2AM").trimEnd();
-  const headlineSplit = heroHeadline.lastIndexOf(" ");
-  const headlineHead = headlineSplit >= 0 ? heroHeadline.slice(0, headlineSplit) : "";
-  const headlineLastWord = headlineSplit >= 0 ? heroHeadline.slice(headlineSplit + 1) : heroHeadline;
-
   return (
     <div className="min-h-screen pt-24 md:pt-28">
       <SEO
@@ -52,14 +43,15 @@ const About = () => {
               <RichText html={getValue("about", "hero", "label", "My Story")} />
             </p>
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl tracking-wider leading-[0.9]">
-              {headlineHead && (
-                <>
-                  <span className="whitespace-pre-line">{headlineHead}</span>{" "}
-                </>
-              )}
-              <span className="font-marker stamp-rotate inline-block text-[#ff1744] drop-shadow-[0_0_12px_rgba(255,23,68,0.6)]">
-                {headlineLastWord}
-              </span>
+              <RichText
+                inline
+                html={getValue(
+                  "about",
+                  "hero",
+                  "headline",
+                  '<p>BORN BEHIND</p><p>A BAR AT <span class="marker-flourish">2AM</span></p>'
+                )}
+              />
             </h1>
           </motion.div>
         </div>

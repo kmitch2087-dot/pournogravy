@@ -178,6 +178,16 @@
   transition: color 0.15s;
 }
 .rich-text a:hover { color: #fff; }
+/* Brand red "marker" flourish — toggled by the editor's glow button on any
+   selected word/phrase. Scoped globally so it renders identically inside
+   rich-text bodies, the live editor, and the About headline. */
+.marker-flourish {
+  display: inline-block;
+  font-family: 'Permanent Marker', cursive;
+  color: #ff1744;
+  transform: rotate(-3deg);
+  filter: drop-shadow(0 0 12px rgba(255, 23, 68, 0.6));
+}
 
 /* ── Tiptap editor area (admin) ── */
 .ProseMirror:focus { outline: none; }

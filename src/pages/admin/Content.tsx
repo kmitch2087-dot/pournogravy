@@ -95,7 +95,7 @@ const FIELD_HINTS: Record<string, string> = {
   "shop|header|heading":             "The large 'SHOP' heading at the top of the shop page",
   "shop|header|subheading":          "Tagline below the shop heading",
   "about|hero|label":                "Small eyebrow label above the About page heading",
-  "about|hero|headline":             "The big headline at the top of the About page (press Enter for a line break)",
+  "about|hero|headline":             "The big headline at the top of the About page. Select any word/phrase and hit the ✨ glow button for the red marker style.",
   "about|hero|heading":              "The intro paragraph shown below the About headline",
   "about|pullquote|text":            "The pull-quote shown mid-page on About",
   "about|manifesto|label":           "Small label above the manifesto quote block",
