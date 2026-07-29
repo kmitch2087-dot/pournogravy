@@ -1,5 +1,5 @@
 // Renders HTML stored by the rich text editor. Falls back gracefully for
-// plain-text values (no tags) — they render as a single <p>.
+// plain-text values (no tags).
 export function RichText({
   html,
   className = "",
@@ -8,7 +8,10 @@ export function RichText({
   className?: string;
 }) {
   const isHtml = /<[a-z][\s\S]*>/i.test(html);
-  if (!isHtml) return <span className={className}>{html}</span>;
+  // Plain text (e.g. a textarea field) — preserve the author's line breaks.
+  // Pressing Enter stores a "\n"; without `whitespace-pre-line` the browser
+  // collapses it to a single space and the paragraph break is lost.
+  if (!isHtml) return <span className={`whitespace-pre-line ${className}`}>{html}</span>;
 
   return (
     <div
