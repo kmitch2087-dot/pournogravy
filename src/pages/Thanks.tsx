@@ -5,9 +5,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { RichText } from "@/components/RichText";
+import { ShoutoutCard } from "@/components/ShoutoutCard";
+import { parseShoutouts } from "@/lib/shoutouts";
 
 const Thanks = () => {
   const { getValue, getPublished } = useSiteContent();
+  const shoutouts = parseShoutouts(getValue("thanks", "crew", "shoutouts", ""));
 
   const heroVisible  = getPublished("thanks", "hero");
   const introVisible = getPublished("thanks", "intro");
@@ -92,16 +95,24 @@ const Thanks = () => {
                 </h2>
                 <span aria-hidden="true" className="h-px flex-1 bg-[#fde047]/40" />
               </div>
-              <div className="text-muted-foreground text-base leading-relaxed space-y-3 border-l-4 border-[#fde047] pl-6 md:pl-8">
-                <RichText
-                  html={getValue(
-                    "thanks",
-                    "crew",
-                    "body",
-                    "<p><strong>The regulars</strong> — you know who you are. Couldn't have done it without you.</p>"
-                  )}
-                />
-              </div>
+              {shoutouts.length > 0 ? (
+                <div className="grid gap-5 md:grid-cols-2">
+                  {shoutouts.map((s, i) => (
+                    <ShoutoutCard key={i} s={s} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted-foreground text-base leading-relaxed space-y-3 border-l-4 border-[#fde047] pl-6 md:pl-8">
+                  <RichText
+                    html={getValue(
+                      "thanks",
+                      "crew",
+                      "body",
+                      "<p><strong>The regulars</strong> — you know who you are. Couldn't have done it without you.</p>"
+                    )}
+                  />
+                </div>
+              )}
             </motion.div>
           )}
 

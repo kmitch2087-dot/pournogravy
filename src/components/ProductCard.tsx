@@ -95,6 +95,15 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
   // ── Easter eggs ──────────────────────────────────────────────────────────
   const { data: eggsData } = useEasterEggs();
 
+  // Global on/off for the tiny italic card messages. Default OFF — the source
+  // phrases stay saved (easter eggs / cart_variants) for future use, just hidden.
+  const footerNoteEnabled = useMemo(() => {
+    const row = siteContentRows.find(
+      (r) => r.page === "shop" && r.section === "cards" && r.key === "footer_note_visible"
+    );
+    return (row?.value ?? row?.default_value ?? "false") === "true";
+  }, [siteContentRows]);
+
   const footerNote = useMemo(() => {
     const eggsNotes = (eggsData ?? []).filter(e => e.category === 'footer_note').map(e => e.text);
     const dbFooterNotes = siteContentRows
@@ -258,9 +267,13 @@ const ProductCard = ({ product, priority = false, groupSize }: { product: Produc
 
         {/* ── FOOTER NOTE + SHARE ── */}
         <div className="px-3 pb-2 flex items-end justify-between">
-          <span className="text-[8px] text-muted-foreground italic leading-tight">
-            {footerNote}
-          </span>
+          {footerNoteEnabled ? (
+            <span className="text-[8px] text-muted-foreground italic leading-tight">
+              {footerNote}
+            </span>
+          ) : (
+            <span />
+          )}
           <ShareButton
             productName={product.name}
             productUrl={`/product/${product.id}`}

@@ -198,7 +198,14 @@ export function SectionGroup({
 
   const visibleRow = rows.find((r) => r.key === "visible");
   const isVisible  = (dirty["visible"] ?? visibleRow?.value ?? "true") === "true";
-  const editableRows = rows.filter((r) => r.key !== "visible");
+  // Hide the Thank You shout-outs (raw JSON) and its superseded rich-text body —
+  // those are edited via the structured editor in /admin/content, not here.
+  const editableRows = rows.filter(
+    (r) =>
+      r.key !== "visible" &&
+      r.key !== "shoutouts" &&
+      !(page === "thanks" && section === "crew" && r.key === "body")
+  );
 
   const handleChange = (key: string, value: string) => {
     setDirty((d) => ({ ...d, [key]: value }));

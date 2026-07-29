@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSiteContent, SiteContentRow } from "@/context/SiteContentContext";
 import { FieldInput } from "@/components/admin/SiteEditor";
+import { ShoutoutsEditor } from "@/components/admin/ShoutoutsEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -46,7 +47,7 @@ const ORIGINAL_SUPERPOWER_KEYS = new Set(["label", "item_1", "item_2", "item_3"]
 // ─── Structural sections — no delete button on these ─────────────────────────
 const STRUCTURAL_SECTIONS: Record<string, Set<string>> = {
   home:    new Set(["hero", "marquee", "announcement", "quotes", "featured", "superpowers", "extras", "manifesto", "cta", "newsletter", "reviews"]),
-  shop:    new Set(["header", "cart", "checkout"]),
+  shop:    new Set(["header", "cart", "checkout", "cards"]),
   about:   new Set(["hero", "pullquote", "manifesto", "cta", "body"]),
   contact: new Set(["hero", "header", "sidebar"]),
   faq:       new Set(["hero", "header", "items", "cta"]),
@@ -141,6 +142,7 @@ const FIELD_HINTS: Record<string, string> = {
   "shop|checkout|shipping_note":     "Small note below the cart total about shipping",
   "shop|checkout|email_prompt":      "Prompt shown when asking for guest email at checkout",
   "shop|checkout|gratuity":          "The italic 'gratuity' line on the cart receipt",
+  "shop|cards|footer_note_visible":  "Show/hide the tiny italic messages at the bottom of every product card. Off = hidden (the phrases stay saved for later).",
   "global|footer|tagline":           "The tagline at the bottom of every page footer",
   "thanks|hero|eyebrow":             "Small eyebrow label above the Thank You headline",
   "thanks|hero|headline":            "The large headline at the top of the Thank You page",
@@ -779,6 +781,7 @@ const Content = () => {
   // Shop page has a special layout section, but also has content sections.
   // We show ShopTab only when "layout" pseudo-section is active.
   const isShopLayoutSection = activePage === "shop" && activeSection === "__layout__";
+  const isCrewSection = activePage === "thanks" && activeSection === "crew";
 
   return (
     <div
@@ -906,6 +909,17 @@ const Content = () => {
         {/* Shop layout section: drag-to-reorder product grid */}
         {isShopLayoutSection ? (
           <ShopTab />
+        ) : isCrewSection ? (
+          /* Thank You shout-outs: structured per-person editor */
+          <div className="px-6 py-4 max-w-2xl w-full space-y-4">
+            {sectionRows.filter((r) => r.key === "heading").map((row) => (
+              <InlineField key={row.id} row={row} page={activePage} section={activeSection!} />
+            ))}
+            <ShoutoutsEditor />
+            {sectionRows.filter((r) => r.key === "visible").map((row) => (
+              <InlineField key={row.id} row={row} page={activePage} section={activeSection!} />
+            ))}
+          </div>
         ) : (
           /* Fields */
           <div className="px-6 py-2 max-w-2xl w-full">
