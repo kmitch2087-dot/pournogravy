@@ -1,7 +1,7 @@
 # Pournogravy — Executive Summary
 **Prepared by:** Kristin Mitchell, Founder & Developer — Aethyx
 **Prepared for:** Adam "Opie" Oppenheimer, Owner — Pournogravy
-**Last Updated:** July 14, 2026
+**Last Updated:** July 30, 2026
 
 ---
 
@@ -10,6 +10,8 @@
 Pournogravy.com is a fully custom e-commerce website for a bartender-culture apparel brand. The site is live, deployed to a global CDN, and built to scale — from a one-person side hustle to a nationally recognized brand — without ever needing to rebuild from scratch.
 
 This is not a Shopify template or a Wix site. This is a bespoke, production-grade web application built with the same technology stack used by enterprise-level companies.
+
+**Recent additions (July 2026):** a new **"Thank You" page** where Opie credits collaborators with polished link/social widgets he edits himself; **more control for Opie over the site** — he can now archive products (with a 30-day "recently deleted" safety net), rearrange the shop and homepage slideshow by dragging cards, and pick exactly which products appear in the homepage hero; and a **live traffic panel on the "Advertise" page** that shows real visitor numbers straight from the CDN — useful proof for selling ad placements.
 
 ---
 

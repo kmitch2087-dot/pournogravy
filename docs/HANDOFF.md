@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** July 14, 2026 (print-file resolution completed, DB security hardening, private print-files bucket + password-gated printer portal, Lovable removed, new brand assets)  
+**Last Updated:** July 30, 2026 (Thank-You page + shout-out widgets, rich-text link/glow tools, product 30-day archive + square-card reorder, admin home-slideshow control, live Cloudflare analytics on /advertise)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -459,6 +459,19 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### July 30, 2026
+- **Thank-You page (`/thank-you`)** — CMS-editable credits page (`src/pages/Thanks.tsx`), linked in navbar + footer + admin Content editor. Crew section = structured **shout-out cards** (`src/components/ShoutoutCard.tsx`, `src/lib/shoutouts.ts`): favicon chip for websites, IG/FB icon + @handle, mailto chip, in a 2-col grid. Admin: `src/components/admin/ShoutoutsEditor.tsx` (name/blurb/website/IG/FB/email per person, add/remove/reorder, explicit Save). Data = JSON in `site_content` `thanks/crew/shoutouts`; old `crew.body` kept as backup.
+- **Rich-text editor (`src/components/admin/RichTextInput.tsx`)** — added a **Link** control and a custom **`flourish` mark** (red Permanent-Marker "glow", `.marker-flourish` in `index.css`) usable on any word/phrase.
+- **`RichText` (`src/components/RichText.tsx`)** — plain-text now renders with `whitespace-pre-line` (author line breaks hold); added an `inline` mode (paragraphs→`<br>`) for use inside `<h1>`.
+- **About hero headline** — was hardcoded; now `about/hero/headline` (html), rendered inline with the red flourish on the final/selected word.
+- **Product archive** — `handleDelete` in `src/pages/admin/Products.tsx` now **soft-deletes** (`products.archived_at`) instead of a hard delete (which hit `order_items_product_id_fkey`). New **Archived tab** (countdown + Restore + Delete-Forever). `purge_archived_products()` SECURITY DEFINER fn + daily `pg_cron` job purges unreferenced rows after 30 days.
+- **Product reorder** — replaced the vertical list with a **square-card grid** (dnd-kit `rectSortingStrategy`). Reordering in the normal tabs writes `shop_order`; in the **Slideshow tab** writes `hero_order`.
+- **Shop order** — removed the flip-card auto-spacing in `src/pages/Shop.tsx` (+ Content shop-layout preview) so the admin's exact order holds.
+- **Home hero slideshow** — `products.hero_slideshow` + `products.hero_order`. Toggle in ProductEdit, quick per-row toggles + Slideshow tab in the Products admin. `Index.tsx` hero priority: active drop → picked slideshow (by hero_order) → hardcoded fallback.
+- **Advertise live analytics** — `src/components/LiveTrafficStats.tsx` calls the `cloudflare-stats` edge fn (built via Claude Desktop; Cloudflare GraphQL Analytics for the pournogravy.com zone, cached 10 min in `app_private_config`). Shows Unique Visitors / Page Views / Requests (30d); falls back to the manual box until `CF_ANALYTICS_TOKEN` is set (it is). Token = "Read analytics and logs" template + Zone·Zone·Read, All zones.
+- **New migrations:** `20260728…thanks_page_content`, `20260729…about_hero_headline`, `…about_headline_richtext`, `…thanks_shoutouts_and_card_toggle`, `20260730000000_products_soft_delete_archive`, `20260730010000_products_hero_slideshow_flag`, `20260730020000_products_hero_order`.
+- ⚠️ **Ops note:** the `about_headline_richtext` migration did a blind `UPDATE` on `site_content` and overwrote a live edit Opie was making at the same time (recovered from his open browser tab). The Supabase org is on the **free plan — no PITR / no backups**. **Never hard-overwrite user-editable `site_content` via a migration**; read/preserve the current value or change it in frontend code only.
 
 ### July 18, 2026 (pt. 2 — fixes)
 - **Product preview render-loop** (`c71dda1`, `ProductDetail.tsx`) — in preview mode (`?preview=1`) the preview product was `JSON.parse`'d from localStorage on every render, so `product` got a new identity each render; the `[product]`-keyed effect (`setSelectedVariant`/`setSelectedColor`) then set state from freshly-parsed sub-objects → re-render → re-parse → **infinite loop** (the "glitching," most visible on the framer-motion "you might also hate" grid). Public was unaffected (stable React Query reference). Fix: `useMemo` the preview product on `[isPreview, id]`. Also `useMemo`'d `related` (declared above the component's early returns to stay an unconditional hook) so the `Math.random()` pick is stable — this also stopped the grid reshuffling on benign public re-renders (e.g. size select).
