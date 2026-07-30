@@ -105,11 +105,20 @@ const Index = () => {
     .map(r => allProducts.find(p => p.id === r.products?.slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
+  // Admin-picked slideshow products (hero_slideshow flag), in shop order.
+  const slideshowProducts = allProducts
+    .filter((p) => p.published === true && p.hero_slideshow)
+    .sort((a, b) => (a.shop_order ?? Number.MAX_SAFE_INTEGER) - (b.shop_order ?? Number.MAX_SAFE_INTEGER));
+
+  // Priority: active merch drop → admin-picked slideshow → hardcoded fallback
+  // (last resort so the hero is never empty before any product is flagged).
   const heroProducts = dropProducts.length > 0
     ? dropProducts
-    : HERO_PRODUCT_IDS
-        .map((id) => allProducts.find((p) => p.id === id))
-        .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
+    : slideshowProducts.length > 0
+      ? slideshowProducts
+      : HERO_PRODUCT_IDS
+          .map((id) => allProducts.find((p) => p.id === id))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
   type HeroSlide = { type: "product"; product: typeof heroProducts[number] };
   const heroSlides: HeroSlide[] = heroProducts.map((p) => ({ type: "product" as const, product: p }));

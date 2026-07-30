@@ -58,6 +58,7 @@ interface DbProductRow {
   status: string;
   published: boolean;
   featured: boolean;
+  hero_slideshow: boolean;
   drop_date: string | null;
   went_live_at: string | null;
   section_order: string[] | null;
@@ -108,6 +109,7 @@ const dbRowToProduct = (r: DbProductRow): Product => {
         : undefined,
     colors: normalizeColors(r.colors),
     featured: r.featured,
+    hero_slideshow: r.hero_slideshow ?? false,
     published: r.published && r.status === "published",
     wentLiveAt: r.went_live_at ?? undefined,
     thumbnailFocalX: r.thumbnail_focal_x ?? 40,

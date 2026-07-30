@@ -44,6 +44,7 @@ interface FormState {
   badge: string;
   isLive: boolean;
   featured: boolean;
+  hero_slideshow: boolean;
   wentLiveAt: string;        // datetime-local value
   // Images
   mainImageUrl: string;
@@ -89,6 +90,7 @@ const defaultForm = (): FormState => ({
   badge: "",
   isLive: false,
   featured: false,
+  hero_slideshow: false,
   wentLiveAt: "",
   mainImageUrl: "",
   backImageUrl: "",
@@ -413,6 +415,7 @@ const ProductEdit = () => {
         badge: (product as Record<string, unknown>).badge as string ?? "",
         isLive: !!(product.is_active && product.published),
         featured: !!(product as Record<string, unknown>).featured,
+        hero_slideshow: !!(product as Record<string, unknown>).hero_slideshow,
         wentLiveAt: wentLiveAtLocal,
         mainImageUrl: main,
         backImageUrl: (product as Record<string, unknown>).back_image_url as string ?? "",
@@ -470,6 +473,7 @@ const ProductEdit = () => {
           badge: sp.badge ?? "",
           isLive: sp.published === true,
           featured: sp.featured === true,
+          hero_slideshow: false,
           wentLiveAt: "",
           mainImageUrl: main,
           backImageUrl: "",
@@ -684,6 +688,7 @@ const ProductEdit = () => {
       },
       price_cents: Math.round(Number(form.price_dollars) * 100),
       featured: form.featured,
+      hero_slideshow: form.hero_slideshow,
       badge: form.badge || null,
       images: images.length > 0 ? images : [],
       image_url: images[0] ?? null,
@@ -770,6 +775,7 @@ const ProductEdit = () => {
       badge: form.badge || undefined,
       published: true,
       featured: form.featured,
+      hero_slideshow: form.hero_slideshow,
       // Carry grouping so the preview shows the style switcher like the public page
       product_group_id: form.product_group_id || undefined,
       styleLabel: form.styleLabel || undefined,
@@ -1631,12 +1637,23 @@ const ProductEdit = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="featured">Featured</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Shows in hero / featured row</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Shows in the featured row</p>
                 </div>
                 <Switch
                   id="featured"
                   checked={form.featured}
                   onCheckedChange={(v) => setF({ featured: v })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="hero_slideshow">Home slideshow</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Include in the homepage hero slideshow</p>
+                </div>
+                <Switch
+                  id="hero_slideshow"
+                  checked={form.hero_slideshow}
+                  onCheckedChange={(v) => setF({ hero_slideshow: v })}
                 />
               </div>
             </CardContent>
