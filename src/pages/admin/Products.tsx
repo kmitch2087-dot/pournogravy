@@ -14,7 +14,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Loader2, Search, Pencil, Trash2, CalendarDays, GripVertical } from "lucide-react";
+import {
+  Plus, Loader2, Search, Pencil, Trash2, CalendarDays, GripVertical,
+  ArchiveRestore, Clock,
+} from "lucide-react";
 import { fmtMoney, slugify } from "@/lib/admin";
 import { toast } from "sonner";
 import { setProductLive } from "@/lib/publishProduct";
@@ -23,16 +26,19 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+  SortableContext, useSortable, rectSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type CategoryTab = "all" | "apparel" | "accessories";
+type CategoryTab = "all" | "apparel" | "accessories" | "archived";
+
+const ARCHIVE_DAYS = 30;
 
 interface DbProduct {
   id: string; slug: string; name: string; price_cents: number; currency: string;
   is_active: boolean; published: boolean; status: string; image_url: string | null;
   featured: boolean; category: string | null; display_order: number | null; shop_order: number | null;
+  archived_at: string | null; flip_enabled: boolean; flip_image_url: string | null;
 }
 
 type MergedProduct = {
@@ -49,29 +55,73 @@ type MergedProduct = {
   category: string;
   display_order: number;
   shop_order: number | null;
+  archived_at: string | null;
+  flip_enabled: boolean;
+  flip_image_url: string | null;
 };
 
-// ─── Sortable row ─────────────────────────────────────────────────────────────
-const SortableRow = ({ id, children }: { id: string; children: (drag: React.ReactNode) => React.ReactNode }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+// Days left before an archived product is permanently purged.
+function daysLeft(archivedAt: string | null): number {
+  if (!archivedAt) return ARCHIVE_DAYS;
+  const elapsedMs = Date.now() - new Date(archivedAt).getTime();
+  const left = ARCHIVE_DAYS - Math.floor(elapsedMs / 86_400_000);
+  return Math.max(0, left);
+}
+
+// ─── Sortable grid card (reorder mode) ────────────────────────────────────────
+const SortableGridCard = ({
+  product, position,
+}: { product: MergedProduct; position: number }) => {
+  const key = product.id ?? product.slug;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: key });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
   };
+
   return (
-    <TableRow ref={setNodeRef} style={style}>
-      {children(
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative group border border-border bg-[#111] overflow-hidden cursor-grab active:cursor-grabbing hover:border-[#fde047]/50 transition-colors"
+    >
+      {/* Position badge */}
+      <span className="absolute top-1 left-1 z-10 text-[9px] font-mono bg-black/70 text-white/70 px-1.5 py-0.5 rounded-sm leading-none">
+        {position}
+      </span>
+      {/* Flip badge */}
+      {product.flip_enabled && (
+        <span className="absolute top-1 right-1 z-10 text-[7px] font-display tracking-widest bg-[#fde047] text-black px-1 py-0.5 leading-none uppercase">
+          flip
+        </span>
       )}
-    </TableRow>
+      {/* Drag hint */}
+      <span className="absolute bottom-[3.1rem] right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity text-white/50">
+        <GripVertical className="h-3.5 w-3.5" />
+      </span>
+
+      <div className="aspect-square bg-[#111]">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.name} className="w-full h-full object-contain pointer-events-none" />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+            <span className="text-[9px] text-muted-foreground text-center">{product.name}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="px-2 py-1.5 bg-black border-t border-border/40">
+        <p className="text-[10px] leading-tight line-clamp-1 text-foreground">{product.name}</p>
+        <p className="text-[10px] font-display tracking-wider text-[#fde047] mt-0.5">
+          {fmtMoney(product.price_cents, product.currency)}
+        </p>
+      </div>
+    </div>
   );
 };
 
@@ -81,6 +131,7 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [toPurge, setToPurge] = useState<{ id: string; name: string } | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -94,7 +145,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order, shop_order")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order, shop_order, archived_at, flip_enabled, flip_image_url")
         // Same ordering as the live shop: shop_order NULLS LAST, id.
         .order("shop_order", { ascending: true, nullsFirst: false })
         .order("id", { ascending: true });
@@ -103,7 +154,6 @@ const Products = () => {
     },
   });
 
-  // Fetch which product IDs are in any merch drop
   const { data: dropProductIds = [] } = useQuery<string[]>({
     queryKey: ["merch-drop-product-ids"],
     queryFn: async () => {
@@ -122,7 +172,6 @@ const Products = () => {
     const dbBySlug = new Map(dbProducts.map((p) => [p.slug, p]));
     const result: MergedProduct[] = [];
 
-    // DB products first
     for (const p of dbProducts) {
       result.push({
         id: p.id,
@@ -138,10 +187,12 @@ const Products = () => {
         category: p.category ?? "apparel",
         display_order: p.display_order ?? 0,
         shop_order: p.shop_order ?? null,
+        archived_at: p.archived_at ?? null,
+        flip_enabled: p.flip_enabled ?? false,
+        flip_image_url: p.flip_image_url ?? null,
       });
     }
 
-    // Static products not yet in DB
     for (const sp of staticProducts) {
       if (!dbBySlug.has(sp.id)) {
         result.push({
@@ -158,35 +209,50 @@ const Products = () => {
           category: "apparel",
           display_order: 0,
           shop_order: null,
+          archived_at: null,
+          flip_enabled: false,
+          flip_image_url: null,
         });
       }
     }
 
     return result;
-  }, [dbProducts, dropIdSet]);
+  }, [dbProducts, dropIdSet, staticProducts]);
+
+  // Active (non-archived) products for the normal tabs.
+  const activeProducts = useMemo(() => merged.filter((p) => !p.archived_at), [merged]);
+
+  // Archived within the retention window, newest first.
+  const archivedProducts = useMemo(
+    () =>
+      merged
+        .filter((p) => p.archived_at && daysLeft(p.archived_at) > 0)
+        .sort((a, b) => (b.archived_at! < a.archived_at! ? -1 : 1)),
+    [merged],
+  );
+
+  const viewArchived = categoryTab === "archived";
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    let result = merged;
-    if (categoryTab !== "all") {
+    let result = viewArchived ? archivedProducts : activeProducts;
+    if (!viewArchived && categoryTab !== "all") {
       result = result.filter((p) => p.category === categoryTab);
     }
     if (!q) return result;
     return result.filter(
       (p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     );
-  }, [merged, search, categoryTab]);
+  }, [activeProducts, archivedProducts, viewArchived, search, categoryTab]);
 
   const handleToggleLive = async (p: MergedProduct, newVal: boolean) => {
     const key = p.id ?? p.slug;
     setToggling(key);
     try {
       if (p.id) {
-        // DB product — delegate to shared publish helper
         const { error } = await setProductLive(supabase, p.id, newVal);
         if (error) throw error;
       } else {
-        // Static-only product — create a DB row
         const staticProd = staticProducts.find((s) => s.id === p.slug);
         if (!staticProd) throw new Error("Static product not found");
         const { error } = await supabase.from("products").insert({
@@ -217,22 +283,47 @@ const Products = () => {
     }
   };
 
+  // "Delete" = soft delete → moves to Archived for 30 days. FK-safe: the row
+  // stays, so orders that reference it are untouched.
   const handleDelete = async () => {
     if (!toDelete) return;
-    const { error } = await supabase.from("products").delete().eq("id", toDelete.id);
-    if (error) { toast.error(error.message); } else {
-      toast.success(`Deleted ${toDelete.name}`);
+    const { error } = await supabase
+      .from("products")
+      .update({ archived_at: new Date().toISOString(), is_active: false, published: false })
+      .eq("id", toDelete.id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(`${toDelete.name} moved to Archived — ${ARCHIVE_DAYS} days to restore`);
       qc.invalidateQueries({ queryKey: ["admin-products"] });
     }
     setToDelete(null);
   };
 
-  const handleEdit = (p: MergedProduct) => {
-    if (p.id) {
-      navigate(`/admin/products/${p.id}`);
+  const handleRestore = async (p: MergedProduct) => {
+    if (!p.id) return;
+    const { error } = await supabase.from("products").update({ archived_at: null }).eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${p.name} restored — as a draft`);
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
+
+  // Permanent delete. Fails (gracefully) if the product has order history.
+  const handlePurge = async () => {
+    if (!toPurge) return;
+    const { error } = await supabase.from("products").delete().eq("id", toPurge.id);
+    if (error) {
+      toast.error("Can't delete permanently — it has order history. It stays archived and hidden.");
     } else {
-      navigate(`/admin/products/new?from=${p.slug}`);
+      toast.success(`${toPurge.name} permanently deleted`);
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     }
+    setToPurge(null);
+  };
+
+  const handleEdit = (p: MergedProduct) => {
+    if (p.id) navigate(`/admin/products/${p.id}`);
+    else navigate(`/admin/products/new?from=${p.slug}`);
   };
 
   const handleEnterReorder = () => {
@@ -254,9 +345,6 @@ const Products = () => {
     if (dbOnly.length === 0) return;
     setReordering(true);
     try {
-      // Per-row UPDATE (not upsert): upsert would run an INSERT that violates the
-      // NOT NULL constraints on name/slug/price_cents. Writes shop_order (the shop
-      // position) — NOT display_order (variant order). Gaps of 10 leave insert room.
       const results = await Promise.all(
         dbOnly.map((p, i) =>
           supabase.from("products").update({ shop_order: (i + 1) * 10 }).eq("id", p.id!)
@@ -274,12 +362,12 @@ const Products = () => {
     }
   };
 
-  // Category tab counts
   const tabCounts = useMemo(() => ({
-    all: merged.length,
-    apparel: merged.filter((p) => p.category === "apparel").length,
-    accessories: merged.filter((p) => p.category === "accessories").length,
-  }), [merged]);
+    all: activeProducts.length,
+    apparel: activeProducts.filter((p) => p.category === "apparel").length,
+    accessories: activeProducts.filter((p) => p.category === "accessories").length,
+    archived: archivedProducts.length,
+  }), [activeProducts, archivedProducts]);
 
   const getLiveState = (p: MergedProduct): "live" | "listed" | "draft" => {
     if (!p.published) return "draft";
@@ -288,7 +376,7 @@ const Products = () => {
 
   return (
     <div className="space-y-6">
-      {/* Search + New Product */}
+      {/* Search + actions */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -313,9 +401,11 @@ const Products = () => {
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="text-xs" onClick={handleEnterReorder}>
-                <GripVertical className="h-3.5 w-3.5 mr-1" /> Reorder
-              </Button>
+              {!viewArchived && (
+                <Button variant="outline" size="sm" className="text-xs" onClick={handleEnterReorder}>
+                  <GripVertical className="h-3.5 w-3.5 mr-1" /> Reorder
+                </Button>
+              )}
               <Button asChild className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest">
                 <Link to="/admin/products/new"><Plus className="h-4 w-4 mr-1.5" /> NEW PRODUCT</Link>
               </Button>
@@ -329,9 +419,10 @@ const Products = () => {
         {(["all", "apparel", "accessories"] as CategoryTab[]).map((tab) => (
           <button
             key={tab}
-            onClick={() => setCategoryTab(tab)}
+            onClick={() => { setCategoryTab(tab); setReorderMode(false); }}
+            disabled={reorderMode}
             className={[
-              "px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition",
+              "px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition disabled:opacity-40",
               categoryTab === tab
                 ? "border-[#fde047] text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -340,6 +431,20 @@ const Products = () => {
             {tab} <span className="ml-1 text-muted-foreground font-sans normal-case tracking-normal">({tabCounts[tab]})</span>
           </button>
         ))}
+        {/* Archived tab — right-aligned */}
+        <button
+          onClick={() => { setCategoryTab("archived"); setReorderMode(false); }}
+          disabled={reorderMode}
+          className={[
+            "ml-auto px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition disabled:opacity-40 flex items-center gap-1.5",
+            viewArchived
+              ? "border-[#fde047] text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          ].join(" ")}
+        >
+          <Clock className="h-3.5 w-3.5" /> Archived
+          <span className="text-muted-foreground font-sans normal-case tracking-normal">({tabCounts.archived})</span>
+        </button>
       </div>
 
       <Card className="overflow-hidden">
@@ -347,59 +452,70 @@ const Products = () => {
           <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center text-sm text-muted-foreground">
-            {search ? "Nothing matches that." : "No products found."}
+            {viewArchived
+              ? "Nothing in the archive."
+              : search ? "Nothing matches that." : "No products found."}
+          </div>
+        ) : viewArchived ? (
+          /* ── Archived grid — countdown + restore / delete-forever ── */
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filtered.map((p) => {
+              const left = daysLeft(p.archived_at);
+              return (
+                <div key={p.id ?? p.slug} className="relative border border-border bg-[#111] overflow-hidden flex flex-col">
+                  <span className="absolute top-1 left-1 z-10 flex items-center gap-1 text-[9px] font-mono bg-black/75 text-amber-300 px-1.5 py-0.5 rounded-sm leading-none">
+                    <Clock className="h-2.5 w-2.5" /> {left}d left
+                  </span>
+                  <div className="aspect-square bg-[#111] opacity-60">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+                        <span className="text-[9px] text-muted-foreground text-center">{p.name}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5 bg-black border-t border-border/40 flex-1">
+                    <p className="text-[10px] leading-tight line-clamp-2 text-foreground">{p.name}</p>
+                  </div>
+                  <div className="flex border-t border-border/40">
+                    <button
+                      onClick={() => handleRestore(p)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-display tracking-widest uppercase text-green-400 hover:bg-green-500/10 transition-colors"
+                    >
+                      <ArchiveRestore className="h-3 w-3" /> Restore
+                    </button>
+                    <button
+                      onClick={() => setToPurge({ id: p.id!, name: p.name })}
+                      className="flex items-center justify-center gap-1 px-2 py-1.5 text-[9px] text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 border-l border-border/40 transition-colors"
+                      title="Delete permanently now"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : reorderMode ? (
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <SortableContext
-              items={reorderedList.map((p) => p.id ?? p.slug)}
-              strategy={verticalListSortingStrategy}
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8" />
-                    <TableHead className="w-14" />
-                    <TableHead>Product</TableHead>
-                    <TableHead className="w-28">Category</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reorderedList.map((p) => {
-                    const key = p.id ?? p.slug;
-                    return (
-                      <SortableRow key={key} id={key}>
-                        {(dragHandle) => (
-                          <>
-                            <TableCell className="w-8 pl-2">{dragHandle}</TableCell>
-                            <TableCell>
-                              {p.image_url ? (
-                                <img src={p.image_url} alt={p.name} className="h-10 w-10 object-cover rounded-sm border border-border" />
-                              ) : (
-                                <div className="h-10 w-10 bg-muted rounded-sm" />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <span className="font-medium">{p.name}</span>
-                              <div className="text-xs text-muted-foreground mt-0.5">{p.slug}</div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-widest">{p.category}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-display tracking-wider">
-                              {fmtMoney(p.price_cents, p.currency)}
-                            </TableCell>
-                          </>
-                        )}
-                      </SortableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </SortableContext>
-          </DndContext>
+          /* ── Reorder — square-card grid, drag to slide ── */
+          <div className="p-4">
+            <p className="text-[10px] text-muted-foreground/60 mb-3">
+              Drag any card to reposition — others slide out of the way. This is exactly how the shop grid reads.
+              <span className="ml-1">Yellow <span className="text-[#fde047]">flip</span> badge = card animation.</span>
+            </p>
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <SortableContext items={reorderedList.map((p) => p.id ?? p.slug)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {reorderedList.map((p, i) => (
+                    <SortableGridCard key={p.id ?? p.slug} product={p} position={i + 1} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         ) : (
+          /* ── Normal list ── */
           <Table>
             <TableHeader>
               <TableRow>
@@ -431,7 +547,7 @@ const Products = () => {
                       >
                         {p.name}
                         {p.inDrop && (
-                          <CalendarDays className="inline h-3.5 w-3.5 ml-1.5 text-[#fde047] -mt-0.5" title="In a merch drop" />
+                          <CalendarDays className="inline h-3.5 w-3.5 ml-1.5 text-[#fde047] -mt-0.5" />
                         )}
                       </button>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -485,18 +601,40 @@ const Products = () => {
         )}
       </Card>
 
+      {/* Delete → archive confirm */}
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this product?</AlertDialogTitle>
+            <AlertDialogTitle>Move to Archived?</AlertDialogTitle>
             <AlertDialogDescription>
-              Removes <strong>{toDelete?.name}</strong> from the database. Existing orders unaffected.
+              <strong>{toDelete?.name}</strong> will be hidden from the shop and moved to
+              <strong> Archived</strong> for {ARCHIVE_DAYS} days. You can restore it anytime before then;
+              after that it's permanently removed. Existing orders are unaffected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction onClick={handleDelete} className="bg-[#fde047] text-black hover:bg-[#fde047]/90 font-display tracking-widest">
+              Move to Archived
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete-forever confirm */}
+      <AlertDialog open={!!toPurge} onOpenChange={(o) => !o && setToPurge(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes <strong>{toPurge?.name}</strong> right now — no undo. (If it has
+              past orders it can't be fully deleted and will simply stay hidden.)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePurge} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Forever
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
