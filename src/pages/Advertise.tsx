@@ -2,6 +2,7 @@ import SEO from "@/components/SEO";
 import { useSiteContent } from "@/context/SiteContentContext";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { LiveTrafficStats } from "@/components/LiveTrafficStats";
 
 const PLACEMENTS = [
   {
@@ -108,23 +109,27 @@ const Advertise = () => {
         </div>
       </section>
 
-      {/* Audience stats */}
-      <section className="border-b border-white/10 bg-black">
-        <div className="container mx-auto px-4 py-14">
-          <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto text-center">
-            {[
-              { num: stat1Num, label: stat1Label },
-              { num: stat2Num, label: stat2Label },
-              { num: stat3Num, label: stat3Label },
-            ].map(({ num, label }) => (
-              <div key={label}>
-                <p className="font-display text-4xl md:text-5xl text-[#fde047] tracking-wider">{num}</p>
-                <p className="text-xs text-white/50 uppercase tracking-widest mt-2">{label}</p>
+      {/* Audience stats — live Cloudflare traffic when configured, else the manual box */}
+      <LiveTrafficStats
+        fallback={
+          <section className="border-b border-white/10 bg-black">
+            <div className="container mx-auto px-4 py-14">
+              <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto text-center">
+                {[
+                  { num: stat1Num, label: stat1Label },
+                  { num: stat2Num, label: stat2Label },
+                  { num: stat3Num, label: stat3Label },
+                ].map(({ num, label }) => (
+                  <div key={label}>
+                    <p className="font-display text-4xl md:text-5xl text-[#fde047] tracking-wider">{num}</p>
+                    <p className="text-xs text-white/50 uppercase tracking-widest mt-2">{label}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
+        }
+      />
 
       {/* Audience description */}
       <section className="border-b border-white/10">
