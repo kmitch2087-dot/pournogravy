@@ -105,10 +105,14 @@ const Index = () => {
     .map(r => allProducts.find(p => p.id === r.products?.slug))
     .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.published === true);
 
-  // Admin-picked slideshow products (hero_slideshow flag), in shop order.
+  // Admin-picked slideshow products (hero_slideshow flag), in dedicated hero_order.
   const slideshowProducts = allProducts
     .filter((p) => p.published === true && p.hero_slideshow)
-    .sort((a, b) => (a.shop_order ?? Number.MAX_SAFE_INTEGER) - (b.shop_order ?? Number.MAX_SAFE_INTEGER));
+    .sort(
+      (a, b) =>
+        (a.hero_order ?? Number.MAX_SAFE_INTEGER) - (b.hero_order ?? Number.MAX_SAFE_INTEGER) ||
+        (a.shop_order ?? Number.MAX_SAFE_INTEGER) - (b.shop_order ?? Number.MAX_SAFE_INTEGER),
+    );
 
   // Priority: active merch drop → admin-picked slideshow → hardcoded fallback
   // (last resort so the hero is never empty before any product is flagged).

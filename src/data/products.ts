@@ -63,6 +63,8 @@ export interface Product {
   featured?: boolean;
   /** When true, the product appears in the home hero slideshow (admin-controlled). */
   hero_slideshow?: boolean;
+  /** Position within the home hero slideshow (lower = earlier). */
+  hero_order?: number;
   /** Public visibility flag. Only products with `published: true` appear in shop/featured/search. */
   published?: boolean;
   /** ISO timestamp of when the product first went live — used for the 14-day NEW badge. */

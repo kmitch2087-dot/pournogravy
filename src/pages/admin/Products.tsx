@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Loader2, Search, Pencil, Trash2, CalendarDays, GripVertical,
-  ArchiveRestore, Clock,
+  ArchiveRestore, Clock, MonitorPlay,
 } from "lucide-react";
 import { fmtMoney, slugify } from "@/lib/admin";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type CategoryTab = "all" | "apparel" | "accessories" | "archived";
+type CategoryTab = "all" | "apparel" | "accessories" | "archived" | "slideshow";
 
 const ARCHIVE_DAYS = 30;
 
@@ -39,6 +39,7 @@ interface DbProduct {
   is_active: boolean; published: boolean; status: string; image_url: string | null;
   featured: boolean; category: string | null; display_order: number | null; shop_order: number | null;
   archived_at: string | null; flip_enabled: boolean; flip_image_url: string | null;
+  hero_slideshow: boolean; hero_order: number | null;
 }
 
 type MergedProduct = {
@@ -58,6 +59,8 @@ type MergedProduct = {
   archived_at: string | null;
   flip_enabled: boolean;
   flip_image_url: string | null;
+  hero_slideshow: boolean;
+  hero_order: number | null;
 };
 
 // Days left before an archived product is permanently purged.
@@ -136,6 +139,7 @@ const Products = () => {
   const [reorderMode, setReorderMode] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [reorderedList, setReorderedList] = useState<MergedProduct[]>([]);
+  const [reorderField, setReorderField] = useState<"shop_order" | "hero_order">("shop_order");
   const { data: staticProducts = [] } = useMergedProducts();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -145,7 +149,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order, shop_order, archived_at, flip_enabled, flip_image_url")
+        .select("id, slug, name, price_cents, currency, is_active, published, status, image_url, featured, category, display_order, shop_order, archived_at, flip_enabled, flip_image_url, hero_slideshow, hero_order")
         // Same ordering as the live shop: shop_order NULLS LAST, id.
         .order("shop_order", { ascending: true, nullsFirst: false })
         .order("id", { ascending: true });
@@ -190,6 +194,8 @@ const Products = () => {
         archived_at: p.archived_at ?? null,
         flip_enabled: p.flip_enabled ?? false,
         flip_image_url: p.flip_image_url ?? null,
+        hero_slideshow: p.hero_slideshow ?? false,
+        hero_order: p.hero_order ?? null,
       });
     }
 
@@ -212,6 +218,8 @@ const Products = () => {
           archived_at: null,
           flip_enabled: false,
           flip_image_url: null,
+          hero_slideshow: false,
+          hero_order: null,
         });
       }
     }
@@ -232,18 +240,29 @@ const Products = () => {
   );
 
   const viewArchived = categoryTab === "archived";
+  const viewSlideshow = categoryTab === "slideshow";
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    let result = viewArchived ? archivedProducts : activeProducts;
-    if (!viewArchived && categoryTab !== "all") {
-      result = result.filter((p) => p.category === categoryTab);
+    let result: MergedProduct[];
+    if (viewArchived) {
+      result = archivedProducts;
+    } else if (viewSlideshow) {
+      // Slideshow members, in dedicated hero_order.
+      result = activeProducts
+        .filter((p) => p.hero_slideshow)
+        .sort((a, b) =>
+          (a.hero_order ?? Number.MAX_SAFE_INTEGER) - (b.hero_order ?? Number.MAX_SAFE_INTEGER) ||
+          (a.shop_order ?? Number.MAX_SAFE_INTEGER) - (b.shop_order ?? Number.MAX_SAFE_INTEGER));
+    } else {
+      result = activeProducts;
+      if (categoryTab !== "all") result = result.filter((p) => p.category === categoryTab);
     }
     if (!q) return result;
     return result.filter(
       (p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     );
-  }, [activeProducts, archivedProducts, viewArchived, search, categoryTab]);
+  }, [activeProducts, archivedProducts, viewArchived, viewSlideshow, search, categoryTab]);
 
   const handleToggleLive = async (p: MergedProduct, newVal: boolean) => {
     const key = p.id ?? p.slug;
@@ -308,6 +327,16 @@ const Products = () => {
     qc.invalidateQueries({ queryKey: ["admin-products"] });
   };
 
+  // Quick add/remove from the home slideshow, straight from the list.
+  const handleToggleSlideshow = async (p: MergedProduct) => {
+    if (!p.id) { toast.error("Publish this product first, then add it to the slideshow."); return; }
+    const { error } = await supabase
+      .from("products").update({ hero_slideshow: !p.hero_slideshow }).eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(p.hero_slideshow ? "Removed from slideshow" : "Added to slideshow");
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
+
   // Permanent delete. Fails (gracefully) if the product has order history.
   const handlePurge = async () => {
     if (!toPurge) return;
@@ -328,6 +357,8 @@ const Products = () => {
 
   const handleEnterReorder = () => {
     setReorderedList([...filtered]);
+    // Slideshow tab reorders hero_order; every other tab reorders shop_order.
+    setReorderField(viewSlideshow ? "hero_order" : "shop_order");
     setReorderMode(true);
   };
 
@@ -347,7 +378,7 @@ const Products = () => {
     try {
       const results = await Promise.all(
         dbOnly.map((p, i) =>
-          supabase.from("products").update({ shop_order: (i + 1) * 10 }).eq("id", p.id!)
+          supabase.from("products").update({ [reorderField]: (i + 1) * 10 }).eq("id", p.id!)
         )
       );
       const failed = results.find((r) => r.error);
@@ -367,6 +398,7 @@ const Products = () => {
     apparel: activeProducts.filter((p) => p.category === "apparel").length,
     accessories: activeProducts.filter((p) => p.category === "accessories").length,
     archived: archivedProducts.length,
+    slideshow: activeProducts.filter((p) => p.hero_slideshow).length,
   }), [activeProducts, archivedProducts]);
 
   const getLiveState = (p: MergedProduct): "live" | "listed" | "draft" => {
@@ -431,12 +463,25 @@ const Products = () => {
             {tab} <span className="ml-1 text-muted-foreground font-sans normal-case tracking-normal">({tabCounts[tab]})</span>
           </button>
         ))}
-        {/* Archived tab — right-aligned */}
+        {/* Slideshow + Archived — right-aligned */}
+        <button
+          onClick={() => { setCategoryTab("slideshow"); setReorderMode(false); }}
+          disabled={reorderMode}
+          className={[
+            "ml-auto px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition disabled:opacity-40 flex items-center gap-1.5",
+            viewSlideshow
+              ? "border-[#fde047] text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          ].join(" ")}
+        >
+          <MonitorPlay className="h-3.5 w-3.5" /> Slideshow
+          <span className="text-muted-foreground font-sans normal-case tracking-normal">({tabCounts.slideshow})</span>
+        </button>
         <button
           onClick={() => { setCategoryTab("archived"); setReorderMode(false); }}
           disabled={reorderMode}
           className={[
-            "ml-auto px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition disabled:opacity-40 flex items-center gap-1.5",
+            "px-4 py-2 text-xs font-display tracking-widest uppercase border-b-2 -mb-px transition disabled:opacity-40 flex items-center gap-1.5",
             viewArchived
               ? "border-[#fde047] text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
@@ -501,7 +546,10 @@ const Products = () => {
           /* ── Reorder — square-card grid, drag to slide ── */
           <div className="p-4">
             <p className="text-[10px] text-muted-foreground/60 mb-3">
-              Drag any card to reposition — others slide out of the way. This is exactly how the shop grid reads.
+              Drag any card to reposition — others slide out of the way.{" "}
+              {reorderField === "hero_order"
+                ? "This sets the home slideshow order."
+                : "This is exactly how the shop grid reads."}
               <span className="ml-1">Yellow <span className="text-[#fde047]">flip</span> badge = card animation.</span>
             </p>
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -583,6 +631,15 @@ const Products = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        {p.id && (
+                          <Button
+                            variant="ghost" size="icon"
+                            onClick={() => handleToggleSlideshow(p)}
+                            title={p.hero_slideshow ? "In home slideshow — click to remove" : "Add to home slideshow"}
+                          >
+                            <MonitorPlay className={`h-4 w-4 ${p.hero_slideshow ? "text-[#fde047]" : "text-muted-foreground/40"}`} />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
