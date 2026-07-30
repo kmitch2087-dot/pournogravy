@@ -483,28 +483,8 @@ function ShopTab() {
     },
   });
 
-  // Mirror the public shop's flip-spacing so the preview matches what customers see
-  const previewList = (() => {
-    const result = [...reorderedList];
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i < result.length - 1; i++) {
-        if (result[i].flip_enabled && result[i + 1].flip_enabled) {
-          let j = i + 2;
-          while (j < result.length && result[j].flip_enabled) j++;
-          if (j < result.length) {
-            const [item] = result.splice(j, 1);
-            result.splice(i + 1, 0, item);
-            changed = true;
-            break;
-          }
-          break;
-        }
-      }
-    }
-    return result;
-  })();
+  // Preview mirrors the public shop: exactly the admin-set order, no auto-spacing.
+  const previewList = reorderedList;
 
   // Sync local list when products load
   useEffect(() => {
@@ -554,7 +534,7 @@ function ShopTab() {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">
-            Drag to set your preferred order. The preview below mirrors the public shop exactly — including automatic spacing of flip cards.
+            Drag to set your preferred order. The preview below mirrors the public shop exactly.
           </p>
           <p className="text-[10px] text-muted-foreground/50">
             Yellow <span className="text-[#fde047]">flip</span> badges = card animation enabled · Position numbers show where each product lands

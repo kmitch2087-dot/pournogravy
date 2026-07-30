@@ -94,32 +94,9 @@ const Shop = () => {
       });
     }
 
-    // Space out flip-enabled cards so none are adjacent.
-    // Only applied on the default order (admin-controlled positions).
-    if (sortBy === "default") {
-      const result = [...sorted];
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (let i = 0; i < result.length - 1; i++) {
-          if (result[i].flip_enabled && result[i + 1].flip_enabled) {
-            // find the nearest non-flip product after i+1
-            let j = i + 2;
-            while (j < result.length && result[j].flip_enabled) j++;
-            if (j < result.length) {
-              const [item] = result.splice(j, 1);
-              result.splice(i + 1, 0, item);
-              changed = true;
-              break;
-            }
-            // all remaining are flippers — can't space further, stop
-            break;
-          }
-        }
-      }
-      return result;
-    }
-
+    // Render in exactly the admin-controlled order. (Previously flip-enabled
+    // cards were auto-spaced so two were never adjacent — but that overrode the
+    // manual order, so related shirts couldn't be placed side-by-side.)
     return sorted;
   }, [query, sortBy, visible]);
 
