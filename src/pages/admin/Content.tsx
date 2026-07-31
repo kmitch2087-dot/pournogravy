@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSiteContent, SiteContentRow } from "@/context/SiteContentContext";
 import { FieldInput } from "@/components/admin/SiteEditor";
 import { ShoutoutsEditor } from "@/components/admin/ShoutoutsEditor";
+import { HomeSlideshowManager } from "@/components/admin/HomeSlideshowManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -623,7 +624,9 @@ const Content = () => {
   // For shop page, inject a "__layout__" pseudo-section at the top for drag-reorder
   const sections  = activePage === "shop"
     ? ["__layout__", ...new Set(pageRows.map((r) => r.section))]
-    : [...new Set(pageRows.map((r) => r.section))];
+    : activePage === "home"
+      ? ["__slideshow__", ...new Set(pageRows.map((r) => r.section))]
+      : [...new Set(pageRows.map((r) => r.section))];
 
   // Auto-select first section when page changes
   useEffect(() => {
@@ -761,6 +764,7 @@ const Content = () => {
   // Shop page has a special layout section, but also has content sections.
   // We show ShopTab only when "layout" pseudo-section is active.
   const isShopLayoutSection = activePage === "shop" && activeSection === "__layout__";
+  const isHomeSlideshowSection = activePage === "home" && activeSection === "__slideshow__";
   const isCrewSection = activePage === "thanks" && activeSection === "crew";
 
   return (
@@ -806,10 +810,13 @@ const Content = () => {
               <div className="space-y-0.5 flex-1">
                 {sections.map((section) => {
                   const isLayout = section === "__layout__";
-                  const preview = isLayout ? "Product drag-to-reorder" : getSectionPreview(section);
+                  const isSlideshow = section === "__slideshow__";
+                  const preview = isLayout ? "Product drag-to-reorder"
+                    : isSlideshow ? "Pick + order hero products"
+                    : getSectionPreview(section);
                   const isActive = activeSection === section;
-                  const isStructural = isLayout || isSectionStructural(section);
-                  const displayLabel = isLayout ? "LAYOUT" : section;
+                  const isStructural = isLayout || isSlideshow || isSectionStructural(section);
+                  const displayLabel = isLayout ? "LAYOUT" : isSlideshow ? "SLIDESHOW" : section;
                   return (
                     <div key={section} className="relative group/sec">
                       <button
@@ -863,17 +870,22 @@ const Content = () => {
           <div>
             <h2 className="font-display tracking-widest text-base">
               {PAGE_LABELS[activePage].toUpperCase()}
-              {activeSection && activeSection !== "__layout__" && (
+              {activeSection && activeSection !== "__layout__" && activeSection !== "__slideshow__" && (
                 <span className="text-muted-foreground font-normal"> — {activeSection.toUpperCase()}</span>
               )}
               {isShopLayoutSection && (
                 <span className="text-muted-foreground font-normal"> — LAYOUT</span>
               )}
+              {isHomeSlideshowSection && (
+                <span className="text-muted-foreground font-normal"> — SLIDESHOW</span>
+              )}
             </h2>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               {isShopLayoutSection
                 ? "Drag products to arrange shop display order"
-                : "Changes go live immediately · Blur any field to save"}
+                : isHomeSlideshowSection
+                  ? "Pick which products appear in the homepage hero slideshow + drag to order"
+                  : "Changes go live immediately · Blur any field to save"}
             </p>
           </div>
           <a
@@ -889,6 +901,8 @@ const Content = () => {
         {/* Shop layout section: drag-to-reorder product grid */}
         {isShopLayoutSection ? (
           <ShopTab />
+        ) : isHomeSlideshowSection ? (
+          <HomeSlideshowManager />
         ) : isCrewSection ? (
           /* Thank You shout-outs: structured per-person editor */
           <div className="px-6 py-4 max-w-2xl w-full space-y-4">
