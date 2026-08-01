@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     // ── Revenue: paid/fulfilled orders ────────────────────────────────────────
     const { data: revenueRows, error: revErr } = await supabase
       .from("orders")
-      .select("total_cents")
+      .select("total_cents, tax_cents")
       .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
       .eq("is_test", false)
       .gte("created_at", monthStart)
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
 
     if (revErr) throw new Error(`Revenue query failed: ${revErr.message}`);
     const revenue_cents = (revenueRows ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+    const tax_collected_cents = (revenueRows ?? []).reduce((s, o) => s + (o.tax_cents ?? 0), 0);
 
     // ── Refunds ────────────────────────────────────────────────────────────────
     const { data: refundRows, error: refErr } = await supabase
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
         cogs_cents,
         expenses_cents,
         stripe_fees_cents,
+        tax_collected_cents,
         closed_at: new Date().toISOString(),
       })
       .select("id")
@@ -192,7 +194,7 @@ Deno.serve(async (req) => {
       `[close-month] closed ${year}-${month}: ` +
       `revenue=${revenue_cents} refunds=${refunds_cents} cogs=${cogs_cents} ` +
       `expenses=${expenses_cents} stripe_fees=${stripe_fees_cents} ` +
-      `snapshot_id=${snapshot.id}`,
+      `tax_collected=${tax_collected_cents} snapshot_id=${snapshot.id}`,
     );
 
     return new Response(
@@ -206,6 +208,7 @@ Deno.serve(async (req) => {
         cogs_cents,
         expenses_cents,
         stripe_fees_cents,
+        tax_collected_cents,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
