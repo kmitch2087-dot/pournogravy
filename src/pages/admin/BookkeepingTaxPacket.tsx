@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import JSZip from "jszip";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -130,13 +129,6 @@ export default function BookkeepingTaxPacket() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <Link
-        to="/admin/bookkeeping"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" /> Bookkeeping
-      </Link>
-
       <h1 className="text-2xl font-bold mb-1">Tax Packet</h1>
       <p className="text-muted-foreground text-sm mb-6">
         One-click year-end export. Download and send the ZIP to your accountant.

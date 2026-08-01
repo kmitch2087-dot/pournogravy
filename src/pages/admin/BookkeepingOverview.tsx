@@ -9,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { Lock, Pencil, BookOpen, Receipt, Package, BarChart2, Gift } from "lucide-react";
+import { Lock, Pencil, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 
 interface Snapshot {
@@ -77,13 +76,6 @@ export default function BookkeepingOverview() {
     onError: () => toast.error("Failed to save"),
   });
 
-  const subNav = [
-    { to: "/admin/bookkeeping/expenses",   label: "Expenses",   icon: Receipt  },
-    { to: "/admin/bookkeeping/products",   label: "COGS",       icon: Package  },
-    { to: "/admin/bookkeeping/reports",    label: "Reports",    icon: BarChart2},
-    { to: "/admin/bookkeeping/tax-packet", label: "Tax Packet", icon: Gift     },
-  ];
-
   return (
     <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
@@ -100,17 +92,6 @@ export default function BookkeepingOverview() {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-      </div>
-
-      {/* Sub-nav */}
-      <div className="flex gap-2 mb-6">
-        {subNav.map(({ to, label, icon: Icon }) => (
-          <Link key={to} to={to}>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Icon className="w-3.5 h-3.5" />{label}
-            </Button>
-          </Link>
-        ))}
       </div>
 
       {/* Guidance */}

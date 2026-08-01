@@ -6,8 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
 
 interface Product {
   id: string;
@@ -79,13 +77,6 @@ export default function BookkeepingProducts() {
 
   return (
     <div className="p-6 max-w-4xl">
-      <Link
-        to="/admin/bookkeeping"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" /> Bookkeeping
-      </Link>
-
       <h1 className="text-2xl font-bold mb-1">Cost of Goods Sold</h1>
       <p className="text-muted-foreground text-sm mb-6">
         Enter what it costs to produce each item — printing, materials, fulfillment.

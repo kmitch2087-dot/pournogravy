@@ -2,8 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Download, Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import {
   format,
   startOfYear,
@@ -159,12 +158,6 @@ export default function BookkeepingReports() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <Link
-        to="/admin/bookkeeping"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" /> Bookkeeping
-      </Link>
       <h1 className="text-2xl font-bold mb-1">Reports</h1>
       <p className="text-muted-foreground text-sm mb-6">
         Generate and download reports for any period. P&amp;L supports PDF
