@@ -1,7 +1,7 @@
 // generate-report edge function
-// Returns CSV, HTML, or JSON report data for one of seven report types:
+// Returns CSV, HTML, or JSON report data for one of eight report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
-//   | sales_tax | top_customers
+//   | sales_tax | top_customers | refunds_disputes
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -9,8 +9,11 @@
 //   SUPABASE_URL              (standard — always available in edge functions)
 //   SUPABASE_SERVICE_ROLE_KEY (standard — always available in edge functions)
 //   SUPABASE_ANON_KEY         (standard — always available in edge functions)
+//   STRIPE_SECRET_KEY         (required for refunds_disputes; degrades gracefully with
+//                              an explanatory note if unset)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("origin") ?? "*";
@@ -22,7 +25,7 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes";
 type ReportFormat = "csv" | "html" | "json";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
@@ -162,7 +165,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -458,6 +461,60 @@ Deno.serve(async (req) => {
         ]);
 
       totals = { "Total Spent": cents(sumColumn(rows, 2) * 100) };
+    }
+
+    // ── Refunds & Disputes (Stripe) ──────────────────────────────────────────
+    else if (report_type === "refunds_disputes") {
+      title = "Refunds & Disputes";
+      headers = ["Date", "Type", "Order/Charge", "Amount", "Reason/Status"];
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        notes = ["Stripe key not configured"];
+      } else {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+        const gte = Math.floor(new Date(period_start).getTime() / 1000);
+        const lte = Math.floor(new Date(period_end).getTime() / 1000) + 86399;
+
+        const { data: refundedOrders, error: refErr } = await supabase
+          .from("orders")
+          .select("id, created_at, total_cents, status")
+          .in("status", ["refunded", "disputed"])
+          .eq("is_test", false)
+          .gte("created_at", startTs)
+          .lt("created_at", endTsExcl);
+
+        if (refErr) throw new Error(`Refunded orders query failed: ${refErr.message}`);
+
+        const refundRows: { sortTs: number; row: string[] }[] = (refundedOrders ?? []).map((o) => ({
+          sortTs: new Date(o.created_at).getTime(),
+          row: [
+            new Date(o.created_at).toISOString().slice(0, 10),
+            "Refund",
+            "#" + o.id.slice(-8).toUpperCase(),
+            cents(o.total_cents ?? 0),
+            o.status,
+          ],
+        }));
+
+        const disputes = await stripe.disputes.list({ created: { gte, lte }, limit: 100 });
+        const disputeRows: { sortTs: number; row: string[] }[] = disputes.data.map((d) => ({
+          sortTs: d.created * 1000,
+          row: [
+            new Date(d.created * 1000).toISOString().slice(0, 10),
+            "Dispute",
+            String(d.charge),
+            cents(d.amount),
+            `${d.reason} / ${d.status}`,
+          ],
+        }));
+
+        rows = [...refundRows, ...disputeRows]
+          .sort((a, b) => b.sortTs - a.sortTs)
+          .map((r) => r.row);
+
+        totals = { Amount: cents(sumColumn(rows, 3) * 100) };
+      }
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
