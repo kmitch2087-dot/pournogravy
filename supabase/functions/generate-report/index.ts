@@ -1,7 +1,7 @@
 // generate-report edge function
-// Returns CSV, HTML, or JSON report data for one of six report types:
+// Returns CSV, HTML, or JSON report data for one of seven report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
-//   | sales_tax
+//   | sales_tax | top_customers
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -22,7 +22,7 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers";
 type ReportFormat = "csv" | "html" | "json";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -421,6 +421,43 @@ Deno.serve(async (req) => {
       totals = { "Tax Collected": cents(sumColumn(rows, 3) * 100) };
       notes = ["Tax is remitted per-state. File with each state where you have nexus.",
                "Zero until Stripe Tax collection is enabled on checkout."];
+    }
+
+    // ── Top Customers / LTV ──────────────────────────────────────────────────
+    else if (report_type === "top_customers") {
+      title = "Top Customers";
+      headers = ["Customer", "Orders", "Total Spent", "Avg Order", "Last Order"];
+
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("email, total_cents, shipping_cents, created_at")
+        .in("status", ["paid","in_production","fulfilled","shipped","delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs).lt("created_at", endTsExcl);
+      if (error) throw new Error(`Top customers query failed: ${error.message}`);
+
+      const byEmail: Record<string, { orders: number; spent: number; lastOrder: string }> = {};
+      for (const o of orders ?? []) {
+        const email = o.email ?? "—";
+        const net = (o.total_cents ?? 0) - (o.shipping_cents ?? 0);
+        if (!byEmail[email]) byEmail[email] = { orders: 0, spent: 0, lastOrder: "" };
+        byEmail[email].orders++;
+        byEmail[email].spent += net;
+        if (o.created_at && o.created_at > byEmail[email].lastOrder) byEmail[email].lastOrder = o.created_at;
+      }
+
+      rows = Object.entries(byEmail)
+        .sort((a, b) => b[1].spent - a[1].spent)
+        .slice(0, 100)
+        .map(([email, d]) => [
+          email,
+          String(d.orders),
+          cents(d.spent),
+          cents(d.orders > 0 ? Math.round(d.spent / d.orders) : 0),
+          d.lastOrder ? new Date(d.lastOrder).toISOString().slice(0, 10) : "—",
+        ]);
+
+      totals = { "Total Spent": cents(sumColumn(rows, 2) * 100) };
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
