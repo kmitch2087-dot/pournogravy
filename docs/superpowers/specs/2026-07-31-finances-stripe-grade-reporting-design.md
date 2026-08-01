@@ -103,20 +103,39 @@ function (no new table/cron). Everything else reads local DB.
 
 ## Data-model changes
 
-1. **`orders.tax_cents int NOT NULL DEFAULT 0`** — migration; populated by `stripe-webhook`
-   from the checkout session's `total_details.amount_tax`.
+1. **`orders.tax_cents int NOT NULL DEFAULT 0`** + **`orders.stripe_tax_calculation_id text`**
+   — migration; `tax_cents` populated by `stripe-webhook`, calculation id stored at
+   recalc time.
 2. **`monthly_snapshots.tax_collected_cents int NOT NULL DEFAULT 0`** — migration +
    `close-month` update, so sales-tax history survives `archive-orders` purges.
-3. **COGS consistency** — align Overview P&L, `close-month`, and `generate-report` to
-   `quantity × products.cost_cents` (fallback $12). Note: slightly changes historical P&L
-   vs. the flat $12.
+3. **COGS consistency** — `close-month` and `generate-report` already use
+   `quantity × products.cost_cents` (fallback $12). Only **`Financials.tsx` Overview** uses
+   the flat `PRINT_COST_PER_ITEM_CENTS = 1200` and must be aligned. Note: slightly changes
+   the displayed Overview P&L vs. the flat $12.
 
-## Checkout change (staged, gated)
+## Checkout change — Stripe Tax **Calculation API** (custom PaymentIntent flow)
 
-Enable `automatic_tax: { enabled: true }` in `create-checkout` (Stripe computes tax from
-the already-collected ship-to address). Capture `amount_tax` in the webhook. **Test in
-Stripe test mode; do not deploy to live checkout without explicit go-ahead** — it changes
-what customers pay.
+The site does **not** use Stripe Checkout Sessions — `create-checkout` builds a raw
+`PaymentIntent` for a custom embedded `PaymentElement` form (`src/pages/Checkout.tsx`), and
+the PI amount is fixed at creation *before* the shipping address is known. So
+`automatic_tax` (a Checkout-Session/Invoice feature) does not apply. Instead:
+
+1. **New `calculate-tax` edge function** — takes `{ orderId, address }`, runs
+   `stripe.tax.calculations.create({ currency, line_items, customer_details:{ address,
+   address_source:'shipping' }, shipping_cost })`, updates the PaymentIntent amount to
+   `subtotal − discount + shipping + tax`, stores `calculation_id` +
+   `tax_cents` on the order, and returns `{ taxCents, totalCents }`.
+2. **`Checkout.tsx`** — when the address is complete (or on submit, before
+   `confirmPayment`), call `calculate-tax`, show a **Sales Tax** line + updated total,
+   then confirm. The PaymentElement confirms against the updated server-side PI amount.
+3. **`stripe-webhook`** — on payment success, if the order has a `stripe_tax_calculation_id`,
+   call `stripe.tax.transactions.createFromCalculation` (records the sale for filing) and
+   write `orders.tax_cents`.
+4. **`refund-order`** — when refunding, create a reversal tax transaction
+   (`stripe.tax.transactions.createReversal`) so refunded tax is not over-remitted.
+
+**Staged/gated:** verified end-to-end in **Stripe test mode**; not deployed to live
+checkout without explicit go-ahead — it changes what customers pay.
 
 ## Frontend details
 
@@ -150,5 +169,6 @@ what customers pay.
 2. Extend `generate-report` (json format + new report types).
 3. Wire orphaned tabs + new IA (Reports, Expenses, Products, Tax Packet, tab reorg).
 4. Payouts tab + Overview dashboard rework.
-5. Checkout `automatic_tax` (staged, gated) + webhook `tax_cents` capture.
+5. `calculate-tax` edge fn + `Checkout.tsx` tax round-trip + webhook tax-transaction
+   capture + `refund-order` reversal (staged, gated to Stripe test mode).
 6. Tax Packet additions.
