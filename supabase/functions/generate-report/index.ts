@@ -1,6 +1,7 @@
 // generate-report edge function
-// Returns CSV or HTML report data for one of five report types:
+// Returns CSV, HTML, or JSON report data for one of six report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
+//   | sales_tax
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -21,7 +22,7 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax";
 type ReportFormat = "csv" | "html" | "json";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
@@ -161,7 +162,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -395,6 +396,31 @@ Deno.serve(async (req) => {
       ]);
 
       totals = { "Total Fees": cents(sumColumn(rows, 2) * 100) };
+    }
+
+    // ── Sales Tax Collected ──────────────────────────────────────────────────
+    else if (report_type === "sales_tax") {
+      title = "Sales Tax Collected";
+      headers = ["State", "Orders", "Taxable Sales", "Tax Collected"];
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("shipping_address, subtotal_cents, tax_cents, status")
+        .in("status", ["paid","in_production","fulfilled","shipped","delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs).lt("created_at", endTsExcl);
+      if (error) throw new Error(`Sales tax query failed: ${error.message}`);
+      const byState: Record<string, { orders: number; sales: number; tax: number }> = {};
+      for (const o of orders ?? []) {
+        const addr = (o.shipping_address ?? {}) as any;
+        const st = String(addr?.address?.state ?? addr?.state ?? "—").toUpperCase();
+        if (!byState[st]) byState[st] = { orders: 0, sales: 0, tax: 0 };
+        byState[st].orders++; byState[st].sales += o.subtotal_cents ?? 0; byState[st].tax += o.tax_cents ?? 0;
+      }
+      rows = Object.entries(byState).sort((a,b) => b[1].tax - a[1].tax)
+        .map(([st,d]) => [st, String(d.orders), cents(d.sales), cents(d.tax)]);
+      totals = { "Tax Collected": cents(sumColumn(rows, 3) * 100) };
+      notes = ["Tax is remitted per-state. File with each state where you have nexus.",
+               "Zero until Stripe Tax collection is enabled on checkout."];
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
