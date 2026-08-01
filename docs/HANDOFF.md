@@ -1,6 +1,6 @@
 # Pournogravy — Full Developer Handoff
 **Prepared by:** Kristin Mitchell — Aethyx  
-**Last Updated:** July 30, 2026 (Thank-You page + shout-out widgets, rich-text link/glow tools, product 30-day archive + square-card reorder, admin home-slideshow control, live Cloudflare analytics on /advertise)  
+**Last Updated:** August 1, 2026 (Finances — Stripe-grade reporting suite + gated sales-tax collection, branch `feat/finances-stripe-grade-reporting`)  
 **For:** Any developer (or Claude session) picking up this project
 
 ---
@@ -256,6 +256,42 @@ The Apollo Chrome extension blocks `/rest/v1/profiles` requests. This causes `fe
 ### WishlistContext — Do Not Revert to Per-Component Hook
 `src/context/WishlistContext.tsx` is the single source of truth for wishlist state. `useWishlist.ts` simply re-exports from it. The wishlist was previously instantiated once per `ProductCard`, creating N simultaneous `onAuthStateChange` subscriptions and N Supabase queries on the Shop grid. The fix is load-bearing — do not move the logic back into the hook file.
 
+### Finances — Report Engine & Sales-Tax Collection Architecture (Aug 2026)
+
+`/admin/finances` (`src/pages/admin/Finances.tsx`) is a 7-tab container: **Overview · Reports · Payouts · Expenses · Products · Invoices · Tax Packet** (tab persisted in `?tab=`). All 7 tabs lazy-load real pages — there are no more "coming soon" placeholders. Full design/plan: `docs/superpowers/specs/2026-07-31-finances-stripe-grade-reporting-design.md` and `docs/superpowers/plans/2026-07-31-finances-stripe-grade-reporting.md`; task-by-task build ledger: `.superpowers/sdd/progress.md`.
+
+**One report engine, three output formats.** `supabase/functions/generate-report/index.ts` computes one structured result internally per `report_type` and serializes it to whichever `format` the caller asks for:
+- `format:"json"` → `{ title, period, columns[], rows[][], totals{}, notes[] }`, rendered on-screen by `src/components/admin/ReportTable.tsx` (used by the Reports tab and the Payouts tab)
+- `format:"csv"` → download
+- `format:"html"` → Print/Save-as-PDF
+
+10 report types (all admin-JWT or service-role authorized, same auth block as before): `pl_statement`, `order_summary`, `sales_by_product`, `expense_detail`, `stripe_fee_summary` (all read local Supabase tables), plus 5 added in this build:
+| Report type | Source | Notes |
+|---|---|---|
+| `sales_tax` | `orders.tax_cents` grouped by ship-to state | Empty until tax collection is turned on |
+| `top_customers` | `orders` grouped by email | Orders / total spent / AOV / last order, LTV-style |
+| `refunds_disputes` | local refunded orders + Stripe Disputes API | ★ needs `STRIPE_SECRET_KEY` |
+| `payout_reconciliation` | Stripe Payouts + Balance Transactions API, fetched on-demand | ★ no new table/cron — gross − fees − refunds = net deposit, reconciled per payout |
+| `tax_estimate` | SE tax + federal bracket math (moved off the Overview page) | Same estimator that used to live in `Financials.tsx`, now a report so it can be run for any period and exported |
+
+The **Reports tab** (`BookkeepingReports.tsx` + shared helpers in `src/lib/reports.ts`) is the unified runner: pick a report + a preset or custom date range → on-screen table + totals + notes, optional contextual `recharts` bar chart (sales-by-product, sales-tax-by-state), CSV download, and Print/PDF — enabled for every report type now, not just P&L. The **Payouts tab** (`src/pages/admin/Payouts.tsx`, new) is a thin wrapper around `payout_reconciliation` for Stripe payout reconciliation. The **Tax Packet** (`BookkeepingTaxPacket.tsx`) year-end ZIP now also includes `sales_tax` and `payout_reconciliation` CSVs.
+
+**COGS fix:** `close-month` and `generate-report` always used real `products.cost_cents` (fallback $12/item). Only the Overview dashboard (`Financials.tsx`) used a hardcoded flat `PRINT_COST_PER_ITEM_CENTS = 1200` — the two disagreed on profit. Overview now joins `order_items.product_id` → `products.cost_cents` for its live COGS math, same as everything else.
+
+**Sales-tax collection (OFF by default — `settings.tax_enabled boolean DEFAULT false`).** This site does **not** use Stripe Checkout Sessions — `create-checkout` builds a raw PaymentIntent for a custom embedded Payment Element (`src/pages/Checkout.tsx`), and the PI amount is fixed before the shipping address is known. `automatic_tax` (a Checkout-Session/Invoice-only feature) doesn't apply, so tax is collected via the Stripe **Tax Calculation API** with a server round-trip instead:
+
+1. **`calculate-tax`** (new edge fn) — `POST { orderId, address }`. If `settings.tax_enabled` is false, returns `{ taxCents: 0, totalCents: subtotal − discount + shipping }` (pure no-op — this is what production does today). If true: `stripe.tax.calculations.create(...)`, updates the order's PaymentIntent amount to include tax, stores `tax_cents` + `stripe_tax_calculation_id` on the order, returns `{ taxCents, totalCents }`.
+2. **`Checkout.tsx`** — calls `calculate-tax` when the shipping address is complete / on submit before `confirmPayment`; shows a **Sales Tax** line + updated total when `taxCents > 0`; the PaymentElement confirms against the server-updated PI amount. Fails soft — a tax-calc error falls back to the pre-tax total rather than blocking checkout.
+3. **`stripe-webhook`** (v63) — on payment success, if the order has a `stripe_tax_calculation_id`, calls `stripe.tax.transactions.createFromCalculation` (records the sale for state filing) and persists `orders.tax_cents` + `stripe_tax_transaction_id`.
+4. **`refund-order`** (v7) — after issuing a Stripe refund, if the order had a tax transaction, creates a reversal (`stripe.tax.transactions.createReversal`) so refunded tax isn't over-remitted.
+5. **`close-month`** (v5) — sums `orders.tax_cents` for the month into the new `monthly_snapshots.tax_collected_cents`, so sales-tax history survives `archive-orders` purges.
+
+New columns: `orders.tax_cents`, `orders.stripe_tax_calculation_id`, `orders.stripe_tax_transaction_id`; `monthly_snapshots.tax_collected_cents`; `settings.tax_enabled` (migrations `20260731000000_finances_tax_columns.sql`, `20260731000100_tax_enabled_flag.sql`, `20260731000200_order_tax_transaction_id.sql`).
+
+**⚠️ Gated — do not flip `tax_enabled` to `true` on live checkout without explicit owner go-ahead.** It's a real pricing change for customers. Before enabling: (a) verify end-to-end in Stripe **test mode** (test order to a taxable-state address shows the tax line, PI amount includes it, webhook writes `tax_cents`, Sales Tax report reflects it, a refund creates a reversal — this full loop has not yet been run); (b) set an apparel `tax_code` on the Stripe line items / products — the account's default tax code will NOT apply clothing exemptions that some states (PA, NJ, MN, etc.) have, so leaving it unset risks over-collecting tax in those states. There is no admin-dashboard toggle for `tax_enabled` by design — it's flipped directly in the `settings` table so it can't be fat-fingered from the UI.
+
+**New Overview KPIs** (`Financials.tsx` rework): Gross/Product Revenue, Print COGS (per-product), Gross Profit + margin %, AOV, Refund rate, and a **Stripe balance / next payout** tile fed by the new `stripe-balance` edge fn (`GET /v1/balance` + next scheduled payout). Monthly revenue chart + the monthly-close grid (ported from the now-deleted `BookkeepingOverview.tsx`) live here too. The federal tax estimator that used to live on Overview is now the `tax_estimate` report (see above).
+
 ### Contact Form — Stored in custom_requests
 The Contact page form inserts into `custom_requests` with `garment = 'contact-form'` to distinguish general inquiries from garment requests. The admin can filter by garment type in the Custom Requests panel. If a dedicated `contact_submissions` table is ever added, migrate these rows and update `Contact.tsx`.
 
@@ -290,6 +326,7 @@ The Contact page form inserts into `custom_requests` with `garment = 'contact-fo
 | `email_subscribers` | Homepage email capture — email + source, unique constraint |
 | `fulfillment_vendors` | Vendor/printer contact directory — services[], turnaround, min_order_qty, file_formats[]; RLS admin-only |
 | `order_archive` | Archived orders moved out of main orders table — same schema + archived_at timestamptz |
+| `monthly_snapshots` | Locked monthly P&L snapshots (bookkeeping) — **new (Aug 2026):** `tax_collected_cents`, written by `close-month` |
 
 ### Key Schema Details
 
@@ -309,7 +346,11 @@ inventory_count, is_active, status ('draft'|'published'|'archived'), created_at,
 id, user_id, email, status ('pending'|'paid'|'fulfilled'|'cancelled'|'refunded'),
 subtotal_cents, tax_cents, shipping_cents, total_cents,
 payment_intent_id, shipping_name, shipping_address (jsonb), created_at, updated_at
+-- tax columns (Aug 2026, finances build): stripe_tax_calculation_id, stripe_tax_transaction_id
+--   — both null/0 while settings.tax_enabled=false (current live state)
 ```
+
+**`settings`** — new (Aug 2026): `tax_enabled boolean DEFAULT false`. Gates all sales-tax collection at checkout end-to-end (see Finances architecture note in §5). DB-controlled only — no admin-dashboard toggle by design.
 
 **`discount_codes`**
 ```sql
@@ -366,11 +407,15 @@ All functions live in `supabase/functions/`.
 | `track-event` | Ingests analytics events into `analytics_events` table | None |
 | `redeem-points` | Exchanges 100 Pour Points for a single-use $5 discount code; atomic deduction with optimistic concurrency | None |
 | `abandoned-cart-reminder` | Cron-triggered — finds carts idle >2h with email, sends reminder via send-notification | `RESEND_API_KEY` |
-| `refund-order` | Admin-callable — issues Stripe refund, updates order status to refunded, sends customer email | `STRIPE_SECRET_KEY`, `RESEND_API_KEY` |
+| `refund-order` | Admin-callable — issues Stripe refund, updates order status to refunded, sends customer email. **v7** (Aug 2026 finances build): if the order had a Stripe tax transaction, also creates a reversal (`stripe.tax.transactions.createReversal`) so refunded tax isn't over-remitted. | `STRIPE_SECRET_KEY`, `RESEND_API_KEY` |
+| `close-month` | Monthly cron (00:05 on the 1st) — locks a month into `monthly_snapshots`. **v5** (Aug 2026 finances build): also sums `orders.tax_cents` for the month into `monthly_snapshots.tax_collected_cents`. | None |
 | `archive-orders` | Admin or cron — moves fulfilled orders older than threshold to order_archive table | None |
 | `blast-email` | Admin-callable — sends bulk email to all subscribers via send-notification loop | `RESEND_API_KEY` |
 | `add-fulfillment-vendor` | Admin-callable — inserts to fulfillment_vendors, sends vendor_welcome email via send-notification | `RESEND_API_KEY` |
 | `fulfillment-portal` | **v2** — Printer-facing order portal, `verify_jwt:false`. Auth: portal token = HMAC("fulfillment-portal", FULFILLMENT_SECRET); per-order token = HMAC(orderId, FULFILLMENT_SECRET). Actions: `list` (all printer_queue rows + joined order/item/print-file data), `advance` (updates orders.status + printer_queue.status + appends status_history jsonb), `note` (appends timestamped note). GET advance returns branded HTML confirmation (email tap-to-advance). SITE_URL secret required for portal and ship URLs. | `FULFILLMENT_SECRET`, `SITE_URL` |
+| `generate-report` | **Extended (Aug 2026 finances build).** Same admin-JWT/service-role auth as before. Adds `format:"json"` — returns `{title, period, columns, rows, totals, notes}` for on-screen rendering (`ReportTable.tsx`) — alongside existing `csv`/`html`. Grew from 5 to 10 report types: `pl_statement`, `order_summary`, `sales_by_product`, `expense_detail`, `stripe_fee_summary` (existing) + `sales_tax`, `top_customers`, `refunds_disputes`, `payout_reconciliation`, `tax_estimate` (new). The last two call the Stripe Disputes/Payouts/Balance-Transactions APIs on-demand — no new table or cron. | `STRIPE_SECRET_KEY` (for refunds_disputes/payout_reconciliation) |
+| `calculate-tax` | **New (Aug 2026 finances build).** `POST { orderId, address }`. No-op (`taxCents:0`) unless `settings.tax_enabled=true` — matches production today. When enabled: calls Stripe's **Tax Calculation API**, updates the order's PaymentIntent amount to include tax, writes `orders.tax_cents` + `stripe_tax_calculation_id`, returns `{taxCents, totalCents}`. Called from `Checkout.tsx` before `confirmPayment`. | `STRIPE_SECRET_KEY` |
+| `stripe-balance` | **New (Aug 2026 finances build).** Returns Stripe `GET /v1/balance` (available/pending cents) + the next scheduled payout, for the Finances Overview KPI tile. Same auth pattern as `generate-report`. | `STRIPE_SECRET_KEY` |
 
 ### Required Secrets (all confirmed set in Supabase):
 ```
@@ -459,6 +504,11 @@ CF Pages → Deployments → any prior success → Rollback. Zero downtime.
 ---
 
 ## 11. Change Log
+
+### August 1, 2026 (branch `feat/finances-stripe-grade-reporting`, not yet merged)
+- **Finances — Stripe-grade reporting suite.** `/admin/finances` reworked to a 7-tab IA (Overview · Reports · Payouts · Expenses · Products · Invoices · Tax Packet); every previously-orphaned bookkeeping page wired in; `BookkeepingOverview.tsx` deleted (its monthly-close grid folded into Overview). One `generate-report` engine now serves `json`/`csv`/`html` for **10 report types** (5 new: Sales Tax Collected, Top Customers/LTV, Refunds & Disputes, Payout Reconciliation, Tax Estimate). New `Payouts.tsx` tab + new `stripe-balance` edge fn for the Overview KPI tile. Fixed Overview COGS to use real per-product `products.cost_cents` (was a flat $12/item). Full detail in the new **"Finances — Report Engine & Sales-Tax Collection Architecture"** note in §5.
+- **Sales-tax collection, gated OFF (`settings.tax_enabled=false` default).** New `calculate-tax` edge fn (Stripe Tax Calculation API + PaymentIntent amount round-trip), `Checkout.tsx` tax line, `stripe-webhook` v63 (records Tax Transaction), `refund-order` v7 (tax reversal on refund), `close-month` v5 (`tax_collected_cents`). New columns: `orders.tax_cents`/`stripe_tax_calculation_id`/`stripe_tax_transaction_id`, `monthly_snapshots.tax_collected_cents`, `settings.tax_enabled`. **Not enabled on live checkout** — needs a Stripe test-mode end-to-end pass and apparel `tax_code`s set on products first. See gating note in §5.
+- Design: `docs/superpowers/specs/2026-07-31-finances-stripe-grade-reporting-design.md`. Plan + full task ledger: `docs/superpowers/plans/2026-07-31-finances-stripe-grade-reporting.md`, `.superpowers/sdd/progress.md`.
 
 ### July 30, 2026
 - **Thank-You page (`/thank-you`)** — CMS-editable credits page (`src/pages/Thanks.tsx`), linked in navbar + footer + admin Content editor. Crew section = structured **shout-out cards** (`src/components/ShoutoutCard.tsx`, `src/lib/shoutouts.ts`): favicon chip for websites, IG/FB icon + @handle, mailto chip, in a 2-col grid. Admin: `src/components/admin/ShoutoutsEditor.tsx` (name/blurb/website/IG/FB/email per person, add/remove/reorder, explicit Save). Data = JSON in `site_content` `thanks/crew/shoutouts`; old `crew.body` kept as backup.
