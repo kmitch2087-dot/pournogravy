@@ -285,7 +285,7 @@ Deno.serve(async (req) => {
 
       const { data: orders, error: ordErr } = await supabase
         .from("orders")
-        .select("id, created_at, status, total_cents")
+        .select("id, created_at, status, total_cents, tax_cents")
         .eq("is_test", false)
         .gte("created_at", startTs)
         .lt("created_at", endTsExcl)
@@ -301,7 +301,9 @@ Deno.serve(async (req) => {
         const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
         if (!byMonth[key]) byMonth[key] = { orders: 0, gross: 0, refunds: 0 };
         byMonth[key].orders++;
-        byMonth[key].gross += o.total_cents ?? 0;
+        // Gross revenue excludes collected sales tax — it's a pass-through liability, not revenue.
+        byMonth[key].gross += (o.total_cents ?? 0) - (o.tax_cents ?? 0);
+        // Refund amount is left as-is (a refund returns the tax too — that's correct).
         if (o.status === "refunded") byMonth[key].refunds += o.total_cents ?? 0;
       }
 
@@ -471,7 +473,7 @@ Deno.serve(async (req) => {
 
       const { data: orders, error } = await supabase
         .from("orders")
-        .select("email, total_cents, shipping_cents, created_at")
+        .select("email, total_cents, shipping_cents, tax_cents, created_at")
         .in("status", ["paid","in_production","fulfilled","shipped","delivered"])
         .eq("is_test", false)
         .gte("created_at", startTs).lt("created_at", endTsExcl);
@@ -480,7 +482,9 @@ Deno.serve(async (req) => {
       const byEmail: Record<string, { orders: number; spent: number; lastOrder: string }> = {};
       for (const o of orders ?? []) {
         const email = o.email ?? "—";
-        const net = (o.total_cents ?? 0) - (o.shipping_cents ?? 0);
+        // Net spend excludes shipping (pass-through to carrier) and collected sales tax
+        // (pass-through liability) — neither is money the business keeps.
+        const net = (o.total_cents ?? 0) - (o.shipping_cents ?? 0) - (o.tax_cents ?? 0);
         if (!byEmail[email]) byEmail[email] = { orders: 0, spent: 0, lastOrder: "" };
         byEmail[email].orders++;
         byEmail[email].spent += net;
@@ -613,7 +617,7 @@ Deno.serve(async (req) => {
 
       const { data: taxOrders, error: taxOrdErr } = await supabase
         .from("orders")
-        .select("id, total_cents, shipping_cents, status")
+        .select("id, total_cents, shipping_cents, tax_cents, status")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
         .eq("is_test", false)
         .gte("created_at", startTs)
@@ -643,7 +647,8 @@ Deno.serve(async (req) => {
         taxCostByProduct = Object.fromEntries((prodsData ?? []).map((p) => [p.id, p.cost_cents ?? 1200]));
       }
 
-      const grossRevenue = (taxOrders ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+      // Gross revenue excludes collected sales tax — taxing the collected tax as income would be wrong.
+      const grossRevenue = (taxOrders ?? []).reduce((s, o) => s + (o.total_cents ?? 0) - (o.tax_cents ?? 0), 0);
       const shippingTotal = (taxOrders ?? []).reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
       const cogsTotal = taxItems.reduce(
         (s, i) => s + (i.quantity ?? 0) * (taxCostByProduct[i.product_id ?? ""] ?? 1200),

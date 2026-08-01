@@ -78,7 +78,9 @@ Deno.serve(async (req) => {
       .lt("created_at", monthEnd);
 
     if (revErr) throw new Error(`Revenue query failed: ${revErr.message}`);
-    const revenue_cents = (revenueRows ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+    // revenue_cents excludes collected sales tax — tax is a pass-through liability, not revenue.
+    // (Numerically identical to before while tax_cents is 0 for every order, i.e. tax disabled.)
+    const revenue_cents = (revenueRows ?? []).reduce((s, o) => s + (o.total_cents ?? 0) - (o.tax_cents ?? 0), 0);
     const tax_collected_cents = (revenueRows ?? []).reduce((s, o) => s + (o.tax_cents ?? 0), 0);
 
     // ── Refunds ────────────────────────────────────────────────────────────────

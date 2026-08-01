@@ -37,6 +37,7 @@ interface OrderRow {
   id: string;
   total_cents: number;
   shipping_cents: number;
+  tax_cents: number | null;
   status: string;
   created_at: string;
 }
@@ -124,7 +125,7 @@ function useFinancialsData(selectedYear: number) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_cents, shipping_cents, status, created_at")
+        .select("id, total_cents, shipping_cents, tax_cents, status, created_at")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered", "refunded", "disputed"])
         .eq("is_test", false)
         .gte("created_at", yearStart)
@@ -321,10 +322,13 @@ export default function Financials() {
     : null;
 
   // ── Aggregate revenue (live path — also used as fallback for past years with no snapshots) ──
+  // Collected sales tax is a pass-through liability, not revenue — exclude it from every
+  // "revenue" sum of total_cents. (Numerically identical to before while tax_cents is 0.)
+  const revenueNetOfTax = (o: OrderRow) => (o.total_cents ?? 0) - (o.tax_cents ?? 0);
   const paidOrders            = orders.filter((o) => o.status !== "refunded" && o.status !== "disputed");
   const refundedOrdersLive    = orders.filter((o) => o.status === "refunded" || o.status === "disputed");
-  const grossRevenueLive      = paidOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
-  const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const grossRevenueLive      = paidOrders.reduce((s, o) => s + revenueNetOfTax(o), 0);
+  const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + revenueNetOfTax(o), 0);
   const netRevenueLive        = grossRevenueLive - refundsTotalLive;
   const totalShippingLive     = paidOrders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
   const totalItemsLive        = paidOrders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
@@ -361,8 +365,8 @@ export default function Financials() {
   for (const o of orders) {
     const m = new Date(o.created_at).getUTCMonth() + 1;
     const rec = liveRevenueByMonth.get(m) ?? { revenue: 0, refunds: 0 };
-    if (o.status === "refunded" || o.status === "disputed") rec.refunds += o.total_cents ?? 0;
-    else rec.revenue += o.total_cents ?? 0;
+    if (o.status === "refunded" || o.status === "disputed") rec.refunds += revenueNetOfTax(o);
+    else rec.revenue += revenueNetOfTax(o);
     liveRevenueByMonth.set(m, rec);
   }
 
@@ -688,7 +692,7 @@ export default function Financials() {
                   const isRefunded = order.status === "refunded";
                   const isDisputed = order.status === "disputed";
                   const isNeutral  = isRefunded || isDisputed;
-                  const revCents   = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
+                  const revCents   = revenueNetOfTax(order) - (order.shipping_cents ?? 0);
                   const cogsCents  = cogsForOrder(order.id);
                   const profCents  = isNeutral ? 0 : revCents - cogsCents;
                   return (
