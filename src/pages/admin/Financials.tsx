@@ -80,7 +80,13 @@ interface OrderRow {
 
 interface ItemRow {
   order_id: string;
+  product_id: string | null;
   quantity: number;
+}
+
+interface ProductCostRow {
+  id: string;
+  cost_cents: number;
 }
 
 interface MonthlySnapshotRow {
@@ -150,7 +156,7 @@ function useFinancialsData(selectedYear: number) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("order_id, quantity")
+        .select("order_id, product_id, quantity")
         .in("order_id", orderIds);
       if (error) throw error;
       return (data ?? []) as ItemRow[];
@@ -158,10 +164,30 @@ function useFinancialsData(selectedYear: number) {
     staleTime: 60_000,
   });
 
+  const productIds = [...new Set((items ?? []).map((i) => i.product_id).filter(Boolean))] as string[];
+
+  const { data: productCosts, isLoading: productCostsLoading } = useQuery<ProductCostRow[]>({
+    queryKey: ["financials-product-costs", productIds.join(",")],
+    enabled: productIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, cost_cents")
+        .in("id", productIds);
+      if (error) throw error;
+      return (data ?? []) as ProductCostRow[];
+    },
+    staleTime: 60_000,
+  });
+
   return {
     orders: orders ?? [],
     items: items ?? [],
-    isLoading: ordersLoading || (orderIds.length > 0 && itemsLoading),
+    productCosts: productCosts ?? [],
+    isLoading:
+      ordersLoading ||
+      (orderIds.length > 0 && itemsLoading) ||
+      (productIds.length > 0 && productCostsLoading),
     refetch,
   };
 }
@@ -235,7 +261,7 @@ function Disclosure({ title, children }: { title: string; children: React.ReactN
 export default function Financials() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const { orders, items, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
+  const { orders, items, productCosts, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
   const { data: snapshots, isLoading: snapshotsLoading } = useMonthlySnapshots(selectedYear, currentYear);
 
   const isPastYear = selectedYear !== currentYear;
@@ -247,6 +273,14 @@ export default function Financials() {
   for (const it of items) {
     itemCountByOrder.set(it.order_id, (itemCountByOrder.get(it.order_id) ?? 0) + it.quantity);
   }
+
+  // ── Per-product cost lookup (live path) — real cost_cents, fallback to flat estimate ──
+  const costByProduct = new Map<string, number>();
+  for (const p of productCosts) costByProduct.set(p.id, p.cost_cents ?? PRINT_COST_PER_ITEM_CENTS);
+  const cogsForOrder = (orderId: string) =>
+    items
+      .filter((it) => it.order_id === orderId)
+      .reduce((s, it) => s + (it.quantity ?? 0) * (costByProduct.get(it.product_id ?? "") ?? PRINT_COST_PER_ITEM_CENTS), 0);
 
   // ── Aggregate revenue (snapshot path) ──
   const snapshotTotals: SnapshotTotals | null = useSnapshots
@@ -271,7 +305,7 @@ export default function Financials() {
   const netRevenueLive        = grossRevenueLive - refundsTotalLive;
   const totalShippingLive     = paidOrders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
   const totalItemsLive        = paidOrders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
-  const printCogsLive         = totalItemsLive * PRINT_COST_PER_ITEM_CENTS;
+  const printCogsLive         = paidOrders.reduce((s, o) => s + cogsForOrder(o.id), 0);
   const productRevenueLive    = netRevenueLive - totalShippingLive;
   const grossProfitLive       = productRevenueLive - printCogsLive;
 
@@ -364,7 +398,7 @@ export default function Financials() {
         />
         <MetricCard
           delay={0.08} label="Print COGS"        value={fmt(printCogsCents)}
-          sub={useSnapshots ? "from closed month records" : `${totalItems} items × $12 est.`}
+          sub={useSnapshots ? "from closed month records" : `${totalItems} items · per-product cost`}
           icon={Receipt}       color="bg-orange-400/10 text-orange-400"
         />
         <MetricCard
@@ -385,7 +419,7 @@ export default function Financials() {
               ["Net Revenue",             fmt(netRevenueCents),       "After refunds"],
               ["Shipping (pass-through)", `(${fmt(totalShipping)})`, "Goes to carrier — not your income"],
               ["Product Revenue",         fmt(productRevenue),        "What you actually keep from sales"],
-              ["Print COGS",              `(${fmt(printCogsCents)})`, useSnapshots ? "from closed month records" : `${totalItems} items × $12 est. print cost`],
+              ["Print COGS",              `(${fmt(printCogsCents)})`, useSnapshots ? "from closed month records" : `${totalItems} items × per-product print cost`],
               ["Gross Profit",            fmt(grossProfitCents),      "Before SE tax & income tax"],
             ] as [string, string, string][]).map(([label, value, note]) => (
               <tr key={label} className={label === "Gross Profit" ? "font-semibold" : ""}>
@@ -491,13 +525,13 @@ export default function Financials() {
           </Disclosure>
 
           <Disclosure title="What counts as my COGS (cost of goods)?">
-            <p>For POURnogravy, your main cost is the print shop: ~$12/item. The numbers here use that estimate.</p>
+            <p>For POURnogravy, your main cost is the print shop. The numbers here use each product&apos;s actual per-item cost (set on the Products tab), falling back to a ~$12/item estimate for anything without a cost on file.</p>
             <p>You can also deduct: platform/tool subscriptions, shipping supplies, advertising, home office if applicable. Keep receipts.</p>
             <p>The actual print cost is on the Invoice Tracker page — that&apos;s what you actually owe the printer.</p>
           </Disclosure>
 
           <Disclosure title="Why doesn't this match my bank balance?">
-            <p>This page shows <em>accrual-basis</em> numbers — revenue when orders are placed, costs at $12/item estimate. Your bank shows cash when Stripe settles (usually 2 business days).</p>
+            <p>This page shows <em>accrual-basis</em> numbers — revenue when orders are placed, costs at each product&apos;s actual per-item cost. Your bank shows cash when Stripe settles (usually 2 business days).</p>
             <p>Stripe fees (~2.9% + 30¢/order) are also not deducted here. Export your Stripe payout summary for exact net deposits.</p>
           </Disclosure>
 
@@ -527,9 +561,8 @@ export default function Financials() {
                   const isRefunded = order.status === "refunded";
                   const isDisputed = order.status === "disputed";
                   const isNeutral  = isRefunded || isDisputed;
-                  const itemCount  = itemCountByOrder.get(order.id) ?? 0;
                   const revCents   = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
-                  const cogsCents  = itemCount * PRINT_COST_PER_ITEM_CENTS;
+                  const cogsCents  = cogsForOrder(order.id);
                   const profCents  = isNeutral ? 0 : revCents - cogsCents;
                   return (
                     <tr key={order.id} className={`transition-colors ${isNeutral ? "opacity-50" : "hover:bg-muted/30"}`}>
