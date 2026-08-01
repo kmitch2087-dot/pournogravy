@@ -1,7 +1,7 @@
 // generate-report edge function
-// Returns CSV, HTML, or JSON report data for one of eight report types:
+// Returns CSV, HTML, or JSON report data for one of nine report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
-//   | sales_tax | top_customers | refunds_disputes
+//   | sales_tax | top_customers | refunds_disputes | payout_reconciliation
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -9,8 +9,8 @@
 //   SUPABASE_URL              (standard — always available in edge functions)
 //   SUPABASE_SERVICE_ROLE_KEY (standard — always available in edge functions)
 //   SUPABASE_ANON_KEY         (standard — always available in edge functions)
-//   STRIPE_SECRET_KEY         (required for refunds_disputes; degrades gracefully with
-//                              an explanatory note if unset)
+//   STRIPE_SECRET_KEY         (required for refunds_disputes + payout_reconciliation;
+//                              those reports degrade gracefully with an explanatory note if unset)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
@@ -25,7 +25,7 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes" | "payout_reconciliation";
 type ReportFormat = "csv" | "html" | "json";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes", "payout_reconciliation"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -514,6 +514,57 @@ Deno.serve(async (req) => {
           .map((r) => r.row);
 
         totals = { Amount: cents(sumColumn(rows, 3) * 100) };
+      }
+    }
+
+    // ── Payout Reconciliation (Stripe) ───────────────────────────────────────
+    else if (report_type === "payout_reconciliation") {
+      title = "Payout Reconciliation";
+      headers = ["Payout Date", "Status", "Gross", "Fees", "Refunds", "Net Deposit"];
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        notes = ["Stripe key not configured"];
+      } else {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+        const gte = Math.floor(new Date(period_start).getTime() / 1000);
+        const lte = Math.floor(new Date(period_end).getTime() / 1000) + 86399;
+
+        const payouts = await stripe.payouts.list({ arrival_date: { gte, lte }, limit: 100 });
+
+        let anyHasMore = false;
+        const payoutRows: { sortTs: number; row: string[] }[] = [];
+        for (const p of payouts.data) {
+          const bts = await stripe.balanceTransactions.list({ payout: p.id, limit: 100 });
+          if (bts.has_more) anyHasMore = true;
+
+          let gross = 0;
+          let fees = 0;
+          let refunds = 0;
+          for (const bt of bts.data) {
+            if (bt.type === "charge" || bt.type === "payment") gross += bt.amount;
+            fees += bt.fee ?? 0;
+            if (bt.type === "refund" || bt.type === "payment_refund") refunds += Math.abs(bt.amount);
+          }
+
+          payoutRows.push({
+            sortTs: p.arrival_date * 1000,
+            row: [
+              new Date(p.arrival_date * 1000).toISOString().slice(0, 10),
+              p.status,
+              cents(gross),
+              cents(fees),
+              cents(refunds),
+              cents(p.amount),
+            ],
+          });
+        }
+
+        rows = payoutRows.sort((a, b) => b.sortTs - a.sortTs).map((r) => r.row);
+
+        totals = { "Net Deposit": cents(sumColumn(rows, 5) * 100) };
+        notes = ["Net Deposit matches your bank deposit for each payout."];
+        if (anyHasMore) notes.push("Some payouts have more than 100 balance transactions; totals may be incomplete.");
       }
     }
 
