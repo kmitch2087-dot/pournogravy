@@ -217,6 +217,27 @@ Deno.serve(async (req) => {
       return new Response("ok", { status: 200 });
     }
 
+    // Record the Stripe tax transaction (Task 16). No-op when tax was off
+    // for this order (no stripe_tax_calculation_id). Idempotent for webhook
+    // retries: skip once stripe_tax_transaction_id is already set. Isolated
+    // try-catch so a tax-transaction failure never blocks the fulfillment
+    // email/printer flow below.
+    if (order.stripe_tax_calculation_id && !order.stripe_tax_transaction_id) {
+      try {
+        const tx = await stripe.tax.transactions.createFromCalculation({
+          calculation: order.stripe_tax_calculation_id,
+          reference: order.id,
+        });
+        await supabase.from("orders").update({ stripe_tax_transaction_id: tx.id }).eq("id", order.id);
+        order.stripe_tax_transaction_id = tx.id;
+      } catch (taxErr) {
+        console.error("[stripe-webhook] tax transaction creation failed", {
+          orderId: order.id,
+          error: taxErr instanceof Error ? taxErr.message : String(taxErr),
+        });
+      }
+    }
+
     // Write purchase analytics event (fire-and-forget — don't block fulfillment)
     supabase.from("analytics_events").insert({
       event_type: "purchase",

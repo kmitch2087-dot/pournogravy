@@ -13,6 +13,9 @@ import { Loader2, ArrowLeft, ShoppingBag, Trash2, Plus } from "lucide-react";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+// Formats integer cents as a "$X.XX" string.
+const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
 const stripeAppearance = {
   theme: "night" as const,
   variables: {
@@ -218,12 +221,16 @@ function AddressForm({ form, setForm }: {
   );
 }
 
-const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId: string; initialEmail: string; serverTotal: number; userId?: string }) => {
+const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId, onTaxCentsChange }: { orderId: string; initialEmail: string; serverTotal: number; userId?: string; onTaxCentsChange?: (taxCents: number) => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
   const [elementReady, setElementReady] = useState(false);
   const [error, setError] = useState("");
+
+  // Sales-tax round-trip (Task 16). Defaults to 0 — a pure no-op when
+  // settings.tax_enabled is off, which is what production runs today.
+  const [taxCents, setTaxCents] = useState(0);
 
   // Saved addresses (logged-in users)
   const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
@@ -280,6 +287,65 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
       });
     });
   };
+
+  // Resolves the currently-selected shipping address (saved or in-progress
+  // new-address form) into the shape calculate-tax expects. Returns null
+  // when the address isn't complete yet.
+  const resolveCurrentAddress = (): { line1: string; line2?: string; city: string; state: string; zip: string; country: string } | null => {
+    const usingNewAddress = !userId || selectedAddressId === "new";
+    if (!usingNewAddress) {
+      const addr = savedAddresses.find((a) => a.id === selectedAddressId);
+      if (!addr) return null;
+      return { line1: addr.line1, line2: addr.line2 ?? undefined, city: addr.city, state: addr.state, zip: addr.zip, country: addr.country };
+    }
+    if (!form.address1 || !form.city || !form.state || !form.zip || !form.country) return null;
+    return { line1: form.address1, line2: form.address2 || undefined, city: form.city, state: form.state, zip: form.zip, country: form.country };
+  };
+
+  // Calls calculate-tax for the given address and updates taxCents on
+  // success. Fails soft: on error it logs and leaves the existing taxCents
+  // untouched so a tax hiccup never blocks checkout. Returns the raw result
+  // (or null on failure) so callers — like the final pre-confirm call in
+  // handleSubmit — can use the authoritative totalCents.
+  const recalcTax = async (
+    addr: { line1: string; line2?: string; city: string; state: string; zip: string; country: string }
+  ): Promise<{ taxCents: number; totalCents: number | null } | null> => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("calculate-tax", {
+        body: {
+          orderId,
+          address: {
+            line1: addr.line1,
+            line2: addr.line2,
+            city: addr.city,
+            state: addr.state,
+            postal_code: addr.zip,
+            country: addr.country,
+          },
+        },
+      });
+      if (fnError) throw fnError;
+      const newTaxCents = Number((data as { taxCents?: number } | null)?.taxCents ?? 0);
+      const totalCents = (data as { totalCents?: number } | null)?.totalCents;
+      setTaxCents(newTaxCents);
+      onTaxCentsChange?.(newTaxCents);
+      return { taxCents: newTaxCents, totalCents: typeof totalCents === "number" ? totalCents : null };
+    } catch (err) {
+      console.error("[checkout] tax calculation failed", err);
+      return null;
+    }
+  };
+
+  // Debounced recalc for display — fires whenever the resolved shipping
+  // address changes and is complete (saved address selected, or the new
+  // address form has all required fields filled in).
+  useEffect(() => {
+    const addr = resolveCurrentAddress();
+    if (!addr) return;
+    const handle = setTimeout(() => { recalcTax(addr); }, 600);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddressId, savedAddresses, form.address1, form.address2, form.city, form.state, form.zip, form.country]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -380,10 +446,20 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
         .then(() => {});
     }
 
+    // Authoritative tax recalc with the final resolved address — awaited
+    // BEFORE confirmPayment so the PaymentIntent amount already includes
+    // tax when Stripe confirms it. Fails soft: on error we fall back to
+    // today's pre-tax total and still let the payment go through.
+    let finalTotalDollars = serverTotal;
+    const taxResult = await recalcTax(shipAddr);
+    if (taxResult?.totalCents != null) {
+      finalTotalDollars = taxResult.totalCents / 100;
+    }
+
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${serverTotal.toFixed(2)}`,
+        return_url: `${window.location.origin}/checkout/return?order=${orderId}&amount=${finalTotalDollars.toFixed(2)}`,
         shipping: {
           name: shipAddr.name,
           address: {
@@ -506,7 +582,7 @@ const CheckoutForm = ({ orderId, initialEmail, serverTotal, userId }: { orderId:
           ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />PROCESSING…</>
           : !elementReady
           ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />LOADING…</>
-          : `PAY $${serverTotal.toFixed(2)}`}
+          : `PAY ${fmt(Math.round(serverTotal * 100) + taxCents)}`}
       </Button>
     </form>
   );
@@ -521,6 +597,11 @@ const Checkout = () => {
   const { user } = useAuth();
 
   const { trackCheckoutStart } = useAnalytics();
+
+  // Sales tax (Task 16) — lifted from CheckoutForm so the order summary
+  // aside (rendered here, a sibling of CheckoutForm) can show it. Stays 0
+  // (no-op) whenever settings.tax_enabled is off.
+  const [taxCents, setTaxCents] = useState(0);
 
   // Fire checkout_start once per checkout session (when we have a valid client secret)
   useEffect(() => {
@@ -557,7 +638,7 @@ const Checkout = () => {
             stripe={stripePromise}
             options={{ clientSecret: state.clientSecret, appearance: stripeAppearance }}
           >
-            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} serverTotal={serverTotal} userId={user?.id} />
+            <CheckoutForm orderId={state.orderId} initialEmail={state.email ?? ""} serverTotal={serverTotal} userId={user?.id} onTaxCentsChange={setTaxCents} />
           </Elements>
         </div>
 
@@ -606,9 +687,15 @@ const Checkout = () => {
                   {shippingCents === 0 ? "FREE" : `$${(shippingCents / 100).toFixed(2)}`}
                 </span>
               </div>
+              {taxCents > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Sales Tax</span>
+                  <span>{fmt(taxCents)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-display tracking-wider border-t border-border pt-2">
                 <span>Total</span>
-                <span className="text-lg">${serverTotal.toFixed(2)}</span>
+                <span className="text-lg">{fmt(Math.round(serverTotal * 100) + taxCents)}</span>
               </div>
             </div>
           </div>
