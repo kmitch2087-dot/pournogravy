@@ -1,7 +1,7 @@
 // generate-report edge function
-// Returns CSV, HTML, or JSON report data for one of nine report types:
+// Returns CSV, HTML, or JSON report data for one of ten report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
-//   | sales_tax | top_customers | refunds_disputes | payout_reconciliation
+//   | sales_tax | top_customers | refunds_disputes | payout_reconciliation | tax_estimate
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -25,8 +25,46 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes" | "payout_reconciliation";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes" | "payout_reconciliation" | "tax_estimate";
 type ReportFormat = "csv" | "html" | "json";
+
+// ── Tax estimate constants/helpers (ported from src/pages/admin/Financials.tsx:16-61) ──
+
+// 2025 SE tax: 15.3% on 92.35% of net profit (up to $176,100 SS wage base)
+// For simplicity we apply the full 15.3% to the 92.35% portion.
+const SE_RATE = 0.153;
+const SE_NET_FACTOR = 0.9235;
+
+// Simplified single-filer federal income tax brackets (2025)
+const BRACKETS: [number, number, number][] = [
+  // [from, to, rate]
+  [0, 11_925, 0.10],
+  [11_925, 48_475, 0.12],
+  [48_475, 103_350, 0.22],
+  [103_350, 197_300, 0.24],
+  [197_300, 250_525, 0.32],
+  [250_525, 626_350, 0.35],
+  [626_350, Infinity, 0.37],
+];
+
+function calcSETax(netProfit: number): number {
+  if (netProfit <= 0) return 0;
+  const seTaxableBase = netProfit * SE_NET_FACTOR;
+  return seTaxableBase * SE_RATE;
+}
+
+function calcIncomeTax(taxableIncome: number): number {
+  if (taxableIncome <= 0) return 0;
+  let tax = 0;
+  for (const [from, to, rate] of BRACKETS) {
+    if (taxableIncome <= from) break;
+    const slice = Math.min(taxableIncome, to) - from;
+    tax += slice * rate;
+  }
+  return tax;
+}
+
+const fmtDollar = (dollars: number): string => `$${dollars.toFixed(2)}`;
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
 
@@ -165,7 +203,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes", "payout_reconciliation"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes", "payout_reconciliation", "tax_estimate"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -566,6 +604,77 @@ Deno.serve(async (req) => {
         notes = ["Net Deposit matches your bank deposit for each payout."];
         if (anyHasMore) notes.push("Some payouts have more than 100 balance transactions; totals may be incomplete.");
       }
+    }
+
+    // ── Tax Estimate (federal SE + income tax) ───────────────────────────────
+    else if (report_type === "tax_estimate") {
+      title = "Tax Estimate";
+      headers = ["Line", "Amount"];
+
+      const { data: taxOrders, error: taxOrdErr } = await supabase
+        .from("orders")
+        .select("id, total_cents, shipping_cents, status")
+        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs)
+        .lt("created_at", endTsExcl);
+
+      if (taxOrdErr) throw new Error(`Orders query failed: ${taxOrdErr.message}`);
+
+      const taxOrderIds = (taxOrders ?? []).map((o) => o.id);
+      let taxItems: { order_id: string; product_id: string | null; quantity: number }[] = [];
+      if (taxOrderIds.length) {
+        const { data: itemsData, error: taxItemErr } = await supabase
+          .from("order_items")
+          .select("order_id, product_id, quantity")
+          .in("order_id", taxOrderIds.slice(0, 1000));
+        if (taxItemErr) throw new Error(`Order items query failed: ${taxItemErr.message}`);
+        taxItems = itemsData ?? [];
+      }
+
+      const taxProductIds = [...new Set(taxItems.map((i) => i.product_id).filter(Boolean))] as string[];
+      let taxCostByProduct: Record<string, number> = {};
+      if (taxProductIds.length) {
+        const { data: prodsData, error: taxProdErr } = await supabase
+          .from("products")
+          .select("id, cost_cents")
+          .in("id", taxProductIds);
+        if (taxProdErr) throw new Error(`Products query failed: ${taxProdErr.message}`);
+        taxCostByProduct = Object.fromEntries((prodsData ?? []).map((p) => [p.id, p.cost_cents ?? 1200]));
+      }
+
+      const grossRevenue = (taxOrders ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+      const shippingTotal = (taxOrders ?? []).reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
+      const cogsTotal = taxItems.reduce(
+        (s, i) => s + (i.quantity ?? 0) * (taxCostByProduct[i.product_id ?? ""] ?? 1200),
+        0,
+      );
+      const netProfitCents = grossRevenue - shippingTotal - cogsTotal;
+      const netProfitDollars = netProfitCents / 100;
+
+      const seTax = calcSETax(netProfitDollars);
+      const seDeduct = seTax / 2;
+      const taxableIncome = Math.max(0, netProfitDollars - seDeduct);
+      const incomeTax = calcIncomeTax(taxableIncome);
+      const totalTax = seTax + incomeTax;
+      const quarterly = totalTax / 4;
+
+      rows = [
+        ["Net Profit", fmtDollar(netProfitDollars)],
+        ["Self-Employment Tax (15.3%)", fmtDollar(seTax)],
+        ["SE Deduction (½ of SE tax)", fmtDollar(seDeduct)],
+        ["Taxable Income", fmtDollar(taxableIncome)],
+        ["Federal Income Tax (est.)", fmtDollar(incomeTax)],
+        ["Total Tax Estimate", fmtDollar(totalTax)],
+        ["Quarterly Estimated Payment", fmtDollar(quarterly)],
+      ];
+
+      totals = { "Total Tax Estimate": fmtDollar(totalTax) };
+      notes = [
+        "Estimates only — assumes single-filer status, no other deductions, 2025 tax tables.",
+        "Talk to a CPA before filing.",
+        "Quarterly due dates: Apr 15, Jun 16, Sep 15 (2026), Jan 15 (2027).",
+      ];
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
