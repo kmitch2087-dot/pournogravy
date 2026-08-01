@@ -22,12 +22,19 @@ function corsHeaders(req: Request) {
 }
 
 type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary";
-type ReportFormat = "csv" | "html";
+type ReportFormat = "csv" | "html" | "json";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
 
 function cents(n: number): string {
   return `$${(n / 100).toFixed(2)}`;
+}
+
+function sumColumn(rows: string[][], colIndex: number): number {
+  return rows.reduce((s, r) => {
+    const n = Number((r[colIndex] ?? "").replace(/[$,()]/g, "")) || 0;
+    return s + n;
+  }, 0);
 }
 
 function csvEscape(val: unknown): string {
@@ -162,10 +169,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validFormats: ReportFormat[] = ["csv", "html"];
+    const validFormats: ReportFormat[] = ["csv", "html", "json"];
     if (!validFormats.includes(format)) {
       return new Response(
-        JSON.stringify({ error: `Unknown format: ${format}. Must be one of: csv, html` }),
+        JSON.stringify({ error: `Unknown format: ${format}. Must be one of: csv, html, json` }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
@@ -181,6 +188,8 @@ Deno.serve(async (req) => {
     let headers: string[] = [];
     let rows: string[][] = [];
     let title = "";
+    let totals: Record<string, string> = {};
+    let notes: string[] = [];
 
     // ── P&L Statement ────────────────────────────────────────────────────────
     if (report_type === "pl_statement") {
@@ -220,6 +229,11 @@ Deno.serve(async (req) => {
         cents(s.stripe_fees_cents ?? 0),
         cents(s.net_profit_cents ?? 0),
       ]);
+
+      totals = { "Net Profit": cents(sumColumn(rows, 7) * 100) };
+      notes = filtered
+        .filter((s) => s.amendment_note)
+        .map((s) => `${MONTH_NAMES[s.month - 1]} ${s.year} amended: ${s.amendment_note}`);
     }
 
     // ── Order Summary ────────────────────────────────────────────────────────
@@ -262,6 +276,8 @@ Deno.serve(async (req) => {
             cents(m.gross - m.refunds),
           ];
         });
+
+      totals = { "Net Revenue": cents(sumColumn(rows, 4) * 100) };
     }
 
     // ── Expense Detail ───────────────────────────────────────────────────────
@@ -285,6 +301,8 @@ Deno.serve(async (req) => {
         cents(e.amount_cents ?? 0),
         e.source ?? "",
       ]);
+
+      totals = { "Total Expenses": cents(sumColumn(rows, 3) * 100) };
     }
 
     // ── Sales by Product ─────────────────────────────────────────────────────
@@ -324,6 +342,7 @@ Deno.serve(async (req) => {
         }
 
         const agg: Record<string, { name: string; units: number; revenue: number; cogs: number }> = {};
+        let usedDefaultCogs = false;
         for (const item of allItems ?? []) {
           const pid = item.product_id ?? "unknown";
           const prod = productMap[pid];
@@ -331,6 +350,7 @@ Deno.serve(async (req) => {
           const qty = item.quantity ?? 1;
           agg[pid].units   += qty;
           agg[pid].revenue += (item.unit_price_cents ?? 0) * qty;
+          if (!prod?.cost_cents) usedDefaultCogs = true;
           agg[pid].cogs    += (prod?.cost_cents ?? 1200) * qty;
         }
 
@@ -342,6 +362,14 @@ Deno.serve(async (req) => {
               : "0%";
             return [d.name, String(d.units), cents(d.revenue), cents(d.cogs), margin];
           });
+
+        totals = {
+          "Total Revenue": cents(sumColumn(rows, 2) * 100),
+          "Total COGS": cents(sumColumn(rows, 3) * 100),
+        };
+        if (usedDefaultCogs) {
+          notes = ["Some products are missing a cost_cents value; a default $12.00 COGS estimate was used for those line items."];
+        }
       }
     }
 
@@ -365,10 +393,17 @@ Deno.serve(async (req) => {
         e.description ?? e.stripe_charge_id ?? "",
         cents(e.amount_cents ?? 0),
       ]);
+
+      totals = { "Total Fees": cents(sumColumn(rows, 2) * 100) };
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
-    if (format === "csv") {
+    if (format === "json") {
+      return new Response(
+        JSON.stringify({ title, period: { start: period_start, end: period_end }, columns: headers, rows, totals, notes }),
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    } else if (format === "csv") {
       const csv = formatCSV(headers, rows);
       return new Response(csv, {
         headers: {
