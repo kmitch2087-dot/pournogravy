@@ -178,8 +178,15 @@ export default function BookkeepingReports() {
 
   const { start, end, label } = getPeriodDates(period, customStart, customEnd);
   const customIncomplete = period === "custom" && (!customStart || !customEnd);
+  const customRangeInverted =
+    period === "custom" && !!customStart && !!customEnd && customEnd < customStart;
+  // Combined gate: any custom-range problem (missing dates OR end before start)
+  // disables the fetch + export buttons the same way.
+  const customInvalid = customIncomplete || customRangeInverted;
 
-  async function fetchReportRaw(fmt: "csv" | "html" | "json"): Promise<string> {
+  // CSV/HTML responses come back from functions-js as text (occasionally a
+  // Blob) — leave this path returning a string for download.
+  async function fetchReportRaw(fmt: "csv" | "html"): Promise<string> {
     const res = await supabase.functions.invoke("generate-report", {
       body: {
         report_type: reportType,
@@ -187,11 +194,34 @@ export default function BookkeepingReports() {
         period_end: end,
         format: fmt,
       },
-      headers: { Accept: fmt === "html" ? "text/html" : fmt === "json" ? "application/json" : "text/csv" },
+      headers: { Accept: fmt === "html" ? "text/html" : "text/csv" },
     });
     if (res.error) throw new Error(res.error.message);
     const raw = res.data;
     return raw instanceof Blob ? await raw.text() : (raw as string);
+  }
+
+  // JSON responses come back from functions-js ALREADY PARSED: @supabase/functions-js
+  // auto-parses any `Content-Type: application/json` response via response.json(),
+  // so res.data is already a plain object — never a Blob, never a JSON string.
+  // Only fall back to JSON.parse if it somehow arrives as text (defensive).
+  async function fetchReportJson(): Promise<ReportData> {
+    const res = await supabase.functions.invoke("generate-report", {
+      body: {
+        report_type: reportType,
+        period_start: start,
+        period_end: end,
+        format: "json",
+      },
+      headers: { Accept: "application/json" },
+    });
+    if (res.error) throw new Error(res.error.message);
+    const raw = res.data;
+    if (raw && typeof raw === "object" && !(raw instanceof Blob)) {
+      return raw as ReportData;
+    }
+    const text = raw instanceof Blob ? await raw.text() : String(raw);
+    return JSON.parse(text) as ReportData;
   }
 
   const {
@@ -201,11 +231,8 @@ export default function BookkeepingReports() {
     error: reportError,
   } = useQuery<ReportData>({
     queryKey: ["report-json", reportType, period, customStart, customEnd],
-    enabled: !customIncomplete,
-    queryFn: async () => {
-      const text = await fetchReportRaw("json");
-      return JSON.parse(text) as ReportData;
-    },
+    enabled: !customInvalid,
+    queryFn: fetchReportJson,
     staleTime: 30_000,
   });
 
@@ -320,6 +347,11 @@ export default function BookkeepingReports() {
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground"
               />
             </div>
+            {customRangeInverted && (
+              <p className="col-span-2 text-xs text-red-400">
+                End date must be on or after the start date.
+              </p>
+            )}
           </div>
         )}
 
@@ -331,7 +363,7 @@ export default function BookkeepingReports() {
           <Button
             className="flex-1 gap-2"
             onClick={handleDownloadCSV}
-            disabled={exporting || customIncomplete}
+            disabled={exporting || customInvalid}
           >
             <Download className="w-4 h-4" />
             {exporting ? "Generating…" : "Download CSV"}
@@ -340,7 +372,7 @@ export default function BookkeepingReports() {
             variant="outline"
             className="flex-1 gap-2"
             onClick={handlePrint}
-            disabled={exporting || customIncomplete}
+            disabled={exporting || customInvalid}
           >
             <Printer className="w-4 h-4" />
             Print / Save PDF
@@ -348,9 +380,11 @@ export default function BookkeepingReports() {
         </div>
       </div>
 
-      {customIncomplete ? (
+      {customInvalid ? (
         <div className="bg-card border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          Pick a start and end date to view this report.
+          {customRangeInverted
+            ? "End date must be on or after the start date."
+            : "Pick a start and end date to view this report."}
         </div>
       ) : reportLoading ? (
         <div className="bg-card border border-border rounded-xl p-12 flex items-center justify-center">

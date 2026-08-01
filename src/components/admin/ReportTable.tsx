@@ -70,7 +70,7 @@ export function ReportTable({ data }: { data: ReportData }) {
                     <td
                       key={ci}
                       className={`py-2.5 pr-4 last:pr-0 ${
-                        isNumericCell(cell)
+                        numericCols[ci]
                           ? "text-right font-mono tabular-nums"
                           : "text-left text-muted-foreground"
                       }`}
