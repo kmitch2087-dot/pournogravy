@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import JSZip from "jszip";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -61,12 +60,14 @@ export default function BookkeepingTaxPacket() {
     try {
       toast.info("Generating tax packet…");
 
-      const [plHTML, ordersCSV, expCSV, cogsCSV, feesCSV] = await Promise.all([
+      const [plHTML, ordersCSV, expCSV, cogsCSV, feesCSV, salesTaxCSV, payoutRecCSV] = await Promise.all([
         callReport("pl_statement",      selectedYear, "html"),
         callReport("order_summary",     selectedYear, "csv"),
         callReport("expense_detail",    selectedYear, "csv"),
         callReport("sales_by_product",  selectedYear, "csv"),
         callReport("stripe_fee_summary",selectedYear, "csv"),
+        callReport("sales_tax",         selectedYear, "csv"),
+        callReport("payout_reconciliation", selectedYear, "csv"),
       ]);
 
       const zip = new JSZip();
@@ -87,7 +88,13 @@ export default function BookkeepingTaxPacket() {
       // 5. COGS by Product CSV
       zip.file(`PG_${y}_COGS_by_Product.csv`, cogsCSV);
 
-      // 6. Summary text
+      // 6. Sales Tax CSV
+      zip.file(`PG_${y}_Sales_Tax.csv`, salesTaxCSV);
+
+      // 7. Payout Reconciliation CSV
+      zip.file(`PG_${y}_Payout_Reconciliation.csv`, payoutRecCSV);
+
+      // 8. Summary text
       zip.file(`PG_${y}_Summary.txt`,
         `POURnogravy\n` +
         `Tax Year: ${y}\n\n` +
@@ -107,6 +114,8 @@ export default function BookkeepingTaxPacket() {
         `- PG_${y}_Expenses.csv\n` +
         `- PG_${y}_Stripe_Fees.csv\n` +
         `- PG_${y}_COGS_by_Product.csv\n` +
+        `- PG_${y}_Sales_Tax.csv\n` +
+        `- PG_${y}_Payout_Reconciliation.csv\n` +
         `- PG_${y}_Summary.txt\n\n` +
         `For your accountant: Please send all files in this ZIP.\n`
       );
@@ -130,13 +139,6 @@ export default function BookkeepingTaxPacket() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <Link
-        to="/admin/bookkeeping"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" /> Bookkeeping
-      </Link>
-
       <h1 className="text-2xl font-bold mb-1">Tax Packet</h1>
       <p className="text-muted-foreground text-sm mb-6">
         One-click year-end export. Download and send the ZIP to your accountant.
@@ -200,6 +202,8 @@ export default function BookkeepingTaxPacket() {
               `PG_${selectedYear}_Expenses.csv`,
               `PG_${selectedYear}_Stripe_Fees.csv`,
               `PG_${selectedYear}_COGS_by_Product.csv`,
+              `PG_${selectedYear}_Sales_Tax.csv`,
+              `PG_${selectedYear}_Payout_Reconciliation.csv`,
               `PG_${selectedYear}_Summary.txt`,
               "README.txt",
             ].map((f) => <li key={f}>• {f}</li>)}

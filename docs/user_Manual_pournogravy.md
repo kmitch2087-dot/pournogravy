@@ -1,7 +1,7 @@
 # Pournogravy — Owner's User Manual
 **Your quick-reference guide for running the site**
 **Prepared by:** Kristin Mitchell — Aethyx
-**Last Updated:** May 27, 2026
+**Last Updated:** August 1, 2026 (added Finances & Reports section)
 
 ---
 
@@ -17,9 +17,10 @@
 5. [Editing Site Copy (Headlines, FAQs, CTAs)](#5-editing-site-copy)
 6. [Viewing Custom Garment Requests](#6-viewing-custom-garment-requests)
 7. [Viewing Orders](#7-viewing-orders)
-8. [What You Can Change vs. What Needs a Developer](#8-what-you-can-vs-cannot-change)
-9. [Who to Call When Things Break](#9-who-to-call)
-10. [Glossary — Terms You'll See](#10-glossary)
+8. [Finances & Reports](#8-finances-and-reports)
+9. [What You Can Change vs. What Needs a Developer](#9-what-you-can-vs-cannot-change)
+10. [Who to Call When Things Break](#10-who-to-call)
+11. [Glossary — Terms You'll See](#11-glossary)
 
 ---
 
@@ -77,6 +78,7 @@ To log in:
 - **Content** — edit your site's headlines, CTAs, FAQ answers, and other copy live (see Section 5)
 - **Merch Drops** — schedule upcoming product drops with ad placement and marketing emails
 - **Edit Requests** — your notes to Kristin; she replies here with inline threads
+- **Finances** — your money dashboard: reports, payouts, expenses, product costs, printer invoices, and the year-end tax packet (see Section 8)
 - **Settings** — site-wide configuration
 
 ---
@@ -200,7 +202,46 @@ Order statuses:
 
 ---
 
-## 8. What You Can vs. Cannot Change
+## 8. Finances & Reports
+
+Your admin dashboard has a **Finances** section (`/admin` → **Finances**) with 7 tabs across the top: **Overview, Reports, Payouts, Expenses, Products, Invoices, Tax Packet**. This section is your books — think of it as a lightweight version of what a bookkeeper or Stripe itself would show you.
+
+### Running Reports
+1. Go to **Finances → Reports**
+2. Pick a report from the dropdown — e.g. **P&L Statement**, **Sales by Product**, **Sales Tax**, **Top Customers**, **Refunds & Disputes**, **Payout Reconciliation**, or **Tax Estimate**
+3. Pick a time period — a quick preset (This Month, This Year, Last Year, etc.) or your own custom start/end dates
+4. The report shows up **right on the screen** as a table (with a chart above it for a couple of report types) — no waiting, no download required
+5. Need it outside the dashboard? Two buttons do that:
+   - **Download CSV** — opens in Excel/Google Sheets/Numbers
+   - **Print** — use your browser's Print dialog and choose "Save as PDF" to get a PDF copy (handy for emailing your accountant)
+
+You don't have to pick a report to see anything useful — **Overview** (the first tab) is always showing you the big picture: how much you've made, what it cost you in printing, your profit margin, average order size, refund rate, and your current Stripe balance / next payout date, all without running a report.
+
+### Reading Payout Reconciliation
+Go to **Finances → Payouts**. Every few days Stripe deposits your card-sale money into your bank account — that deposit is called a **payout**. This tab lists each payout and breaks it down:
+
+- **Gross** — the total amount customers paid for orders in that payout
+- **Fees** — what Stripe charged you to process those payments
+- **Refunds** — anything refunded back out during that period
+- **Net Deposit** — Gross − Fees − Refunds. **This is the number that should match what actually landed in your bank account.**
+
+If the Net Deposit doesn't match your bank statement, that's worth flagging to Kristin — but under normal operation it should line up exactly.
+
+### Turning On Sales Tax
+Right now, **sales tax collection is turned OFF**. Customers pay exactly the sticker price + shipping, no tax line — same as it's always been.
+
+The dashboard has everything built and ready to turn sales tax on (a **Sales Tax** report, a tax line in checkout, tax tracking on every order) — but flipping it on is a **real pricing change that affects every customer's checkout total**, so it is intentionally left off until you say go. There's no button for it in the dashboard on purpose — it has to be switched on directly in the database by Kristin, so it can't happen by accident.
+
+**Before turning it on:**
+1. **Talk to a CPA or tax advisor first.** Sales tax rules vary a lot by state, and getting it wrong can create real filing headaches.
+2. **Set up apparel tax codes.** Several states (Pennsylvania, New Jersey, Minnesota, and others) don't charge sales tax on clothing at all. Until product-level tax codes are set correctly in Stripe, the system would use a generic default and could **over-collect tax in those states**. This needs to happen before go-live, not after.
+3. **Test it first.** Kristin will run a full test purchase in Stripe's test mode (fake money, real flow) to confirm the tax line, the checkout total, and the reporting all work correctly before it ever touches a real customer.
+
+When you're ready, this is a "tell Kristin to flip the switch" conversation, not a self-service toggle — contact her before enabling it.
+
+---
+
+## 9. What You Can vs. Cannot Change
 
 ### ✅ You Can Do These Yourself (via Admin Dashboard)
 - Edit site copy — headlines, CTAs, FAQ answers, quotes, ticker items (Content tab)
@@ -213,6 +254,7 @@ Order statuses:
 - Schedule merch drops with ad placement and marketing emails
 - Edit product details and upload product images
 - Approve or reject customer reviews
+- Run financial reports, view payout reconciliation, track expenses and printer invoices (Finances tab)
 
 ### 🛑 These Need a Developer (Contact Kristin)
 - Adding brand new products to the catalog
@@ -222,6 +264,7 @@ Order statuses:
 - Connecting to a fulfillment partner (Printful/Printify)
 - Email marketing integration (Klaviyo/Mailchimp)
 - Changing the domain or hosting
+- Turning on sales tax collection (see Section 8 — this is a real pricing change and needs a CPA conversation + testing first)
 - Anything where something stopped working
 
 ### 📝 These Are on the Roadmap
@@ -231,7 +274,7 @@ Order statuses:
 
 ---
 
-## 9. Who to Call When Things Break
+## 10. Who to Call When Things Break
 
 **Kristin Mitchell — Aethyx**
 - For: anything related to the code, the site going down, a feature not working, adding products
@@ -253,7 +296,7 @@ Order statuses:
 
 ---
 
-## 10. Glossary — Terms You'll See
+## 11. Glossary — Terms You'll See
 
 | Term | Plain English |
 |------|--------------|
@@ -275,6 +318,10 @@ Order statuses:
 | **Admin Dashboard** | Your private management area at pournogravy.com/admin |
 | **Content tab** | The admin section where you edit live site copy (headlines, FAQs, quotes, etc.) |
 | **site_content** | The database table that stores your editable page copy |
+| **Payout** | A deposit Stripe sends to your bank account for recent card sales |
+| **Net Deposit** | Gross sales minus Stripe's fees minus refunds — the number that should match your bank deposit |
+| **COGS** | Cost of Goods Sold — what it costs you to print/produce each item you sell |
+| **Sales tax collection** | Currently OFF site-wide; see Section 8 before ever turning it on |
 
 ---
 

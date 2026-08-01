@@ -1,10 +1,15 @@
-import { useState, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AdminTabBar } from "@/components/admin/AdminTabBar";
 
-const FinancialsPage         = lazy(() => import("./Financials"));
-const InvoiceTrackerPage     = lazy(() => import("./InvoiceTracker"));
-const BookkeepingOverviewPage = lazy(() => import("./BookkeepingOverview"));
+const OverviewPage  = lazy(() => import("./Financials"));
+const ReportsPage   = lazy(() => import("./BookkeepingReports"));
+const PayoutsPage   = lazy(() => import("./Payouts"));
+const ExpensesPage  = lazy(() => import("./BookkeepingExpenses"));
+const ProductsPage  = lazy(() => import("./BookkeepingProducts"));
+const InvoicesPage  = lazy(() => import("./InvoiceTracker"));
+const TaxPacketPage = lazy(() => import("./BookkeepingTaxPacket"));
 
 const TAB_LOADER = (
   <div className="flex items-center justify-center h-64">
@@ -12,50 +17,80 @@ const TAB_LOADER = (
   </div>
 );
 
-const PLACEHOLDER = (
-  <p className="text-sm text-muted-foreground py-12 text-center">Coming soon.</p>
-);
-
 const TABS = [
   { id: "overview",   label: "Overview" },
-  { id: "invoices",   label: "Invoices" },
+  { id: "reports",    label: "Reports" },
+  { id: "payouts",    label: "Payouts" },
   { id: "expenses",   label: "Expenses" },
   { id: "products",   label: "Products" },
-  { id: "reports",    label: "Reports" },
+  { id: "invoices",   label: "Invoices" },
   { id: "tax-packet", label: "Tax Packet" },
 ];
 
-type TabId = "overview" | "invoices" | "expenses" | "products" | "reports" | "tax-packet";
+type TabId = "overview" | "reports" | "payouts" | "expenses" | "products" | "invoices" | "tax-packet";
+
+const TAB_IDS = TABS.map((t) => t.id);
+
+function isTabId(value: string | null): value is TabId {
+  return !!value && TAB_IDS.includes(value);
+}
 
 export default function Finances() {
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab: TabId = isTabId(rawTab) ? rawTab : "overview";
+
+  const handleChange = (id: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", id);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-0">
       <AdminTabBar
         tabs={TABS}
         activeTab={activeTab}
-        onChange={(id) => setActiveTab(id as TabId)}
+        onChange={handleChange}
       />
 
       {activeTab === "overview" && (
         <Suspense fallback={TAB_LOADER}>
-          <FinancialsPage />
+          <OverviewPage />
         </Suspense>
       )}
-      {activeTab === "invoices" && (
+      {activeTab === "reports" && (
         <Suspense fallback={TAB_LOADER}>
-          <InvoiceTrackerPage />
+          <ReportsPage />
+        </Suspense>
+      )}
+      {activeTab === "payouts" && (
+        <Suspense fallback={TAB_LOADER}>
+          <PayoutsPage />
         </Suspense>
       )}
       {activeTab === "expenses" && (
         <Suspense fallback={TAB_LOADER}>
-          <BookkeepingOverviewPage />
+          <ExpensesPage />
         </Suspense>
       )}
-      {activeTab === "products" && PLACEHOLDER}
-      {activeTab === "reports" && PLACEHOLDER}
-      {activeTab === "tax-packet" && PLACEHOLDER}
+      {activeTab === "products" && (
+        <Suspense fallback={TAB_LOADER}>
+          <ProductsPage />
+        </Suspense>
+      )}
+      {activeTab === "invoices" && (
+        <Suspense fallback={TAB_LOADER}>
+          <InvoicesPage />
+        </Suspense>
+      )}
+      {activeTab === "tax-packet" && (
+        <Suspense fallback={TAB_LOADER}>
+          <TaxPacketPage />
+        </Suspense>
+      )}
     </div>
   );
 }

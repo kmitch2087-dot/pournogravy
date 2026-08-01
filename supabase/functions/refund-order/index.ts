@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     const [orderRes, itemsRes, settingsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, email, shipping_address")
+        .select("id, email, shipping_address, stripe_tax_transaction_id")
         .eq("id", order_id)
         .maybeSingle(),
       supabase
@@ -117,6 +117,33 @@ Deno.serve(async (req) => {
     const order = orderRes.data;
     const items = itemsRes.data ?? [];
     const printerEmail = settingsRes.data?.printer_email;
+
+    // Reverse the tax transaction, if this order had one (Task 16). No-op
+    // when tax was off for this order (stripe_tax_transaction_id is null).
+    // Isolated try-catch: a reversal failure must never fail the refund
+    // itself — the money has already been returned to the customer.
+    if (order?.stripe_tax_transaction_id) {
+      try {
+        const reversalRes = await fetch("https://api.stripe.com/v1/tax/transactions/create_reversal", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Bearer ${stripeKey}`,
+          },
+          body: new URLSearchParams({
+            mode: "full",
+            original_transaction: order.stripe_tax_transaction_id,
+            reference: `refund_${order_id}`,
+          }),
+        });
+        if (!reversalRes.ok) {
+          const reversalBody = await reversalRes.json().catch(() => ({}));
+          console.error("[refund-order] tax reversal failed", reversalBody);
+        }
+      } catch (taxErr) {
+        console.error("[refund-order] tax reversal error", taxErr);
+      }
+    }
 
     if (printerEmail && order) {
       const orderIdShort = order_id.slice(0, 8).toUpperCase();

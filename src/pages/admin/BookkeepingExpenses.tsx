@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Plus, Lock, Trash2 } from "lucide-react";
+import { Plus, Lock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 const CATEGORIES = [
@@ -156,13 +155,6 @@ export default function BookkeepingExpenses() {
 
   return (
     <div className="p-6 max-w-4xl">
-      <Link
-        to="/admin/bookkeeping"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" /> Bookkeeping
-      </Link>
-
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1">Expenses</h1>

@@ -1,72 +1,35 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  DollarSign, TrendingUp, TrendingDown, Receipt, Info,
-  ChevronDown, ChevronUp, RefreshCw,
+  DollarSign, TrendingUp, TrendingDown, Receipt, Wallet,
+  ChevronDown, ChevronUp, RefreshCw, Lock, Pencil, ShoppingCart, Percent,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+} from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format, startOfYear, endOfYear, startOfQuarter, endOfQuarter, addMonths } from "date-fns";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PRINT_COST_PER_ITEM_CENTS = 1200; // $12/item — matches InvoiceTracker
 
-// 2025 SE tax: 15.3% on 92.35% of net profit (up to $176,100 SS wage base)
-// For simplicity we apply the full 15.3% to the 92.35% portion.
-const SE_RATE = 0.153;
-const SE_NET_FACTOR = 0.9235;
-
-// Simplified single-filer federal income tax brackets (2025)
-const BRACKETS: [number, number, number][] = [
-  // [from, to, rate]
-  [0, 11_925, 0.10],
-  [11_925, 48_475, 0.12],
-  [48_475, 103_350, 0.22],
-  [103_350, 197_300, 0.24],
-  [197_300, 250_525, 0.32],
-  [250_525, 626_350, 0.35],
-  [626_350, Infinity, 0.37],
-];
-
-const QUARTERLY_DUE_DATES = [
-  { label: "Q1 (Jan–Mar)", due: "April 15, 2026" },
-  { label: "Q2 (Apr–May)", due: "June 16, 2026" },
-  { label: "Q3 (Jun–Aug)", due: "September 15, 2026" },
-  { label: "Q4 (Sep–Dec)", due: "January 15, 2027" },
-];
-
-// ─── Tax helpers ──────────────────────────────────────────────────────────────
-
-function calcSETax(netProfit: number): number {
-  if (netProfit <= 0) return 0;
-  const seTaxableBase = netProfit * SE_NET_FACTOR;
-  return seTaxableBase * SE_RATE;
-}
-
-function calcIncomeTax(taxableIncome: number): number {
-  if (taxableIncome <= 0) return 0;
-  let tax = 0;
-  for (const [from, to, rate] of BRACKETS) {
-    if (taxableIncome <= from) break;
-    const slice = Math.min(taxableIncome, to) - from;
-    tax += slice * rate;
-  }
-  return tax;
-}
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
 const fmt = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
-const fmtDollar = (dollars: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(dollars);
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -74,16 +37,24 @@ interface OrderRow {
   id: string;
   total_cents: number;
   shipping_cents: number;
+  tax_cents: number | null;
   status: string;
   created_at: string;
 }
 
 interface ItemRow {
   order_id: string;
+  product_id: string | null;
   quantity: number;
 }
 
+interface ProductCostRow {
+  id: string;
+  cost_cents: number;
+}
+
 interface MonthlySnapshotRow {
+  id: string;
   year: number;
   month: number;
   revenue_cents: number;
@@ -92,6 +63,15 @@ interface MonthlySnapshotRow {
   expenses_cents: number;
   stripe_fees_cents: number;
   net_profit_cents: number;
+  closed_at: string;
+  amended_at: string | null;
+  amendment_note: string | null;
+}
+
+interface StripeBalanceData {
+  available_cents: number;
+  pending_cents: number;
+  next_payout: { amount_cents: number; arrival_date: number } | null;
 }
 
 /** Aggregated totals derived from monthly_snapshots for a past year. */
@@ -104,20 +84,35 @@ interface SnapshotTotals {
   netProfitCents: number;
 }
 
-function useMonthlySnapshots(selectedYear: number, currentYear: number) {
-  const isPastYear = selectedYear !== currentYear;
+// Fetched for every year (not just past years) — the monthly revenue chart and
+// the monthly-close grid both need closed-month data even while viewing the
+// current (in-progress) year.
+function useMonthlySnapshots(selectedYear: number) {
   return useQuery<MonthlySnapshotRow[]>({
     queryKey: ["monthly_snapshots", selectedYear],
-    enabled: isPastYear,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_snapshots")
-        .select("year, month, revenue_cents, refunds_cents, cogs_cents, expenses_cents, stripe_fees_cents, net_profit_cents")
-        .eq("year", selectedYear);
+        .select("id, year, month, revenue_cents, refunds_cents, cogs_cents, expenses_cents, stripe_fees_cents, net_profit_cents, closed_at, amended_at, amendment_note")
+        .eq("year", selectedYear)
+        .order("month");
       if (error) throw error;
       return (data ?? []) as MonthlySnapshotRow[];
     },
     staleTime: 5 * 60_000,
+  });
+}
+
+function useStripeBalance() {
+  return useQuery<StripeBalanceData>({
+    queryKey: ["stripe-balance"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("stripe-balance");
+      if (error) throw error;
+      return data as StripeBalanceData;
+    },
+    staleTime: 60_000,
+    retry: 1,
   });
 }
 
@@ -130,7 +125,7 @@ function useFinancialsData(selectedYear: number) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_cents, shipping_cents, status, created_at")
+        .select("id, total_cents, shipping_cents, tax_cents, status, created_at")
         .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered", "refunded", "disputed"])
         .eq("is_test", false)
         .gte("created_at", yearStart)
@@ -150,7 +145,7 @@ function useFinancialsData(selectedYear: number) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("order_id, quantity")
+        .select("order_id, product_id, quantity")
         .in("order_id", orderIds);
       if (error) throw error;
       return (data ?? []) as ItemRow[];
@@ -158,10 +153,30 @@ function useFinancialsData(selectedYear: number) {
     staleTime: 60_000,
   });
 
+  const productIds = [...new Set((items ?? []).map((i) => i.product_id).filter(Boolean))] as string[];
+
+  const { data: productCosts, isLoading: productCostsLoading } = useQuery<ProductCostRow[]>({
+    queryKey: ["financials-product-costs", productIds.join(",")],
+    enabled: productIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, cost_cents")
+        .in("id", productIds);
+      if (error) throw error;
+      return (data ?? []) as ProductCostRow[];
+    },
+    staleTime: 60_000,
+  });
+
   return {
     orders: orders ?? [],
     items: items ?? [],
-    isLoading: ordersLoading || (orderIds.length > 0 && itemsLoading),
+    productCosts: productCosts ?? [],
+    isLoading:
+      ordersLoading ||
+      (orderIds.length > 0 && itemsLoading) ||
+      (productIds.length > 0 && productCostsLoading),
     refetch,
   };
 }
@@ -200,6 +215,19 @@ const SectionCard = ({ title, children, className = "" }: {
   </div>
 );
 
+const RevenueTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-popover border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
+      <p className="text-muted-foreground font-semibold mb-1">{label}</p>
+      <p className="flex justify-between gap-4" style={{ color: "#eab308" }}>
+        <span>Net Revenue</span>
+        <span className="font-bold tabular-nums">${Number(payload[0].value).toFixed(2)}</span>
+      </p>
+    </div>
+  );
+};
+
 function Disclosure({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
@@ -233,10 +261,32 @@ function Disclosure({ title, children }: { title: string; children: React.ReactN
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Financials() {
+  const qc = useQueryClient();
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-12
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const { orders, items, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
-  const { data: snapshots, isLoading: snapshotsLoading } = useMonthlySnapshots(selectedYear, currentYear);
+  const { orders, items, productCosts, isLoading: liveLoading, refetch } = useFinancialsData(selectedYear);
+  const { data: snapshots, isLoading: snapshotsLoading } = useMonthlySnapshots(selectedYear);
+  const { data: stripeBalance, isLoading: stripeLoading, isError: stripeError } = useStripeBalance();
+
+  // ── Monthly-close grid / amendment drawer state ──
+  const [activeSnap, setActiveSnap] = useState<MonthlySnapshotRow | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const saveAmendment = useMutation({
+    mutationFn: async ({ id, note }: { id: string; note: string }) => {
+      const { error } = await supabase
+        .from("monthly_snapshots")
+        .update({ amendment_note: note || null, amended_at: note ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["monthly_snapshots"] });
+      setActiveSnap(null);
+      toast.success("Annotation saved");
+    },
+    onError: () => toast.error("Failed to save"),
+  });
 
   const isPastYear = selectedYear !== currentYear;
   // Use snapshots when viewing a past year that has closed months on record
@@ -247,6 +297,14 @@ export default function Financials() {
   for (const it of items) {
     itemCountByOrder.set(it.order_id, (itemCountByOrder.get(it.order_id) ?? 0) + it.quantity);
   }
+
+  // ── Per-product cost lookup (live path) — real cost_cents, fallback to flat estimate ──
+  const costByProduct = new Map<string, number>();
+  for (const p of productCosts) costByProduct.set(p.id, p.cost_cents ?? PRINT_COST_PER_ITEM_CENTS);
+  const cogsForOrder = (orderId: string) =>
+    items
+      .filter((it) => it.order_id === orderId)
+      .reduce((s, it) => s + (it.quantity ?? 0) * (costByProduct.get(it.product_id ?? "") ?? PRINT_COST_PER_ITEM_CENTS), 0);
 
   // ── Aggregate revenue (snapshot path) ──
   const snapshotTotals: SnapshotTotals | null = useSnapshots
@@ -264,14 +322,17 @@ export default function Financials() {
     : null;
 
   // ── Aggregate revenue (live path — also used as fallback for past years with no snapshots) ──
+  // Collected sales tax is a pass-through liability, not revenue — exclude it from every
+  // "revenue" sum of total_cents. (Numerically identical to before while tax_cents is 0.)
+  const revenueNetOfTax = (o: OrderRow) => (o.total_cents ?? 0) - (o.tax_cents ?? 0);
   const paidOrders            = orders.filter((o) => o.status !== "refunded" && o.status !== "disputed");
   const refundedOrdersLive    = orders.filter((o) => o.status === "refunded" || o.status === "disputed");
-  const grossRevenueLive      = paidOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
-  const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const grossRevenueLive      = paidOrders.reduce((s, o) => s + revenueNetOfTax(o), 0);
+  const refundsTotalLive      = refundedOrdersLive.reduce((s, o) => s + revenueNetOfTax(o), 0);
   const netRevenueLive        = grossRevenueLive - refundsTotalLive;
   const totalShippingLive     = paidOrders.reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
   const totalItemsLive        = paidOrders.reduce((s, o) => s + (itemCountByOrder.get(o.id) ?? 0), 0);
-  const printCogsLive         = totalItemsLive * PRINT_COST_PER_ITEM_CENTS;
+  const printCogsLive         = paidOrders.reduce((s, o) => s + cogsForOrder(o.id), 0);
   const productRevenueLive    = netRevenueLive - totalShippingLive;
   const grossProfitLive       = productRevenueLive - printCogsLive;
 
@@ -287,25 +348,39 @@ export default function Financials() {
   const printCogsCents    = snapshotTotals ? snapshotTotals.cogsCents       : printCogsLive;
   const grossProfitCents  = snapshotTotals ? snapshotTotals.netProfitCents  : grossProfitLive;
 
-  const isLoading = liveLoading || (isPastYear && snapshotsLoading);
+  const isLoading = liveLoading || snapshotsLoading;
 
-  // ── Tax estimates (dollars for tax math) ──
-  const netProfitDollars = grossProfitCents / 100;
-  const seTaxDollars     = calcSETax(netProfitDollars);
-  // Half of SE tax is deductible from income
-  const seDeductDollars  = seTaxDollars / 2;
-  const taxableIncome    = Math.max(0, netProfitDollars - seDeductDollars);
-  const incomeTaxDollars = calcIncomeTax(taxableIncome);
-  const totalTaxDollars  = seTaxDollars + incomeTaxDollars;
-  const quarterlyEst     = totalTaxDollars / 4;
+  // ── Extra KPI tiles ──
+  const totalOrderCount    = orders.length;
+  const refundedOrderCount = refundedOrdersLive.length;
+  const refundRatePct      = totalOrderCount > 0 ? (refundedOrderCount / totalOrderCount) * 100 : 0;
+  const aovCents            = paidOrders.length > 0 ? netRevenueCents / paidOrders.length : 0;
+  const grossMarginPct      = productRevenue > 0 ? (grossProfitCents / productRevenue) * 100 : 0;
 
-  // ── Adjustable other-income (for tax estimate) ──
-  const [otherIncome, setOtherIncome] = useState("");
-  const otherIncomeDollars = parseFloat(otherIncome) || 0;
-  const adjustedTaxableIncome = Math.max(0, taxableIncome + otherIncomeDollars);
-  const adjustedIncomeTax     = calcIncomeTax(adjustedTaxableIncome);
-  const adjustedTotal         = seTaxDollars + adjustedIncomeTax;
-  const adjustedQuarterly     = adjustedTotal / 4;
+  // ── Monthly-close grid lookup ──
+  const snapMap = Object.fromEntries((snapshots ?? []).map((s) => [s.month, s]));
+
+  // ── Monthly revenue chart data — closed months from snapshots, live months from orders ──
+  const liveRevenueByMonth = new Map<number, { revenue: number; refunds: number }>();
+  for (const o of orders) {
+    const m = new Date(o.created_at).getUTCMonth() + 1;
+    const rec = liveRevenueByMonth.get(m) ?? { revenue: 0, refunds: 0 };
+    if (o.status === "refunded" || o.status === "disputed") rec.refunds += revenueNetOfTax(o);
+    else rec.revenue += revenueNetOfTax(o);
+    liveRevenueByMonth.set(m, rec);
+  }
+
+  const monthlyChartData = MONTH_NAMES
+    .map((name, idx) => {
+      const m = idx + 1;
+      const snap = snapMap[m];
+      if (snap) {
+        return { month: name, netRevenue: (snap.revenue_cents - snap.refunds_cents) / 100 };
+      }
+      const live = liveRevenueByMonth.get(m);
+      return { month: name, netRevenue: live ? (live.revenue - live.refunds) / 100 : 0 };
+    })
+    .filter((_, idx) => (selectedYear === currentYear ? idx + 1 <= currentMonth : true));
 
   if (isLoading) {
     return (
@@ -364,7 +439,7 @@ export default function Financials() {
         />
         <MetricCard
           delay={0.08} label="Print COGS"        value={fmt(printCogsCents)}
-          sub={useSnapshots ? "from closed month records" : `${totalItems} items × $12 est.`}
+          sub={useSnapshots ? "from closed month records" : `${totalItems} items · per-product cost`}
           icon={Receipt}       color="bg-orange-400/10 text-orange-400"
         />
         <MetricCard
@@ -372,6 +447,35 @@ export default function Financials() {
           sub="before taxes"
           icon={grossProfitCents >= 0 ? TrendingUp : TrendingDown}
           color={grossProfitCents >= 0 ? "bg-green-400/10 text-green-400" : "bg-red-400/10 text-red-400"}
+        />
+        <MetricCard
+          delay={0.16} label="Avg Order Value"   value={fmt(aovCents)}
+          sub={`${paidOrders.length} paid orders`}
+          icon={ShoppingCart}  color="bg-cyan-400/10 text-cyan-400"
+        />
+        <MetricCard
+          delay={0.20} label="Refund Rate"       value={fmtPct(refundRatePct)}
+          sub={`${refundedOrderCount} of ${totalOrderCount} orders`}
+          icon={TrendingDown}  color="bg-rose-400/10 text-rose-400"
+        />
+        <MetricCard
+          delay={0.24} label="Gross Margin"      value={fmtPct(grossMarginPct)}
+          sub="gross profit ÷ product revenue"
+          icon={Percent}       color="bg-emerald-400/10 text-emerald-400"
+        />
+        <MetricCard
+          delay={0.28} label="Stripe Balance"
+          value={stripeLoading ? "…" : stripeError ? "—" : fmt((stripeBalance?.available_cents ?? 0) + (stripeBalance?.pending_cents ?? 0))}
+          sub={
+            stripeLoading
+              ? "Loading…"
+              : stripeError
+              ? "Unable to load — check STRIPE_SECRET_KEY"
+              : stripeBalance?.next_payout
+              ? `Next payout ${fmt(stripeBalance.next_payout.amount_cents)} · ${format(new Date(stripeBalance.next_payout.arrival_date * 1000), "MMM d")}`
+              : "No payout scheduled"
+          }
+          icon={Wallet}        color="bg-indigo-400/10 text-indigo-400"
         />
       </div>
 
@@ -385,7 +489,7 @@ export default function Financials() {
               ["Net Revenue",             fmt(netRevenueCents),       "After refunds"],
               ["Shipping (pass-through)", `(${fmt(totalShipping)})`, "Goes to carrier — not your income"],
               ["Product Revenue",         fmt(productRevenue),        "What you actually keep from sales"],
-              ["Print COGS",              `(${fmt(printCogsCents)})`, useSnapshots ? "from closed month records" : `${totalItems} items × $12 est. print cost`],
+              ["Print COGS",              `(${fmt(printCogsCents)})`, useSnapshots ? "from closed month records" : `${totalItems} items × per-product print cost`],
               ["Gross Profit",            fmt(grossProfitCents),      "Before SE tax & income tax"],
             ] as [string, string, string][]).map(([label, value, note]) => (
               <tr key={label} className={label === "Gross Profit" ? "font-semibold" : ""}>
@@ -400,80 +504,141 @@ export default function Financials() {
         </table>
       </SectionCard>
 
-      {/* Federal Tax Estimator */}
-      <SectionCard title="Federal Tax Estimator — Self-Employment">
+      {/* Monthly revenue chart */}
+      <SectionCard title={`Monthly Net Revenue — ${selectedYear}`}>
+        {monthlyChartData.every((d) => d.netRevenue === 0) ? (
+          <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">
+            No revenue recorded yet for {selectedYear}.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={monthlyChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip content={<RevenueTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <Bar dataKey="netRevenue" name="Net Revenue" fill="#fde047" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </SectionCard>
 
-        <div className="bg-amber-400/5 border border-amber-400/20 rounded-lg p-4 mb-5 text-xs text-muted-foreground space-y-1">
-          <p className="flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 mt-0.5 text-amber-400 shrink-0" />
-            These are estimates only. They assume single-filer status, no other deductions, and 2025 tax tables.
-            <strong className="text-foreground ml-1">Talk to a CPA before filing.</strong>
-          </p>
+      {/* Monthly-close grid */}
+      <SectionCard title={`Monthly Close — ${selectedYear}`}>
+        <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 text-sm text-muted-foreground mb-5">
+          Books close automatically on the 1st of each month. If something looks off in a closed month,
+          click it to add an annotation — your accountant will see it. Do not panic.
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+          {MONTH_NAMES.map((name, idx) => {
+            const m    = idx + 1;
+            const snap = snapMap[m];
+            const isCurrentMonth = selectedYear === currentYear && m === currentMonth;
+            const isFuture       = selectedYear === currentYear && m > currentMonth;
 
-          {/* Left: calculated breakdown */}
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm py-2 border-b border-border">
-              <span className="text-muted-foreground">Net Profit (gross profit)</span>
-              <span className="font-mono font-semibold">{fmtDollar(netProfitDollars)}</span>
-            </div>
-            <div className="flex justify-between text-sm py-2 border-b border-border">
-              <span className="text-muted-foreground">Self-Employment Tax (15.3%)</span>
-              <span className="font-mono text-red-400">({fmtDollar(seTaxDollars)})</span>
-            </div>
-            <div className="flex justify-between text-sm py-2 border-b border-border">
-              <span className="text-muted-foreground">SE Deduction (½ of SE tax)</span>
-              <span className="font-mono text-green-400">({fmtDollar(seDeductDollars)})</span>
-            </div>
-            <div className="flex justify-between text-sm py-2 border-b border-border">
-              <span className="text-muted-foreground">Taxable Income</span>
-              <span className="font-mono font-semibold">{fmtDollar(adjustedTaxableIncome)}</span>
-            </div>
-            <div className="flex justify-between text-sm py-2 border-b border-border">
-              <span className="text-muted-foreground">Federal Income Tax (est.)</span>
-              <span className="font-mono text-red-400">({fmtDollar(adjustedIncomeTax)})</span>
-            </div>
-            <div className="flex justify-between text-sm py-2 bg-muted/20 rounded px-3">
-              <span className="font-semibold">Total Tax Estimate</span>
-              <span className="font-mono font-bold text-red-400">{fmtDollar(adjustedTotal)}</span>
-            </div>
-          </div>
-
-          {/* Right: quarterly schedule */}
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Other Income This Year (optional)</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={otherIncome}
-                  onChange={(e) => setOtherIncome(e.target.value)}
-                  className="h-8 text-xs w-32"
-                />
-                <span className="text-xs text-muted-foreground">salary, tips, etc.</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground font-display tracking-widest uppercase mt-4 mb-2">Quarterly Estimated Payments</p>
-            <div className="space-y-2">
-              {QUARTERLY_DUE_DATES.map((q) => (
-                <div key={q.label} className="flex items-center justify-between text-sm bg-muted/20 rounded-lg px-3 py-2.5">
-                  <div>
-                    <p className="font-medium">{q.label}</p>
-                    <p className="text-xs text-muted-foreground">Due {q.due}</p>
-                  </div>
-                  <span className="font-mono font-bold tabular-nums text-amber-400">
-                    {fmtDollar(adjustedQuarterly)}
-                  </span>
+            return (
+              <motion.div
+                key={m}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.03 }}
+                onClick={() => {
+                  if (snap) { setActiveSnap(snap); setNoteText(snap.amendment_note ?? ""); }
+                }}
+                className={[
+                  "rounded-xl border p-3 text-sm",
+                  isFuture
+                    ? "border-border/30 opacity-40 cursor-default"
+                    : snap
+                    ? "border-border cursor-pointer hover:bg-muted/20"
+                    : isCurrentMonth
+                    ? "border-primary/40 bg-primary/5 cursor-default"
+                    : "border-border/30 cursor-default",
+                ].join(" ")}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">{name}</span>
+                  {snap?.amended_at
+                    ? <Pencil className="w-3.5 h-3.5 text-yellow-400" />
+                    : snap
+                    ? <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+                    : isCurrentMonth
+                    ? <Badge variant="outline" className="text-xs py-0">Open</Badge>
+                    : null}
                 </div>
-              ))}
-            </div>
-          </div>
+                {snap ? (
+                  <>
+                    <div className="text-xs text-muted-foreground">
+                      Rev: <span className="text-foreground">{fmt(snap.revenue_cents)}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Net: <span className={snap.net_profit_cents >= 0 ? "text-green-400" : "text-red-400"}>
+                        {fmt(snap.net_profit_cents)}
+                      </span>
+                    </div>
+                  </>
+                ) : isCurrentMonth ? (
+                  <div className="text-xs text-muted-foreground">Live data</div>
+                ) : (
+                  <div className="text-xs text-muted-foreground/40">—</div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
+
+        {/* Amendment drawer */}
+        <Sheet open={!!activeSnap} onOpenChange={(o) => !o && setActiveSnap(null)}>
+          <SheetContent>
+            {activeSnap && (
+              <>
+                <SheetHeader>
+                  <SheetTitle>
+                    {MONTH_NAMES[activeSnap.month - 1]} {activeSnap.year}
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-3 text-sm">
+                  {[
+                    ["Revenue",    fmt(activeSnap.revenue_cents)],
+                    ["Refunds",    `− ${fmt(activeSnap.refunds_cents)}`],
+                    ["COGS",       `− ${fmt(activeSnap.cogs_cents)}`],
+                    ["Expenses",   `− ${fmt(activeSnap.expenses_cents)}`],
+                    ["Net Profit", fmt(activeSnap.net_profit_cents)],
+                    ["Stripe Fees",fmt(activeSnap.stripe_fees_cents)],
+                  ].map(([label, val]) => (
+                    <div key={label} className="flex justify-between border-b border-border/50 pb-2">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium">{val}</span>
+                    </div>
+                  ))}
+                  <div className="text-xs text-muted-foreground pt-1">
+                    Closed {format(new Date(activeSnap.closed_at), "MMM d, yyyy 'at' h:mm a")}
+                  </div>
+                  <div className="pt-4 space-y-2">
+                    <Label>Annotation for accountant</Label>
+                    <Textarea
+                      rows={4}
+                      placeholder="e.g. Printer invoice for this month arrived late — added to next month's expenses."
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This note appears in your tax packet reports. It does not change any dollar amounts.
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={() => saveAmendment.mutate({ id: activeSnap.id, note: noteText })}
+                      disabled={saveAmendment.isPending}
+                    >
+                      {saveAmendment.isPending ? "Saving…" : "Save Annotation"}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
       </SectionCard>
 
       {/* How this works */}
@@ -491,13 +656,13 @@ export default function Financials() {
           </Disclosure>
 
           <Disclosure title="What counts as my COGS (cost of goods)?">
-            <p>For POURnogravy, your main cost is the print shop: ~$12/item. The numbers here use that estimate.</p>
+            <p>For POURnogravy, your main cost is the print shop. The numbers here use each product&apos;s actual per-item cost (set on the Products tab), falling back to a ~$12/item estimate for anything without a cost on file.</p>
             <p>You can also deduct: platform/tool subscriptions, shipping supplies, advertising, home office if applicable. Keep receipts.</p>
             <p>The actual print cost is on the Invoice Tracker page — that&apos;s what you actually owe the printer.</p>
           </Disclosure>
 
           <Disclosure title="Why doesn't this match my bank balance?">
-            <p>This page shows <em>accrual-basis</em> numbers — revenue when orders are placed, costs at $12/item estimate. Your bank shows cash when Stripe settles (usually 2 business days).</p>
+            <p>This page shows <em>accrual-basis</em> numbers — revenue when orders are placed, costs at each product&apos;s actual per-item cost. Your bank shows cash when Stripe settles (usually 2 business days).</p>
             <p>Stripe fees (~2.9% + 30¢/order) are also not deducted here. Export your Stripe payout summary for exact net deposits.</p>
           </Disclosure>
 
@@ -527,9 +692,8 @@ export default function Financials() {
                   const isRefunded = order.status === "refunded";
                   const isDisputed = order.status === "disputed";
                   const isNeutral  = isRefunded || isDisputed;
-                  const itemCount  = itemCountByOrder.get(order.id) ?? 0;
-                  const revCents   = (order.total_cents ?? 0) - (order.shipping_cents ?? 0);
-                  const cogsCents  = itemCount * PRINT_COST_PER_ITEM_CENTS;
+                  const revCents   = revenueNetOfTax(order) - (order.shipping_cents ?? 0);
+                  const cogsCents  = cogsForOrder(order.id);
                   const profCents  = isNeutral ? 0 : revCents - cogsCents;
                   return (
                     <tr key={order.id} className={`transition-colors ${isNeutral ? "opacity-50" : "hover:bg-muted/30"}`}>

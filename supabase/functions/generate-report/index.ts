@@ -1,6 +1,7 @@
 // generate-report edge function
-// Returns CSV or HTML report data for one of five report types:
+// Returns CSV, HTML, or JSON report data for one of ten report types:
 //   pl_statement | order_summary | expense_detail | sales_by_product | stripe_fee_summary
+//   | sales_tax | top_customers | refunds_disputes | payout_reconciliation | tax_estimate
 //
 // Consumed by Tasks 10 (Financials page) and 11 (Report export UI).
 //
@@ -8,8 +9,11 @@
 //   SUPABASE_URL              (standard — always available in edge functions)
 //   SUPABASE_SERVICE_ROLE_KEY (standard — always available in edge functions)
 //   SUPABASE_ANON_KEY         (standard — always available in edge functions)
+//   STRIPE_SECRET_KEY         (required for refunds_disputes + payout_reconciliation;
+//                              those reports degrade gracefully with an explanatory note if unset)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("origin") ?? "*";
@@ -21,13 +25,58 @@ function corsHeaders(req: Request) {
   };
 }
 
-type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary";
-type ReportFormat = "csv" | "html";
+type ReportType = "pl_statement" | "order_summary" | "expense_detail" | "sales_by_product" | "stripe_fee_summary" | "sales_tax" | "top_customers" | "refunds_disputes" | "payout_reconciliation" | "tax_estimate";
+type ReportFormat = "csv" | "html" | "json";
+
+// ── Tax estimate constants/helpers (ported from src/pages/admin/Financials.tsx:16-61) ──
+
+// 2025 SE tax: 15.3% on 92.35% of net profit (up to $176,100 SS wage base)
+// For simplicity we apply the full 15.3% to the 92.35% portion.
+const SE_RATE = 0.153;
+const SE_NET_FACTOR = 0.9235;
+
+// Simplified single-filer federal income tax brackets (2025)
+const BRACKETS: [number, number, number][] = [
+  // [from, to, rate]
+  [0, 11_925, 0.10],
+  [11_925, 48_475, 0.12],
+  [48_475, 103_350, 0.22],
+  [103_350, 197_300, 0.24],
+  [197_300, 250_525, 0.32],
+  [250_525, 626_350, 0.35],
+  [626_350, Infinity, 0.37],
+];
+
+function calcSETax(netProfit: number): number {
+  if (netProfit <= 0) return 0;
+  const seTaxableBase = netProfit * SE_NET_FACTOR;
+  return seTaxableBase * SE_RATE;
+}
+
+function calcIncomeTax(taxableIncome: number): number {
+  if (taxableIncome <= 0) return 0;
+  let tax = 0;
+  for (const [from, to, rate] of BRACKETS) {
+    if (taxableIncome <= from) break;
+    const slice = Math.min(taxableIncome, to) - from;
+    tax += slice * rate;
+  }
+  return tax;
+}
+
+const fmtDollar = (dollars: number): string => `$${dollars.toFixed(2)}`;
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
 
 function cents(n: number): string {
   return `$${(n / 100).toFixed(2)}`;
+}
+
+function sumColumn(rows: string[][], colIndex: number): number {
+  return rows.reduce((s, r) => {
+    const n = Number((r[colIndex] ?? "").replace(/[$,()]/g, "")) || 0;
+    return s + n;
+  }, 0);
 }
 
 function csvEscape(val: unknown): string {
@@ -154,7 +203,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary"];
+    const validTypes: ReportType[] = ["pl_statement", "order_summary", "expense_detail", "sales_by_product", "stripe_fee_summary", "sales_tax", "top_customers", "refunds_disputes", "payout_reconciliation", "tax_estimate"];
     if (!validTypes.includes(report_type)) {
       return new Response(
         JSON.stringify({ error: `Unknown report_type: ${report_type}. Must be one of: ${validTypes.join(", ")}` }),
@@ -162,10 +211,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const validFormats: ReportFormat[] = ["csv", "html"];
+    const validFormats: ReportFormat[] = ["csv", "html", "json"];
     if (!validFormats.includes(format)) {
       return new Response(
-        JSON.stringify({ error: `Unknown format: ${format}. Must be one of: csv, html` }),
+        JSON.stringify({ error: `Unknown format: ${format}. Must be one of: csv, html, json` }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
@@ -181,6 +230,8 @@ Deno.serve(async (req) => {
     let headers: string[] = [];
     let rows: string[][] = [];
     let title = "";
+    let totals: Record<string, string> = {};
+    let notes: string[] = [];
 
     // ── P&L Statement ────────────────────────────────────────────────────────
     if (report_type === "pl_statement") {
@@ -220,6 +271,11 @@ Deno.serve(async (req) => {
         cents(s.stripe_fees_cents ?? 0),
         cents(s.net_profit_cents ?? 0),
       ]);
+
+      totals = { "Net Profit": cents(sumColumn(rows, 7) * 100) };
+      notes = filtered
+        .filter((s) => s.amendment_note)
+        .map((s) => `${MONTH_NAMES[s.month - 1]} ${s.year} amended: ${s.amendment_note}`);
     }
 
     // ── Order Summary ────────────────────────────────────────────────────────
@@ -229,7 +285,7 @@ Deno.serve(async (req) => {
 
       const { data: orders, error: ordErr } = await supabase
         .from("orders")
-        .select("id, created_at, status, total_cents")
+        .select("id, created_at, status, total_cents, tax_cents")
         .eq("is_test", false)
         .gte("created_at", startTs)
         .lt("created_at", endTsExcl)
@@ -245,7 +301,9 @@ Deno.serve(async (req) => {
         const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
         if (!byMonth[key]) byMonth[key] = { orders: 0, gross: 0, refunds: 0 };
         byMonth[key].orders++;
-        byMonth[key].gross += o.total_cents ?? 0;
+        // Gross revenue excludes collected sales tax — it's a pass-through liability, not revenue.
+        byMonth[key].gross += (o.total_cents ?? 0) - (o.tax_cents ?? 0);
+        // Refund amount is left as-is (a refund returns the tax too — that's correct).
         if (o.status === "refunded") byMonth[key].refunds += o.total_cents ?? 0;
       }
 
@@ -262,6 +320,8 @@ Deno.serve(async (req) => {
             cents(m.gross - m.refunds),
           ];
         });
+
+      totals = { "Net Revenue": cents(sumColumn(rows, 4) * 100) };
     }
 
     // ── Expense Detail ───────────────────────────────────────────────────────
@@ -285,6 +345,8 @@ Deno.serve(async (req) => {
         cents(e.amount_cents ?? 0),
         e.source ?? "",
       ]);
+
+      totals = { "Total Expenses": cents(sumColumn(rows, 3) * 100) };
     }
 
     // ── Sales by Product ─────────────────────────────────────────────────────
@@ -324,6 +386,7 @@ Deno.serve(async (req) => {
         }
 
         const agg: Record<string, { name: string; units: number; revenue: number; cogs: number }> = {};
+        let usedDefaultCogs = false;
         for (const item of allItems ?? []) {
           const pid = item.product_id ?? "unknown";
           const prod = productMap[pid];
@@ -331,6 +394,7 @@ Deno.serve(async (req) => {
           const qty = item.quantity ?? 1;
           agg[pid].units   += qty;
           agg[pid].revenue += (item.unit_price_cents ?? 0) * qty;
+          if (!prod?.cost_cents) usedDefaultCogs = true;
           agg[pid].cogs    += (prod?.cost_cents ?? 1200) * qty;
         }
 
@@ -342,6 +406,14 @@ Deno.serve(async (req) => {
               : "0%";
             return [d.name, String(d.units), cents(d.revenue), cents(d.cogs), margin];
           });
+
+        totals = {
+          "Total Revenue": cents(sumColumn(rows, 2) * 100),
+          "Total COGS": cents(sumColumn(rows, 3) * 100),
+        };
+        if (usedDefaultCogs) {
+          notes = ["Some products are missing a cost_cents value; a default $12.00 COGS estimate was used for those line items."];
+        }
       }
     }
 
@@ -365,10 +437,258 @@ Deno.serve(async (req) => {
         e.description ?? e.stripe_charge_id ?? "",
         cents(e.amount_cents ?? 0),
       ]);
+
+      totals = { "Total Fees": cents(sumColumn(rows, 2) * 100) };
+    }
+
+    // ── Sales Tax Collected ──────────────────────────────────────────────────
+    else if (report_type === "sales_tax") {
+      title = "Sales Tax Collected";
+      headers = ["State", "Orders", "Taxable Sales", "Tax Collected"];
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("shipping_address, subtotal_cents, tax_cents, status")
+        .in("status", ["paid","in_production","fulfilled","shipped","delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs).lt("created_at", endTsExcl);
+      if (error) throw new Error(`Sales tax query failed: ${error.message}`);
+      const byState: Record<string, { orders: number; sales: number; tax: number }> = {};
+      for (const o of orders ?? []) {
+        const addr = (o.shipping_address ?? {}) as any;
+        const st = String(addr?.address?.state ?? addr?.state ?? "—").toUpperCase();
+        if (!byState[st]) byState[st] = { orders: 0, sales: 0, tax: 0 };
+        byState[st].orders++; byState[st].sales += o.subtotal_cents ?? 0; byState[st].tax += o.tax_cents ?? 0;
+      }
+      rows = Object.entries(byState).sort((a,b) => b[1].tax - a[1].tax)
+        .map(([st,d]) => [st, String(d.orders), cents(d.sales), cents(d.tax)]);
+      totals = { "Tax Collected": cents(sumColumn(rows, 3) * 100) };
+      notes = ["Tax is remitted per-state. File with each state where you have nexus.",
+               "Zero until Stripe Tax collection is enabled on checkout."];
+    }
+
+    // ── Top Customers / LTV ──────────────────────────────────────────────────
+    else if (report_type === "top_customers") {
+      title = "Top Customers";
+      headers = ["Customer", "Orders", "Total Spent", "Avg Order", "Last Order"];
+
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("email, total_cents, shipping_cents, tax_cents, created_at")
+        .in("status", ["paid","in_production","fulfilled","shipped","delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs).lt("created_at", endTsExcl);
+      if (error) throw new Error(`Top customers query failed: ${error.message}`);
+
+      const byEmail: Record<string, { orders: number; spent: number; lastOrder: string }> = {};
+      for (const o of orders ?? []) {
+        const email = o.email ?? "—";
+        // Net spend excludes shipping (pass-through to carrier) and collected sales tax
+        // (pass-through liability) — neither is money the business keeps.
+        const net = (o.total_cents ?? 0) - (o.shipping_cents ?? 0) - (o.tax_cents ?? 0);
+        if (!byEmail[email]) byEmail[email] = { orders: 0, spent: 0, lastOrder: "" };
+        byEmail[email].orders++;
+        byEmail[email].spent += net;
+        if (o.created_at && o.created_at > byEmail[email].lastOrder) byEmail[email].lastOrder = o.created_at;
+      }
+
+      rows = Object.entries(byEmail)
+        .sort((a, b) => b[1].spent - a[1].spent)
+        .slice(0, 100)
+        .map(([email, d]) => [
+          email,
+          String(d.orders),
+          cents(d.spent),
+          cents(d.orders > 0 ? Math.round(d.spent / d.orders) : 0),
+          d.lastOrder ? new Date(d.lastOrder).toISOString().slice(0, 10) : "—",
+        ]);
+
+      totals = { "Total Spent": cents(sumColumn(rows, 2) * 100) };
+    }
+
+    // ── Refunds & Disputes (Stripe) ──────────────────────────────────────────
+    else if (report_type === "refunds_disputes") {
+      title = "Refunds & Disputes";
+      headers = ["Date", "Type", "Order/Charge", "Amount", "Reason/Status"];
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        notes = ["Stripe key not configured"];
+      } else {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+        const gte = Math.floor(new Date(period_start).getTime() / 1000);
+        const lte = Math.floor(new Date(period_end).getTime() / 1000) + 86399;
+
+        const { data: refundedOrders, error: refErr } = await supabase
+          .from("orders")
+          .select("id, created_at, total_cents, status")
+          .in("status", ["refunded", "disputed"])
+          .eq("is_test", false)
+          .gte("created_at", startTs)
+          .lt("created_at", endTsExcl);
+
+        if (refErr) throw new Error(`Refunded orders query failed: ${refErr.message}`);
+
+        const refundRows: { sortTs: number; row: string[] }[] = (refundedOrders ?? []).map((o) => ({
+          sortTs: new Date(o.created_at).getTime(),
+          row: [
+            new Date(o.created_at).toISOString().slice(0, 10),
+            "Refund",
+            "#" + o.id.slice(-8).toUpperCase(),
+            cents(o.total_cents ?? 0),
+            o.status,
+          ],
+        }));
+
+        const disputes = await stripe.disputes.list({ created: { gte, lte }, limit: 100 });
+        const disputeRows: { sortTs: number; row: string[] }[] = disputes.data.map((d) => ({
+          sortTs: d.created * 1000,
+          row: [
+            new Date(d.created * 1000).toISOString().slice(0, 10),
+            "Dispute",
+            String(d.charge),
+            cents(d.amount),
+            `${d.reason} / ${d.status}`,
+          ],
+        }));
+
+        rows = [...refundRows, ...disputeRows]
+          .sort((a, b) => b.sortTs - a.sortTs)
+          .map((r) => r.row);
+
+        totals = { Amount: cents(sumColumn(rows, 3) * 100) };
+      }
+    }
+
+    // ── Payout Reconciliation (Stripe) ───────────────────────────────────────
+    else if (report_type === "payout_reconciliation") {
+      title = "Payout Reconciliation";
+      headers = ["Payout Date", "Status", "Gross", "Fees", "Refunds", "Net Deposit"];
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        notes = ["Stripe key not configured"];
+      } else {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+        const gte = Math.floor(new Date(period_start).getTime() / 1000);
+        const lte = Math.floor(new Date(period_end).getTime() / 1000) + 86399;
+
+        const payouts = await stripe.payouts.list({ arrival_date: { gte, lte }, limit: 100 });
+
+        let anyHasMore = false;
+        const payoutRows: { sortTs: number; row: string[] }[] = [];
+        for (const p of payouts.data) {
+          const bts = await stripe.balanceTransactions.list({ payout: p.id, limit: 100 });
+          if (bts.has_more) anyHasMore = true;
+
+          let gross = 0;
+          let fees = 0;
+          let refunds = 0;
+          for (const bt of bts.data) {
+            if (bt.type === "charge" || bt.type === "payment") gross += bt.amount;
+            fees += bt.fee ?? 0;
+            if (bt.type === "refund" || bt.type === "payment_refund") refunds += Math.abs(bt.amount);
+          }
+
+          payoutRows.push({
+            sortTs: p.arrival_date * 1000,
+            row: [
+              new Date(p.arrival_date * 1000).toISOString().slice(0, 10),
+              p.status,
+              cents(gross),
+              cents(fees),
+              cents(refunds),
+              cents(p.amount),
+            ],
+          });
+        }
+
+        rows = payoutRows.sort((a, b) => b.sortTs - a.sortTs).map((r) => r.row);
+
+        totals = { "Net Deposit": cents(sumColumn(rows, 5) * 100) };
+        notes = ["Net Deposit matches your bank deposit for each payout."];
+        if (anyHasMore) notes.push("Some payouts have more than 100 balance transactions; totals may be incomplete.");
+      }
+    }
+
+    // ── Tax Estimate (federal SE + income tax) ───────────────────────────────
+    else if (report_type === "tax_estimate") {
+      title = "Tax Estimate";
+      headers = ["Line", "Amount"];
+
+      const { data: taxOrders, error: taxOrdErr } = await supabase
+        .from("orders")
+        .select("id, total_cents, shipping_cents, tax_cents, status")
+        .in("status", ["paid", "in_production", "fulfilled", "shipped", "delivered"])
+        .eq("is_test", false)
+        .gte("created_at", startTs)
+        .lt("created_at", endTsExcl);
+
+      if (taxOrdErr) throw new Error(`Orders query failed: ${taxOrdErr.message}`);
+
+      const taxOrderIds = (taxOrders ?? []).map((o) => o.id);
+      let taxItems: { order_id: string; product_id: string | null; quantity: number }[] = [];
+      if (taxOrderIds.length) {
+        const { data: itemsData, error: taxItemErr } = await supabase
+          .from("order_items")
+          .select("order_id, product_id, quantity")
+          .in("order_id", taxOrderIds.slice(0, 1000));
+        if (taxItemErr) throw new Error(`Order items query failed: ${taxItemErr.message}`);
+        taxItems = itemsData ?? [];
+      }
+
+      const taxProductIds = [...new Set(taxItems.map((i) => i.product_id).filter(Boolean))] as string[];
+      let taxCostByProduct: Record<string, number> = {};
+      if (taxProductIds.length) {
+        const { data: prodsData, error: taxProdErr } = await supabase
+          .from("products")
+          .select("id, cost_cents")
+          .in("id", taxProductIds);
+        if (taxProdErr) throw new Error(`Products query failed: ${taxProdErr.message}`);
+        taxCostByProduct = Object.fromEntries((prodsData ?? []).map((p) => [p.id, p.cost_cents ?? 1200]));
+      }
+
+      // Gross revenue excludes collected sales tax — taxing the collected tax as income would be wrong.
+      const grossRevenue = (taxOrders ?? []).reduce((s, o) => s + (o.total_cents ?? 0) - (o.tax_cents ?? 0), 0);
+      const shippingTotal = (taxOrders ?? []).reduce((s, o) => s + (o.shipping_cents ?? 0), 0);
+      const cogsTotal = taxItems.reduce(
+        (s, i) => s + (i.quantity ?? 0) * (taxCostByProduct[i.product_id ?? ""] ?? 1200),
+        0,
+      );
+      const netProfitCents = grossRevenue - shippingTotal - cogsTotal;
+      const netProfitDollars = netProfitCents / 100;
+
+      const seTax = calcSETax(netProfitDollars);
+      const seDeduct = seTax / 2;
+      const taxableIncome = Math.max(0, netProfitDollars - seDeduct);
+      const incomeTax = calcIncomeTax(taxableIncome);
+      const totalTax = seTax + incomeTax;
+      const quarterly = totalTax / 4;
+
+      rows = [
+        ["Net Profit", fmtDollar(netProfitDollars)],
+        ["Self-Employment Tax (15.3%)", fmtDollar(seTax)],
+        ["SE Deduction (½ of SE tax)", fmtDollar(seDeduct)],
+        ["Taxable Income", fmtDollar(taxableIncome)],
+        ["Federal Income Tax (est.)", fmtDollar(incomeTax)],
+        ["Total Tax Estimate", fmtDollar(totalTax)],
+        ["Quarterly Estimated Payment", fmtDollar(quarterly)],
+      ];
+
+      totals = { "Total Tax Estimate": fmtDollar(totalTax) };
+      notes = [
+        "Estimates only — assumes single-filer status, no other deductions, 2025 tax tables.",
+        "Talk to a CPA before filing.",
+        "Quarterly due dates: Apr 15, Jun 16, Sep 15 (2026), Jan 15 (2027).",
+      ];
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
-    if (format === "csv") {
+    if (format === "json") {
+      return new Response(
+        JSON.stringify({ title, period: { start: period_start, end: period_end }, columns: headers, rows, totals, notes }),
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    } else if (format === "csv") {
       const csv = formatCSV(headers, rows);
       return new Response(csv, {
         headers: {
