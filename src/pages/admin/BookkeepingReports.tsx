@@ -1,24 +1,21 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Download, Printer, Loader2 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { ReportTable } from "@/components/admin/ReportTable";
 import {
-  format,
-  startOfYear,
-  endOfYear,
-  startOfQuarter,
-  endOfQuarter,
-  startOfMonth,
-  endOfMonth,
-  subQuarters,
-  subMonths,
-} from "date-fns";
-import { ReportTable, type ReportData } from "@/components/admin/ReportTable";
+  getPeriodDates,
+  fetchReportJson,
+  fetchReportRaw,
+  downloadReportCSV,
+  printReportHTML,
+  type ReportData,
+  type ReportPeriod,
+} from "@/lib/reports";
 
 type ReportType =
   | "pl_statement"
@@ -32,14 +29,7 @@ type ReportType =
   | "payout_reconciliation"
   | "tax_estimate";
 
-type PeriodType =
-  | "this_month"
-  | "last_month"
-  | "this_quarter"
-  | "last_quarter"
-  | "this_year"
-  | "last_year"
-  | "custom";
+type PeriodType = ReportPeriod;
 
 const REPORT_LABELS: Record<ReportType, string> = {
   pl_statement: "P&L Statement",
@@ -55,65 +45,6 @@ const REPORT_LABELS: Record<ReportType, string> = {
 };
 
 const REPORT_TYPES = Object.keys(REPORT_LABELS) as ReportType[];
-
-function getPeriodDates(
-  period: PeriodType,
-  customStart: string,
-  customEnd: string
-): { start: string; end: string; label: string } {
-  const now = new Date();
-  const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-  switch (period) {
-    case "this_month":
-      return {
-        start: fmt(startOfMonth(now)),
-        end: fmt(endOfMonth(now)),
-        label: format(now, "MMMM yyyy"),
-      };
-    case "last_month": {
-      const last = subMonths(now, 1);
-      return {
-        start: fmt(startOfMonth(last)),
-        end: fmt(endOfMonth(last)),
-        label: format(last, "MMMM yyyy"),
-      };
-    }
-    case "this_quarter":
-      return {
-        start: fmt(startOfQuarter(now)),
-        end: fmt(endOfQuarter(now)),
-        label: `Q${Math.ceil((now.getMonth() + 1) / 3)} ${now.getFullYear()}`,
-      };
-    case "last_quarter": {
-      const lq = subQuarters(now, 1);
-      return {
-        start: fmt(startOfQuarter(lq)),
-        end: fmt(endOfQuarter(lq)),
-        label: `Q${Math.ceil((lq.getMonth() + 1) / 3)} ${lq.getFullYear()}`,
-      };
-    }
-    case "this_year":
-      return {
-        start: fmt(startOfYear(now)),
-        end: fmt(endOfYear(now)),
-        label: String(now.getFullYear()),
-      };
-    case "last_year": {
-      const ly = new Date(now.getFullYear() - 1, 0, 1);
-      return {
-        start: fmt(startOfYear(ly)),
-        end: fmt(endOfYear(ly)),
-        label: String(now.getFullYear() - 1),
-      };
-    }
-    case "custom":
-      return {
-        start: customStart,
-        end: customEnd,
-        label: customStart && customEnd ? `${customStart} – ${customEnd}` : "Custom Range",
-      };
-  }
-}
 
 /** Chart config for the two report types that get a contextual bar chart:
  *  x = first column (identity), y = the primary money column. Single-series
@@ -184,46 +115,6 @@ export default function BookkeepingReports() {
   // disables the fetch + export buttons the same way.
   const customInvalid = customIncomplete || customRangeInverted;
 
-  // CSV/HTML responses come back from functions-js as text (occasionally a
-  // Blob) — leave this path returning a string for download.
-  async function fetchReportRaw(fmt: "csv" | "html"): Promise<string> {
-    const res = await supabase.functions.invoke("generate-report", {
-      body: {
-        report_type: reportType,
-        period_start: start,
-        period_end: end,
-        format: fmt,
-      },
-      headers: { Accept: fmt === "html" ? "text/html" : "text/csv" },
-    });
-    if (res.error) throw new Error(res.error.message);
-    const raw = res.data;
-    return raw instanceof Blob ? await raw.text() : (raw as string);
-  }
-
-  // JSON responses come back from functions-js ALREADY PARSED: @supabase/functions-js
-  // auto-parses any `Content-Type: application/json` response via response.json(),
-  // so res.data is already a plain object — never a Blob, never a JSON string.
-  // Only fall back to JSON.parse if it somehow arrives as text (defensive).
-  async function fetchReportJson(): Promise<ReportData> {
-    const res = await supabase.functions.invoke("generate-report", {
-      body: {
-        report_type: reportType,
-        period_start: start,
-        period_end: end,
-        format: "json",
-      },
-      headers: { Accept: "application/json" },
-    });
-    if (res.error) throw new Error(res.error.message);
-    const raw = res.data;
-    if (raw && typeof raw === "object" && !(raw instanceof Blob)) {
-      return raw as ReportData;
-    }
-    const text = raw instanceof Blob ? await raw.text() : String(raw);
-    return JSON.parse(text) as ReportData;
-  }
-
   const {
     data: reportData,
     isLoading: reportLoading,
@@ -232,7 +123,7 @@ export default function BookkeepingReports() {
   } = useQuery<ReportData>({
     queryKey: ["report-json", reportType, period, customStart, customEnd],
     enabled: !customInvalid,
-    queryFn: fetchReportJson,
+    queryFn: () => fetchReportJson(reportType, start, end),
     staleTime: 30_000,
   });
 
@@ -245,14 +136,9 @@ export default function BookkeepingReports() {
   async function handleDownloadCSV() {
     setExporting(true);
     try {
-      const csvText = await fetchReportRaw("csv");
+      const csvText = await fetchReportRaw(reportType, start, end, "csv");
       const filename = `PG_${reportType}_${label.replace(/\s/g, "_")}.csv`;
-      const url = URL.createObjectURL(new Blob([csvText], { type: "text/csv" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadReportCSV(csvText, filename);
       toast.success("CSV downloaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate report");
@@ -264,16 +150,9 @@ export default function BookkeepingReports() {
   async function handlePrint() {
     setExporting(true);
     try {
-      const htmlText = await fetchReportRaw("html");
-      const url = URL.createObjectURL(new Blob([htmlText], { type: "text/html" }));
-      const win = window.open(url, "_blank");
-      if (win) {
-        win.onload = () => {
-          win.print();
-          URL.revokeObjectURL(url);
-        };
-      } else {
-        URL.revokeObjectURL(url);
+      const htmlText = await fetchReportRaw(reportType, start, end, "html");
+      const { ok } = printReportHTML(htmlText);
+      if (!ok) {
         toast.error("Pop-up blocked — please allow pop-ups for this site.");
       }
     } catch (e) {

@@ -2,15 +2,9 @@
 // function: { title, period:{start,end}, columns, rows, totals, notes }.
 // Styling matches the SectionCard/table look used across the Finances tabs
 // (see src/pages/admin/Financials.tsx).
+import { type ReportData } from "@/lib/reports";
 
-export interface ReportData {
-  title: string;
-  period: { start: string; end: string };
-  columns: string[];
-  rows: string[][];
-  totals: Record<string, string>;
-  notes: string[];
-}
+export type { ReportData };
 
 /** Simple per-cell heuristic: does this look like a number/currency value? */
 function isNumericCell(value: string): boolean {
